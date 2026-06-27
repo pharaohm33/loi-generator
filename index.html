@@ -619,6 +619,19 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="prefix-wrap"><span>$</span><input type="number" id="buyer_cash" value="0"></div>
         </div>
       </div>
+      <div class="row cols-2">
+        <div class="field">
+          <label>Park Cashback in Escrow?</label>
+          <select id="park_escrow">
+            <option value="Y" selected>Yes — hold against deal</option>
+            <option value="N">No — cash back to buyer</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Rehab Out-of-Pocket</label>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="rehab_oop" value="0"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -720,6 +733,24 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="sum-row loi-row"><span class="lbl">Payment</span><span class="val" id="s-sc-pmt">—</span></div>
       <div class="sum-row loi-row"><span class="lbl">Balloon at Year <span id="s-balloon-yr">—</span></span><span class="val" id="s-balloon">—</span></div>
     </div>
+  </div>
+
+  <!-- CASH BACK TO BUYER -->
+  <div class="sum-card" id="cashback-card">
+    <div class="sum-title">Cash at Close — Buyer Position</div>
+    <div class="sum-body">
+      <div class="sum-row"><span class="lbl">Senior Loan Proceeds</span><span class="val" id="s-sr-proceeds">—</span></div>
+      <div class="sum-row"><span class="lbl">+ Buyer Cash In</span><span class="val" id="s-buyer-in">—</span></div>
+      <div class="sum-row"><span class="lbl">− Cash to Seller</span><span class="val" id="s-out-seller">—</span></div>
+      <div class="sum-row"><span class="lbl">− Closing Costs</span><span class="val" id="s-out-closing">—</span></div>
+      <div class="sum-row"><span class="lbl">− TAF Fee</span><span class="val" id="s-out-taf">—</span></div>
+      <div class="sum-row"><span class="lbl">− Rehab Out-of-Pocket</span><span class="val" id="s-out-rehab">—</span></div>
+    </div>
+    <div class="sum-total" id="cashback-total-row">
+      <span id="cashback-label">Buyer Net at Close</span>
+      <span id="s-cashback">—</span>
+    </div>
+    <div style="padding:8px 16px 12px; font-size:11px; color:#888; border-top:1px solid #f0f0ee;" id="cashback-note">—</div>
   </div>
 
   <!-- CASH FLOW -->
@@ -925,10 +956,20 @@ function recalc() {
   const acqFee = arv * g('acq_pct')   / 100;
   const pts    = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
+  const rehabOOP = g('rehab_oop');
   const closing = esc1 + esc2 + acqFee + pts + broker + g('emd');
   const tafPrin = Math.max(0, pp + closing - maxLoan - g('buyer_cash') - cac);
   const tafFee  = tafPrin * g('taf_pct') / 100;
   const basis   = pp + closing + tafFee;
+
+  // Buyer net at close: inflows − outflows
+  const totalInflows  = maxLoan + g('buyer_cash');
+  const totalOutflows = cac + closing + tafFee + rehabOOP;
+  const buyerNet      = totalInflows - totalOutflows;
+  const parkEscrow    = document.getElementById('park_escrow').value === 'Y';
+  const cashTobuyer   = parkEscrow ? 0 : Math.max(buyerNet, 0);
+  const cashToEscrow  = parkEscrow ? Math.max(buyerNet, 0) : 0;
+  const cashNeeded    = Math.max(-buyerNet, 0);
 
   const appr = g('appreciation') / 100;
   function exitVal(y)  { return arv * Math.pow(1 + appr, y); }
@@ -966,6 +1007,37 @@ function recalc() {
   set('s-sr-mo',  fmd(srPmt) + '/mo');
   set('s-carry-mo', fmd(scMonthly) + '/mo');
   set('s-net-cf', fmd(netCF) + '/mo');
+
+  // ── CASH BACK TO BUYER ──
+  set('s-sr-proceeds', fm(maxLoan));
+  set('s-buyer-in',    fm(g('buyer_cash')));
+  set('s-out-seller',  fm(cac));
+  set('s-out-closing', fm(closing));
+  set('s-out-taf',     fm(tafFee));
+  set('s-out-rehab',   fm(rehabOOP));
+
+  const cbEl    = document.getElementById('s-cashback');
+  const cbRow   = document.getElementById('cashback-total-row');
+  const cbLabel = document.getElementById('cashback-label');
+  const cbNote  = document.getElementById('cashback-note');
+
+  if (buyerNet >= 0) {
+    cbEl.textContent    = '+' + fm(buyerNet);
+    cbEl.style.color    = '#15803d';
+    cbRow.style.background = '#f0fdf4';
+    cbLabel.textContent = parkEscrow ? 'Buyer Net at Close' : 'Cash Back to Buyer';
+    cbNote.textContent  = parkEscrow
+      ? `+${fm(buyerNet)} held in escrow against deal (not taken home)`
+      : `+${fm(buyerNet)} returned to buyer at closing`;
+    cbNote.style.color  = '#166534';
+  } else {
+    cbEl.textContent    = fm(buyerNet);
+    cbEl.style.color    = '#dc2626';
+    cbRow.style.background = '#fff1f2';
+    cbLabel.textContent = 'Cash Needed from Buyer';
+    cbNote.textContent  = `Buyer must bring ${fm(cashNeeded)} to close`;
+    cbNote.style.color  = '#9f1239';
+  }
 
   set('s-r-cac', fm(cac));
   document.getElementById('s-r-lbl2').textContent =
