@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suede Buffalo — Deal Calculator</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #f5f5f3; color: #111; font-size: 14px; }
+
+/* HEADER */
+.top-bar { background: #111; color: #fff; padding: 14px 24px; display: flex; align-items: baseline; gap: 12px; }
+.top-bar h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+.top-bar p  { font-size: 12px; color: #888; }
+
+/* MAIN LAYOUT */
+.main { display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: 0; min-height: calc(100vh - 50px); }
+
+/* LEFT COLUMN — INPUTS */
+.col-inputs { padding: 24px 20px 60px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+
+/* RIGHT COLUMN — SUMMARY */
+.col-summary { background: #fff; border-left: 1px solid #e0e0df; padding: 20px 18px 60px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; position: sticky; top: 0; height: 100vh; }
+
+/* CARDS */
+.card { background: #fff; border: 1px solid #e0e0df; border-radius: 8px; overflow: hidden; }
+.card-head {
+  padding: 10px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #555;
+  border-bottom: 1px solid #e0e0df;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fafaf9;
+}
+.card-head .loi-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: #fef08a;
+  color: #713f12;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+.card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+/* INPUT ROWS */
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field-row.thirds { grid-template-columns: 1fr 1fr 1fr; }
+.field-row.full { grid-template-columns: 1fr; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 11px; color: #777; font-weight: 500; display: flex; align-items: center; gap: 5px; }
+.field label .dot { width: 7px; height: 7px; border-radius: 50%; background: #ca8a04; flex-shrink: 0; }
+
+/* LOI fields get yellow tint */
+.loi-field input, .loi-field select { background: #fefce8 !important; border-color: #fde047 !important; }
+.loi-field label { color: #713f12; }
+
+input[type=text], input[type=number], select {
+  width: 100%; padding: 7px 10px; font-size: 13px;
+  border: 1px solid #d0d0ce; border-radius: 5px;
+  background: #fafaf9; color: #111; outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+input:focus, select:focus { border-color: #111; background: #fff; }
+
+.prefix-input { display: flex; align-items: center; border: 1px solid #d0d0ce; border-radius: 5px; overflow: hidden; background: #fafaf9; transition: border-color 0.15s; }
+.prefix-input:focus-within { border-color: #111; background: #fff; }
+.prefix-input span { padding: 7px 8px; font-size: 13px; color: #777; border-right: 1px solid #d0d0ce; background: #f0f0ee; flex-shrink: 0; }
+.prefix-input input { border: none; background: transparent; padding: 7px 8px; font-size: 13px; color: #111; outline: none; width: 100%; }
+.suffix-input { display: flex; align-items: center; border: 1px solid #d0d0ce; border-radius: 5px; overflow: hidden; background: #fafaf9; }
+.suffix-input:focus-within { border-color: #111; }
+.suffix-input input { border: none; background: transparent; padding: 7px 8px; font-size: 13px; color: #111; outline: none; flex: 1; min-width: 0; }
+.suffix-input span { padding: 7px 8px; font-size: 13px; color: #777; border-left: 1px solid #d0d0ce; background: #f0f0ee; flex-shrink: 0; }
+.loi-field .prefix-input, .loi-field .suffix-input { background: #fefce8; border-color: #fde047; }
+.loi-field .prefix-input:focus-within, .loi-field .suffix-input:focus-within { border-color: #ca8a04; }
+
+/* TOGGLE BUTTONS */
+.toggle-group { display: flex; border: 1px solid #d0d0ce; border-radius: 5px; overflow: hidden; }
+.toggle-group button {
+  flex: 1; padding: 7px 6px; font-size: 12px; font-weight: 600;
+  background: #fafaf9; border: none; cursor: pointer; color: #666;
+  transition: background 0.12s, color 0.12s;
+}
+.toggle-group button.on { background: #111; color: #fff; }
+.toggle-group button:not(:last-child) { border-right: 1px solid #d0d0ce; }
+.loi-field .toggle-group { border-color: #fde047; background: #fefce8; }
+.loi-field .toggle-group button { background: #fefce8; }
+.loi-field .toggle-group button.on { background: #111; color: #fff; }
+
+/* SUMMARY ROWS */
+.sum-section { display: flex; flex-direction: column; gap: 0; }
+.sum-head {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #555; padding: 10px 0 6px;
+  border-bottom: 1px solid #e0e0df; margin-bottom: 2px;
+  display: flex; align-items: center; gap: 7px;
+}
+.sum-head .loi-badge { font-size: 10px; font-weight: 700; background: #fef08a; color: #713f12; padding: 2px 6px; border-radius: 4px; }
+.sum-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid #f0f0ee; font-size: 13px;
+}
+.sum-row:last-child { border-bottom: none; }
+.sum-row .lbl { color: #666; }
+.sum-row .val { font-weight: 600; color: #111; }
+.sum-row.loi-row { background: #fefce8; margin: 0 -4px; padding: 6px 4px; border-radius: 4px; }
+.sum-row.loi-row .lbl { color: #713f12; }
+.sum-total { display: flex; justify-content: space-between; padding: 8px 0 4px; font-weight: 700; font-size: 14px; border-top: 2px solid #111; margin-top: 4px; }
+
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.metric { background: #f5f5f3; border-radius: 6px; padding: 10px 12px; }
+.metric.loi-metric { background: #fefce8; border: 1px solid #fde047; }
+.metric-lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.metric.loi-metric .metric-lbl { color: #92400e; }
+.metric-val { font-size: 18px; font-weight: 700; color: #111; line-height: 1.1; }
+.metric-sub { font-size: 10px; color: #aaa; margin-top: 2px; }
+
+/* DEAL BASICS BANNER */
+.basics-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 4px; }
+.basics-card { background: #f5f5f3; border-radius: 6px; padding: 10px 12px; text-align: center; }
+.basics-card.loi-metric { background: #fefce8; border: 1px solid #fde047; }
+.basics-lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.basics-val { font-size: 15px; font-weight: 700; }
+
+/* SCREENSHOT NOTE */
+.screenshot-note {
+  background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px;
+  padding: 8px 12px; font-size: 11px; color: #92400e; line-height: 1.5;
+}
+.screenshot-note strong { display: block; font-size: 11px; margin-bottom: 1px; }
+
+/* EXIT TABLE */
+.exit-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.exit-table th { font-size: 10px; color: #888; font-weight: 600; text-align: right; padding: 4px 6px; border-bottom: 1px solid #e0e0df; }
+.exit-table th:first-child { text-align: left; }
+.exit-table td { padding: 5px 6px; border-bottom: 1px solid #f0f0ee; text-align: right; font-weight: 600; }
+.exit-table td:first-child { text-align: left; color: #666; font-weight: 400; }
+.exit-table tr:last-child td { border-bottom: none; }
+
+/* GENERATE BUTTON */
+.btn-generate {
+  width: 100%; padding: 13px; background: #111; color: #fff;
+  font-size: 14px; font-weight: 700; border: none; border-radius: 7px;
+  cursor: pointer; letter-spacing: 0.02em; transition: background 0.15s;
+  margin-top: 4px;
+}
+.btn-generate:hover { background: #333; }
+.btn-generate:disabled { background: #ccc; cursor: not-allowed; }
+
+/* OFFER OUTPUT */
+.offer-wrap { display: none; flex-direction: column; gap: 10px; }
+.offer-wrap.visible { display: flex; }
+.offer-actions { display: flex; gap: 8px; }
+.btn-sm {
+  padding: 6px 12px; font-size: 11px; font-weight: 600;
+  border: 1px solid #d0d0ce; border-radius: 5px; background: #fff;
+  color: #111; cursor: pointer;
+}
+.btn-sm:hover { background: #f0f0ee; }
+#offer-text {
+  background: #fff; border: 1px solid #e0e0df; border-radius: 8px;
+  padding: 28px 32px; font-family: Georgia, serif; font-size: 13px;
+  line-height: 1.8; color: #111; white-space: pre-wrap; word-break: break-word;
+}
+
+.divider { height: 1px; background: #e0e0df; margin: 2px 0; }
+.footnote { font-size: 10px; color: #aaa; text-align: center; padding-top: 4px; }
+
+@media print {
+  .col-inputs, .top-bar { display: none !important; }
+  .main { display: block; }
+  .col-summary { height: auto; position: static; border: none; }
+  .offer-wrap { display: flex !important; }
+  .btn-generate, .btn-sm, .screenshot-note { display: none !important; }
+  #offer-text { border: none; padding: 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>Suede Buffalo LLC — Deal Calculator</h1>
+  <p>Seller Carryback Underwriting + LOI Generator</p>
+</div>
+
+<div class="main">
+
+<!-- ═══════════════════════════════════════════════════════ LEFT: INPUTS -->
+<div class="col-inputs">
+
+  <!-- DEAL INFORMATION -->
+  <div class="card">
+    <div class="card-head">Deal Information</div>
+    <div class="card-body">
+      <div class="field-row">
+        <div class="field loi-field" style="grid-column:1/-1">
+          <label><span class="dot"></span>Property Address <span style="color:#ca8a04;font-size:10px">→ LOI</span></label>
+          <input type="text" id="address" value="600 N 600 E, North Logan, UT 84321">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field loi-field">
+          <label><span class="dot"></span>Unit Count <span style="color:#ca8a04;font-size:10px">→ LOI</span></label>
+          <input type="number" id="units" value="159" min="1">
+        </div>
+        <div class="field">
+          <label>Property Class</label>
+          <select id="prop_class">
+            <option>A</option><option selected>B</option><option>C</option><option>D</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A) INCOME & NOI -->
+  <div class="card">
+    <div class="card-head">A) Income &amp; NOI</div>
+    <div class="card-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Gross Monthly Rent</label>
+          <div class="prefix-input"><span>$</span><input type="number" id="gross_rent" value="172272" min="0"></div>
+        </div>
+        <div class="field">
+          <label>Other Income (Monthly)</label>
+          <div class="prefix-input"><span>$</span><input type="number" id="other_income" value="0" min="0"></div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Vacancy Rate</label>
+          <div class="suffix-input"><input type="number" id="vacancy" value="0" min="0" max="100" step="0.5"><span>%</span></div>
+        </div>
+        <div class="field">
+          <label>Property Mgmt</label>
+          <div class="suffix-input"><input type="number" id="pm_pct" value="0" min="0" max="20" step="0.5"><span>%</span></div>
+        </div>
+      </div>
+      <div class="field-row thirds">
+        <div class="field">
+          <label>Prop Taxes (Annual)</label>
+          <div class="prefix-input"><span>$</span><input type="number" id="taxes" value="0" min="0"></div>
+        </div>
+        <div class="field">
+          <label>Insurance (Annual)</label>
+          <div class="prefix-input"><span>$</span><input type="number" id="insurance" value="0" min="0"></div>
+        </div>
+        <div class="field">
+          <label>R&amp;M / Other (Annual)</label>
+          <div class="prefix-input"><span>$</span><input type="number" id="rm" value="0" min="0"></div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Market Cap Rate</label>
+          <div class="suffix-input"><input type="number" id="cap_rate" value="5.5" min="0" step="0.25"><span>%</span></div>
+        </div>
+        <div class="field">
+          <label>Annual Appreciation</label>
+          <div class="suffix-input"><input type="number" id="appreciation" value="3" min="0" step="0.5"><span>%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B) DEAL PRICING -->
+  <div class="card">
+    <div class="card-head">B) Deal Pricing</div>
+    <div class="card-body">
+      <div class="field-row">
+        <div class="field loi-field">
+          <label><span class="dot"></span>Purchase Price <span style="color:#ca8a04;font-size:10px">→ LOI</span></label>
+          <div class="prefix-input"><span>$</span><input type="number" id="purchase_price" value="37000000" min="0" step="1000"></div>
+        </div>
+        <div class="field loi-field">
+          <label><span class="dot"></span>Cash at Closing <span style="color:#ca8a04;font-size:10px">→ LOI</span></label>
+          <div class="prefix-input"><span>$</span><input type="number" id="cash_at_closing" value="17300000" min="0" step="1000"></div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>After Repair Value (ARV)</label>
+          <div class="prefix-input"><span>$</span><input type="number" id="arv" value="37000000" min="0" step="1000"></div>
+        </div>
+        <div class="field">
+          <label>Rehab Budget</label>
+          <div class="prefix-input"><span>$</span><input type="number" id="rehab" value="0" min="0" step="1000"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C) SENIOR LOAN (DSCR) -->
+  <div class="card">
+    <div class="card-head">C) DSCR Senior Loan</div>
+    <div class="card-body">
+      <div class="field-row thirds">
+        <div class="field">
+          <label>Interest Rate</label>
+          <div class="suffix-input"><input type="number" id="sr_rate" value="7" min="0" max="20" step="0.125"><span>%</span></div>
+        </div>
+        <div class="field">
+          <label>Amortization (yrs)</label>
+          <input type="number" id="sr_amort" value="30" min="0" max="40">
+        </div>
+        <div class="field">
+          <label>Loan Term (mo)</label>
+          <input type="number" id="sr_term" value="360" min="12">
+        </div>
+      </div>
+      <div class="field-row thirds">
+        <div class="field">
+          <label>Max LTV %</label>
+          <div class="suffix-input"><input type="number" id="sr_ltv" value="53" min="0" max="100" step="1"><span>%</span></div>
+        </div>
+        <div class="field">
+          <label>Min DSCR Req</label>
+          <input type="number" id="sr_dscr" value="1.0" min="0" step="0.05">
+        </div>
+        <div class="field">
+          <label>Loan Points</label>
+          <div class="suffix-input"><input type="number" id="sr_points" value="2" min="0" step="0.25"><span>%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- D) SELLER CARRY — LOI SECTION -->
+  <div class="card" style="border-color:#fde047">
+    <div class="card-head" style="background:#fefce8;border-bottom-color:#fde047">
+      D) Seller Carry Note
+      <span class="loi-badge">★ Feeds LOI</span>
+    </div>
+    <div class="card-body">
+      <div class="field-row">
+        <div class="field loi-field">
+          <label><span class="dot"></span>Annual Interest Rate <span style="color:#ca8a04;font-size:10px">→ LOI</span></label>
+          <div class="suffix-input" style="background:#fefce8;border-color:#fde047"><input type="number" id="sc_rate" value="8" min="0" max="30" step="0.25"><span>%</span></div>
+        </div>
+        <div class="field loi-field">
+          <label><span class="dot"></span>Term (Years) <span style="color:#ca8a04;font-size:10px">→ LOI</span></label>
+          <input type="number" id="sc_term" value="17" min="1" max="50">
+        </div>
+      </div>
+      <div class="field loi-field">
+        <label><span class="dot"></span>Payment Mode <span style="color:#ca8a04;font-size:10px">→ LOI</span></label>
+        <div class="toggle-group">
+          <button id="btn-po" class="on" onclick="setMode('principal_only')">Principal-Only (Deferred-Simple)</button>
+          <button id="btn-io" onclick="setMode('interest_only')">Interest-Only</button>
+        </div>
+      </div>
+      <div id="po-row" class="field loi-field">
+        <label><span class="dot"></span>Monthly Principal Payment <span style="color:#ca8a04;font-size:10px">→ LOI</span></label>
+        <div class="prefix-input" style="background:#fefce8;border-color:#fde047"><span>$</span><input type="number" id="monthly_principal" value="30000" min="0" step="500"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- E) CLOSING COSTS -->
+  <div class="card">
+    <div class="card-head">E) Closing Costs &amp; Fees</div>
+    <div class="card-body">
+      <div class="field-row thirds">
+        <div class="field">
+          <label>1st Escrow Fee</label>
+          <div class="suffix-input"><input type="number" id="esc1_pct" value="2" min="0" step="0.25"><span>%</span></div>
+        </div>
+        <div class="field">
+          <label>2nd Escrow Fee</label>
+          <div class="suffix-input"><input type="number" id="esc2_pct" value="1" min="0" step="0.25"><span>%</span></div>
+        </div>
+        <div class="field">
+          <label>Acq / Bird Dog Fee</label>
+          <div class="suffix-input"><input type="number" id="acq_pct" value="1" min="0" step="0.25"><span>%</span></div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Mortgage Broker Fee</label>
+          <div class="suffix-input"><input type="number" id="broker_pct" value="0" min="0" step="0.25"><span>%</span></div>
+        </div>
+        <div class="field">
+          <label>EMD</label>
+          <div class="prefix-input"><span>$</span><input type="number" id="emd" value="0" min="0"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- F) TRANSACTIONAL FUNDING -->
+  <div class="card">
+    <div class="card-head">F) Transactional Funding (TAF)</div>
+    <div class="card-body">
+      <div class="field-row">
+        <div class="field">
+          <label>TAF Fee %</label>
+          <div class="suffix-input"><input type="number" id="taf_pct" value="2" min="0" step="0.25"><span>%</span></div>
+        </div>
+        <div class="field">
+          <label>Buyer Cash Contribution</label>
+          <div class="prefix-input"><span>$</span><input type="number" id="buyer_cash" value="0" min="0"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACQUISITION CORRESPONDENT -->
+  <div class="card">
+    <div class="card-head">Acquisition Correspondent</div>
+    <div class="card-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Company</label>
+          <input type="text" id="ac_name" value="Suede Buffalo LLC">
+        </div>
+        <div class="field">
+          <label>Phone</label>
+          <input type="text" id="ac_phone" value="520 633 6437">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Email 1</label>
+          <input type="text" id="ac_email1" value="suedebuffalofficial@gmail.com">
+        </div>
+        <div class="field">
+          <label>Email 2</label>
+          <input type="text" id="ac_email2" value="montanoemmanuel@gmail.com">
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /col-inputs -->
+
+
+<!-- ═══════════════════════════════════════════════════ RIGHT: SUMMARY -->
+<div class="col-summary">
+
+  <div class="screenshot-note">
+    <strong>★ Screenshot this calculator as needed</strong>
+    These figures document how the offer was generated. Screenshot before clicking Generate Offer.
+  </div>
+
+  <!-- ADDRESS BANNER -->
+  <div style="font-size:13px;font-weight:600;padding:4px 2px;color:#111" id="sum-address">—</div>
+  <div class="divider"></div>
+
+  <!-- A) DEAL BASICS -->
+  <div class="sum-section">
+    <div class="sum-head">A) Deal Basics</div>
+    <div class="basics-grid">
+      <div class="basics-card loi-metric">
+        <div class="basics-lbl">Purchase Price</div>
+        <div class="basics-val" id="s-pp">—</div>
+      </div>
+      <div class="basics-card loi-metric">
+        <div class="basics-lbl">Cash at Closing</div>
+        <div class="basics-val" id="s-cac">—</div>
+      </div>
+      <div class="basics-card loi-metric">
+        <div class="basics-lbl">Seller Carry</div>
+        <div class="basics-val" id="s-carry">—</div>
+      </div>
+    </div>
+    <div style="height:6px"></div>
+    <div class="sum-row"><span class="lbl">NOI (Annual)</span><span class="val" id="s-noi">—</span></div>
+    <div class="sum-row"><span class="lbl">Appraised / ARV</span><span class="val" id="s-arv">—</span></div>
+    <div class="sum-row"><span class="lbl">Equity Spread</span><span class="val" id="s-equity">—</span></div>
+  </div>
+
+  <!-- B) CAPITAL STACK -->
+  <div class="sum-section">
+    <div class="sum-head">B) Capital Stack</div>
+    <div class="sum-row"><span class="lbl">DSCR 1st</span><span class="val" id="s-sr-loan">—</span></div>
+    <div class="sum-row loi-row"><span class="lbl">Seller Carry</span><span class="val" id="s-carry2">—</span></div>
+    <div class="sum-row loi-row"><span class="lbl">Seller Cash / DP</span><span class="val" id="s-cac2">—</span></div>
+    <div class="sum-row"><span class="lbl">Total Project Basis</span><span class="val" id="s-basis">—</span></div>
+  </div>
+
+  <!-- C) DSCR LOAN -->
+  <div class="sum-section">
+    <div class="sum-head">C) DSCR Loan</div>
+    <div class="sum-row"><span class="lbl">Max Loan (LTV)</span><span class="val" id="s-max-loan">—</span></div>
+    <div class="sum-row"><span class="lbl">Rate</span><span class="val" id="s-sr-rate">—</span></div>
+    <div class="sum-row"><span class="lbl">Amortization</span><span class="val" id="s-sr-amort">—</span></div>
+    <div class="sum-row"><span class="lbl">Monthly P&amp;I</span><span class="val" id="s-sr-pmt">—</span></div>
+    <div class="sum-row"><span class="lbl">DSCR (all debt)</span><span class="val" id="s-dscr">—</span></div>
+  </div>
+
+  <!-- D) SELLER CARRY → LOI -->
+  <div class="sum-section">
+    <div class="sum-head">D) Seller Carry Note <span class="loi-badge">★ LOI</span></div>
+    <div class="sum-row loi-row"><span class="lbl">Interest Rate</span><span class="val" id="s-sc-rate">—</span></div>
+    <div class="sum-row loi-row"><span class="lbl">Term</span><span class="val" id="s-sc-term">—</span></div>
+    <div class="sum-row loi-row"><span class="lbl">Payment Mode</span><span class="val" id="s-sc-mode">—</span></div>
+    <div class="sum-row loi-row"><span class="lbl">Monthly Payment</span><span class="val" id="s-sc-pmt">—</span></div>
+    <div class="sum-row loi-row"><span class="lbl">Balloon at Yr <span id="s-balloon-yr">—</span></span><span class="val" id="s-balloon">—</span></div>
+  </div>
+
+  <!-- E) CLOSING -->
+  <div class="sum-section">
+    <div class="sum-head">E) Closing</div>
+    <div class="sum-row"><span class="lbl">Total Closing Costs</span><span class="val" id="s-closing">—</span></div>
+    <div class="sum-row"><span class="lbl">TAF Principal</span><span class="val" id="s-taf">—</span></div>
+    <div class="sum-row"><span class="lbl">Cash Required (Buyer)</span><span class="val" id="s-buyer-need">—</span></div>
+  </div>
+
+  <!-- CASH FLOW -->
+  <div class="sum-section">
+    <div class="sum-head">Cash Flow</div>
+    <div class="sum-row"><span class="lbl">NOI / mo</span><span class="val" id="s-noi-mo">—</span></div>
+    <div class="sum-row"><span class="lbl">DSCR Pmt / mo</span><span class="val" id="s-sr-mo">—</span></div>
+    <div class="sum-row"><span class="lbl">Carry Pmt / mo</span><span class="val" id="s-carry-mo">—</span></div>
+    <div class="sum-row"><span class="lbl">Net CF / mo</span><span class="val" id="s-net-cf">—</span></div>
+  </div>
+
+  <!-- SELLER RECEIPTS → LOI -->
+  <div class="sum-section">
+    <div class="sum-head">Seller Total Receipts <span class="loi-badge">★ LOI</span></div>
+    <div class="sum-row loi-row"><span class="lbl">Cash at Closing</span><span class="val" id="s-r-cac">—</span></div>
+    <div class="sum-row loi-row"><span class="lbl" id="s-r-lbl2">Monthly Pmts Total</span><span class="val" id="s-r-pmts">—</span></div>
+    <div class="sum-row loi-row"><span class="lbl">Balloon Payment</span><span class="val" id="s-r-balloon">—</span></div>
+    <div class="sum-total loi-row" style="margin:4px -4px 0;padding:8px 4px;border-radius:4px">
+      <span>Total Receipts</span><span id="s-r-total">—</span>
+    </div>
+  </div>
+
+  <!-- EXIT ANALYSIS -->
+  <div class="sum-section">
+    <div class="sum-head">Exit @ <span id="s-appr-pct">3</span>% Appreciation</div>
+    <table class="exit-table">
+      <thead><tr><th></th><th>1 yr</th><th>3 yr</th><th>5 yr</th><th>10 yr</th></tr></thead>
+      <tbody>
+        <tr><td>Exit Value</td><td id="ex-v1">—</td><td id="ex-v3">—</td><td id="ex-v5">—</td><td id="ex-v10">—</td></tr>
+        <tr><td>Sale Profit</td><td id="ex-s1">—</td><td id="ex-s3">—</td><td id="ex-s5">—</td><td id="ex-s10">—</td></tr>
+        <tr><td>Refi Cash-Out</td><td id="ex-r1">—</td><td id="ex-r3">—</td><td id="ex-r5">—</td><td id="ex-r10">—</td></tr>
+        <tr><td>Hold CF</td><td id="ex-cf1">—</td><td id="ex-cf3">—</td><td id="ex-cf5">—</td><td id="ex-cf10">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+  <button class="btn-generate" onclick="generateOffer()">Generate Offer →</button>
+
+  <!-- OFFER OUTPUT -->
+  <div class="offer-wrap" id="offer-section">
+    <div class="offer-actions">
+      <strong style="font-size:13px;font-weight:700">Non-Exclusive LOI</strong>
+      <button class="btn-sm" onclick="copyOffer()">Copy text</button>
+      <button class="btn-sm" onclick="window.print()">Print / PDF</button>
+    </div>
+    <div id="offer-text"></div>
+  </div>
+
+  <div class="footnote">This is an estimate only. Actual terms subject to lender approval and due diligence.<br>Generated by Suede Buffalo LLC Deal Calculator</div>
+</div>
+</div><!-- /main -->
+
+<script>
+let mode = 'principal_only';
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-po').className = m === 'principal_only' ? 'on' : '';
+  document.getElementById('btn-io').className = m === 'interest_only' ? 'on' : '';
+  document.getElementById('po-row').style.display = m === 'principal_only' ? 'flex' : 'none';
+  recalc();
+}
+
+function n(id) { return parseFloat(document.getElementById(id).value) || 0; }
+function t(id) { return document.getElementById(id).value.trim(); }
+function set(id, v) { const el = document.getElementById(id); if(el) el.textContent = v; }
+
+function $$(v, d=0) {
+  if (v === null || isNaN(v)) return '—';
+  return '$' + Math.round(v).toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+function $$d(v) { return '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function pct(r, d=2) { return (r*100).toFixed(d) + '%'; }
+function pmt_pi(r_annual, n_months, pv) {
+  if (n_months === 0) return pv * r_annual / 12;
+  const r = r_annual / 12;
+  if (r === 0) return pv / n_months;
+  return pv * r * Math.pow(1+r, n_months) / (Math.pow(1+r, n_months) - 1);
+}
+
+function calcCarry(carry, rate, termYrs, monthlyPmt) {
+  const rM = rate / 12, months = Math.round(termYrs * 12);
+  let bal = carry, interest = 0;
+  for (let i = 0; i < months; i++) {
+    interest += bal * rM;
+    if (mode === 'principal_only') { bal -= monthlyPmt; if(bal < 0) bal = 0; }
+  }
+  const rem = Math.max(bal, 0);
+  const balloon = mode === 'principal_only' ? rem + interest : carry;
+  const totalPmts = mode === 'principal_only' ? (carry - rem) : (carry * rM * months);
+  return { balloon, totalPmts, monthly: mode === 'principal_only' ? monthlyPmt : carry * rM };
+}
+
+function recalc() {
+  const addr   = t('address'), units = n('units');
+  const pp     = n('purchase_price'), cac = n('cash_at_closing');
+  const arv    = n('arv'), rehab = n('rehab');
+  const carry  = pp - cac;
+
+  const rentMo = n('gross_rent') + n('other_income');
+  const egi    = rentMo * (1 - n('vacancy')/100);
+  const noi_mo = egi - (n('taxes') + n('insurance') + n('rm') + egi*n('pm_pct')/100) / 12;
+  const noi_an = noi_mo * 12;
+
+  const sr_rate = n('sr_rate') / 100;
+  const sr_amort = n('sr_amort');
+  const sr_ltv  = n('sr_ltv') / 100;
+  const maxLoan = arv * sr_ltv;
+  const sr_pmt  = pmt_pi(sr_rate, sr_amort * 12, maxLoan);
+
+  const sc_rate = n('sc_rate') / 100;
+  const sc_term = n('sc_term');
+  const sc_mpmt = n('monthly_principal');
+  const { balloon, totalPmts, monthly: scMonthly } = calcCarry(carry, sc_rate, sc_term, sc_mpmt);
+  const totalReceipts = cac + totalPmts + balloon;
+
+  const totalDebtMo = sr_pmt + scMonthly;
+  const netCF = noi_mo - totalDebtMo;
+  const dscr = totalDebtMo > 0 ? noi_an / (totalDebtMo * 12) : 0;
+
+  const esc1  = pp * n('esc1_pct') / 100;
+  const esc2  = arv * n('esc2_pct') / 100;
+  const acqFee= arv * n('acq_pct') / 100;
+  const pts   = maxLoan * n('sr_points') / 100;
+  const broker= maxLoan * n('broker_pct') / 100;
+  const closingTotal = esc1 + esc2 + acqFee + pts + broker + n('emd');
+
+  const tafPrincipal = Math.max(0, pp + closingTotal - maxLoan - n('buyer_cash') - cac);
+  const tafFee = tafPrincipal * n('taf_pct') / 100;
+  const buyerNeed = Math.max(0, pp + closingTotal + tafFee - maxLoan - cac - tafPrincipal);
+
+  const appr  = n('appreciation') / 100;
+  const basis = pp + closingTotal + tafFee;
+  function exitVal(y) { return arv * Math.pow(1+appr, y); }
+  function saleProfit(y) { const ev = exitVal(y); return ev * 0.92 - maxLoan - carry; }
+  function refiCash(y)   { const ev = exitVal(y); return ev * sr_ltv - maxLoan; }
+  function holdCF(y)     { return netCF * 12 * y; }
+
+  // ─── UPDATE SUMMARY ───
+  set('sum-address', addr + (units ? ` · ${Math.round(units)} Units` : ''));
+  set('s-pp', $$(pp)); set('s-cac', $$(cac)); set('s-carry', $$(carry));
+  set('s-noi', $$(noi_an) + '/yr'); set('s-arv', $$(arv));
+  set('s-equity', $$(arv - pp) + ` (${pct((arv-pp)/pp,1)})`);
+
+  set('s-sr-loan', $$(maxLoan) + ` (${pct(sr_ltv,0)})`);
+  set('s-carry2',  $$(carry)  + ` (${pp>0?pct(carry/pp,1):'—'})`);
+  set('s-cac2',    $$(cac)    + ` (${pp>0?pct(cac/pp,1):'—'})`);
+  set('s-basis', $$(basis));
+
+  set('s-max-loan', $$(maxLoan)); set('s-sr-rate', pct(sr_rate));
+  set('s-sr-amort', sr_amort + ' yrs'); set('s-sr-pmt', $$d(sr_pmt) + '/mo');
+  set('s-dscr', dscr.toFixed(2) + 'x');
+
+  set('s-sc-rate', pct(sc_rate));
+  set('s-sc-term', sc_term + ' years (' + Math.round(sc_term*12) + ' mo)');
+  set('s-sc-mode', mode === 'principal_only' ? 'Principal-Only (interest accrues)' : 'Interest-Only');
+  set('s-sc-pmt',  mode === 'principal_only' ? $$(scMonthly) + '/mo principal' : $$d(scMonthly) + '/mo interest');
+  set('s-balloon', '~' + $$(balloon)); set('s-balloon-yr', sc_term);
+
+  set('s-closing', $$(closingTotal)); set('s-taf', $$(tafPrincipal)); set('s-buyer-need', $$(buyerNeed));
+
+  set('s-noi-mo', $$d(noi_mo) + '/mo');
+  set('s-sr-mo',  $$d(sr_pmt) + '/mo');
+  set('s-carry-mo', $$d(scMonthly) + '/mo');
+  set('s-net-cf', $$d(netCF) + '/mo');
+
+  set('s-r-cac', $$(cac));
+  document.getElementById('s-r-lbl2').textContent = mode === 'principal_only' ? 'Monthly Principal Total' : 'Total Interest Paid';
+  set('s-r-pmts', $$(totalPmts)); set('s-r-balloon', '~' + $$(balloon)); set('s-r-total', '~' + $$(totalReceipts));
+
+  set('s-appr-pct', n('appreciation'));
+  [1,3,5,10].forEach(y => {
+    set('ex-v'+y,  $$(exitVal(y)));
+    set('ex-s'+y,  $$(saleProfit(y)));
+    set('ex-r'+y,  $$(refiCash(y)));
+    set('ex-cf'+y, $$(holdCF(y)));
+  });
+}
+
+function fmtD(n2) { return '$' + n2.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function generateOffer() {
+  const pp  = n('purchase_price'), cac = n('cash_at_closing');
+  const carry = pp - cac;
+  const sc_rate = n('sc_rate') / 100;
+  const sc_term = n('sc_term');
+  const months  = Math.round(sc_term * 12);
+  const sc_mpmt = n('monthly_principal');
+  const { balloon, totalPmts, monthly: scMonthly } = calcCarry(carry, sc_rate, sc_term, sc_mpmt);
+  const totalReceipts = cac + totalPmts + balloon;
+  const financing_income = totalReceipts - pp;
+
+  const addr  = t('address'), units = Math.round(n('units'));
+  const acName= t('ac_name'), acE1 = t('ac_email1'), acE2 = t('ac_email2'), acPh = t('ac_phone');
+
+  function fm(v) { return '$' + Math.round(v).toLocaleString(); }
+  function fd(v) { return fmtD(v); }
+  function fp(r) { return (r*100).toFixed(2) + '%'; }
+
+  let pmtBlock, narrative;
+  if (mode === 'principal_only') {
+    pmtBlock = `Monthly Principal-Reduction Payments:\nMonths 1–${months}: ${fm(sc_mpmt)}/month\nTotal Monthly Principal Payments Over ${sc_term} Years: ${fm(totalPmts)}\nBalloon Payment at Year ${sc_term}: Approximately ${fm(balloon)}\nTotal Seller Receipts Over ${sc_term} Years: Approximately ${fm(totalReceipts)}`;
+    narrative = `The seller receives ${fm(cac)} at closing and carries back ${fm(carry)}.\n\nDuring the ${sc_term}-year term, buyer will make monthly principal-reduction payments totaling approximately ${fm(totalPmts)}. These payments reduce the seller carry balance.\n\nInterest accrues separately at ${fp(sc_rate)} simple interest on the declining principal balance and is paid at the end of the term with the remaining principal balance.\n\nAt the end of year ${sc_term}, buyer will pay the remaining principal balance plus accrued interest through a balloon payment of approximately ${fm(balloon)}.\n\nTotal seller receipts are approximately ${fm(totalReceipts)}, which includes the full ${fm(pp)} purchase price plus approximately ${fm(financing_income)} in seller financing income.`;
+  } else {
+    pmtBlock = `Monthly Interest-Only Payments:\nMonths 1–${months}: ${fd(scMonthly)}/month\nTotal Interest Paid Over ${sc_term} Years: ${fm(totalPmts)}\nBalloon Payment at Year ${sc_term}: ${fm(balloon)} (full principal)\nTotal Seller Receipts Over ${sc_term} Years: Approximately ${fm(totalReceipts)}`;
+    narrative = `The seller receives ${fm(cac)} at closing and carries back ${fm(carry)}.\n\nDuring the ${sc_term}-year term, buyer will make monthly interest-only payments of ${fd(scMonthly)}, totaling approximately ${fm(totalPmts)} in interest.\n\nInterest is calculated at ${fp(sc_rate)} simple interest on the outstanding principal balance of ${fm(carry)}.\n\nAt the end of year ${sc_term}, buyer will pay the full principal balance of ${fm(carry)} through a balloon payment.\n\nTotal seller receipts are approximately ${fm(totalReceipts)}, which includes the full ${fm(pp)} purchase price plus approximately ${fm(financing_income)} in seller financing income.`;
+  }
+
+  const loi = `Non-Exclusive LOI\nDeal Terms - Seller Summary\n\nProperty: ${addr} - ${units} Units\nPurchase Price: ${fm(pp)}\n\nSELLER RECEIVES:\nCash at Closing: ${fm(cac)}\nSeller Carryback Note: ${fm(carry)}\nInterest Rate: ${fp(sc_rate)} simple interest\nTerm: ${sc_term} Years\n\nSELLER CARRY NOTE\n${pmtBlock}\n\n${narrative}\n\nSELLER PROTECTION BY SENIOR EQUITY INTEREST\nYour position is documented as a Senior Equity Interest, giving you first-priority claim to all cash flow and proceeds from operations, refinance, or sale — ahead of all buyer equity. If the buyer defaults on the note, the operating agreement allows you to take over the buyer's interest in the property without foreclosure.\n\nTIMELINE:\nClosing: Within 45-90 days of signed purchase and sales agreement.\n\n────────────────────────────────────────\n\nNon-Circumvent\n\nThe Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.\n\nCircumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.\n\nThe Acquisition Correspondent's fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing.\n\nNon-Exclusive Nature:\nSeller may entertain other offers until final purchase and sales agreement is in place with end buyer. At point of signing purchase and sales agreement, seller may not entertain other offers and honor the closing timeline set in purchase and sales agreement.\n\n\nSeller Signature\n\n________________________________________\nSeller Name (Print)\n\n________________________________________\nDate\n\n________________________________________\n\n\nAcquisition Correspondent:\n${acName}\nContact:\n        Email:\n            ${acE1}\n            ${acE2}\n        Phone:\n            ${acPh}`;
+
+  document.getElementById('offer-text').textContent = loi;
+  const sec = document.getElementById('offer-section');
+  sec.classList.add('visible');
+  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function copyOffer() {
+  navigator.clipboard.writeText(document.getElementById('offer-text').textContent).then(() => {
+    const b = document.querySelector('.btn-sm');
+    b.textContent = 'Copied!';
+    setTimeout(() => b.textContent = 'Copy text', 1800);
+  });
+}
+
+document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', recalc));
+recalc();
+</script>
+</body>
+</html>
