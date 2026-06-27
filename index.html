@@ -580,8 +580,8 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       </div>
       <div class="row cols-3">
         <div class="field">
-          <label>Max LTV (of ARV)</label>
-          <div class="suffix-wrap"><input type="number" id="sr_ltv" placeholder="53" step="1"><span>%</span></div>
+          <label>Max LTV (of As-Is Value)</label>
+          <div class="suffix-wrap"><input type="number" id="sr_ltv" placeholder="75" step="1"><span>%</span></div>
         </div>
         <div class="field" id="dscr-req-field">
           <label>Min DSCR Req</label>
@@ -596,7 +596,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div id="hm-fields" style="display:none">
         <div class="row cols-3">
           <div class="field">
-            <label>Max LTC (of cost)</label>
+            <label>Max LTC (of total cost)</label>
             <div class="suffix-wrap"><input type="number" id="hm_ltc" placeholder="75" step="1"><span>%</span></div>
           </div>
           <div class="field">
@@ -749,7 +749,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
 
   <!-- ARV warning -->
   <div id="arv-warning" style="display:none; background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:9px 14px; font-size:12px; color:#9f1239; margin-bottom:10px;">
-    <strong>⚠ ARV not set</strong> — using Purchase Price ($<span id="arv-fallback-val"></span>) as lender value. Enter ARV in B) Deal Pricing for accurate loan sizing.
+    <strong>⚠ ARV not set</strong> — fix &amp; flip exit projections will use As-Is Value ($<span id="arv-fallback-val"></span>) instead. Enter ARV in B) Deal Pricing for accurate exit valuation. (Loan sizing uses As-Is Value regardless.)
   </div>
 
   <!-- Address banner -->
@@ -794,7 +794,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   <div class="sum-card">
     <div class="sum-title">C) DSCR Loan</div>
     <div class="sum-body">
-      <div class="sum-row"><span class="lbl">Max Loan (LTV)</span><span class="val" id="s-max-loan">—</span></div>
+      <div class="sum-row"><span class="lbl">Max Loan (% of As-Is Value)</span><span class="val" id="s-max-loan">—</span></div>
       <div class="sum-row"><span class="lbl">Rate / Amort</span><span class="val" id="s-sr-detail">—</span></div>
       <div class="sum-row"><span class="lbl">Monthly P&amp;I</span><span class="val" id="s-sr-pmt">—</span></div>
       <div class="sum-row"><span class="lbl">DSCR (all debt)</span><span class="val" id="s-dscr">—</span></div>
@@ -819,9 +819,9 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     <div class="sum-title">E) Closing Costs Detail</div>
     <div class="sum-body">
       <div class="sum-row"><span class="lbl">1st Escrow Fee (% of contract)</span><span class="val" id="s-esc1">—</span></div>
-      <div class="sum-row"><span class="lbl">2nd Escrow Fee (% of ARV)</span><span class="val" id="s-esc2">—</span></div>
+      <div class="sum-row"><span class="lbl">2nd Escrow Fee (% of As-Is)</span><span class="val" id="s-esc2">—</span></div>
       <div class="sum-row" style="background:#f0fdf4">
-        <span class="lbl" style="color:#166534;font-weight:600">Acq / Bird Dog Fee (% of ARV)</span>
+        <span class="lbl" style="color:#166534;font-weight:600">Acq / Bird Dog Fee (% of As-Is)</span>
         <span class="val" style="color:#15803d;font-size:15px" id="s-acq">—</span>
       </div>
       <div class="sum-row"><span class="lbl">Loan Points</span><span class="val" id="s-pts">—</span></div>
@@ -1062,12 +1062,19 @@ function calcCarry(carry, rate_annual, term_years, monthly_pmt) {
 }
 
 function recalc() {
-  const pp     = g('purchase_price');
-  const cac    = g('cash_at_closing');
-  const arvRaw = g('arv');
-  const arvFallback = arvRaw === 0 && pp > 0;
-  const arv    = arvRaw > 0 ? arvRaw : pp;   // fallback to purchase price when ARV blank
-  const carry  = pp - cac;
+  const pp      = g('purchase_price');
+  const cac     = g('cash_at_closing');
+  const carry   = pp - cac;
+
+  // As-Is Value = lender's basis for loan sizing (DSCR & Hard Money both lend on as-is)
+  const asIsVal = g('as_is_value') || pp;
+
+  // ARV = after-repair value — used ONLY for exit/sale projections (fix & flip exit)
+  const arvRaw  = g('arv');
+  const arv     = arvRaw > 0 ? arvRaw : asIsVal; // for exit projections, fall back to as-is
+  const arvMissingForExit = arvRaw === 0 && g('rehab') > 0; // only warn if there's a rehab
+
+  const totalProjectCost = asIsVal + g('rehab');
 
   const rentMo = g('gross_rent') + g('other_income');
   const egi    = rentMo * (1 - g('vacancy') / 100);
@@ -1075,23 +1082,21 @@ function recalc() {
   const noiMo  = egi - opex;
   const noiAn  = noiMo * 12;
 
-  const srRate   = g('sr_rate') / 100;
-  const srLTV    = g('sr_ltv') / 100;
-  const asIsVal  = g('as_is_value') || pp;
-  const totalProjectCost = asIsVal + g('rehab');
+  const srRate = g('sr_rate') / 100;
+  const srLTV  = g('sr_ltv') / 100;
 
+  // Loan sizing always uses AS-IS VALUE (lenders underwrite current value, not future ARV)
   let maxLoan, bindingConstraint;
   if (loanType === 'hard_money') {
-    const byLTV = srLTV > 0 ? arv * srLTV : Infinity;
-    const byLTC = g('hm_ltc') > 0 ? totalProjectCost * g('hm_ltc') / 100 : Infinity;
-    const byARV = g('hm_arv_pct') > 0 ? arv * g('hm_arv_pct') / 100 : Infinity;
+    const byLTV = srLTV > 0         ? asIsVal * srLTV                    : Infinity;
+    const byLTC = g('hm_ltc') > 0   ? totalProjectCost * g('hm_ltc')/100 : Infinity;
+    const byARV = g('hm_arv_pct')>0 ? arv * g('hm_arv_pct')/100         : Infinity;
     maxLoan = Math.min(byLTV, byLTC, byARV);
     if (!isFinite(maxLoan)) maxLoan = 0;
-    if (maxLoan === byLTV)      bindingConstraint = 'ltv';
-    else if (maxLoan === byLTC) bindingConstraint = 'ltc';
-    else                        bindingConstraint = 'arv';
+    bindingConstraint = maxLoan === byLTV ? 'ltv' : maxLoan === byLTC ? 'ltc' : 'arv';
   } else {
-    maxLoan = arv * srLTV;
+    // DSCR: lend on as-is value LTV
+    maxLoan = asIsVal * srLTV;
     bindingConstraint = 'ltv';
   }
   if (!isFinite(maxLoan) || isNaN(maxLoan)) maxLoan = 0;
@@ -1108,15 +1113,15 @@ function recalc() {
   const netCF  = noiMo - totalDebtMo;
   const dscr   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
 
-  const esc1   = cac * g('esc1_pct')  / 100;   // 1st escrow: % of CONTRACT price
-  const esc2   = arv * g('esc2_pct')  / 100;   // 2nd escrow: % of lender/ARV value
-  const acqFee = arv * g('acq_pct')   / 100;   // acq fee: % of ARV (2nd escrow)
+  const esc1   = cac     * g('esc1_pct') / 100;  // 1st escrow: % of contract price
+  const esc2   = asIsVal * g('esc2_pct') / 100;  // 2nd escrow: % of as-is/lender value
+  const acqFee = asIsVal * g('acq_pct')  / 100;  // acq fee: % of as-is value (2nd escrow)
   const pts    = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
   const closing = esc1 + esc2 + acqFee + pts + broker + g('emd');
-  // TAF sized as: (ARV - Senior Loan) + Closing - Buyer Cash (matches Excel v3.5 Section E)
-  const tafPrin = Math.max(0, (arv - maxLoan) + closing - g('buyer_cash') - rehabOOP);
+  // TAF: (As-Is Value - Senior Loan) + Closing - Buyer Cash
+  const tafPrin = Math.max(0, (asIsVal - maxLoan) + closing - g('buyer_cash') - rehabOOP);
   const tafFee  = tafPrin * g('taf_pct') / 100;
   const basis   = pp + closing + tafFee;
 
@@ -1139,19 +1144,19 @@ function recalc() {
   const addr = s('address'), units = Math.round(g('units'));
   set('s-addr', addr + (units ? ` · ${units} Units` : ''));
 
-  // ARV fallback warning
+  // ARV warning — only relevant for fix & flip exit projections when rehab is present
   const arvWarn = document.getElementById('arv-warning');
-  if (arvFallback && pp > 0) {
+  if (arvMissingForExit) {
     arvWarn.style.display = 'block';
-    set('arv-fallback-val', Math.round(pp).toLocaleString());
+    set('arv-fallback-val', Math.round(asIsVal).toLocaleString());
   } else {
     arvWarn.style.display = 'none';
   }
 
   set('s-pp', fm(pp)); set('s-cac', fm(cac)); set('s-carry', fm(carry));
   set('s-noi', fm(noiAn) + '/yr');
-  set('s-arv', arvFallback ? fm(arv) + ' (using PP — set ARV)' : fm(arv));
-  set('s-equity', fm(arv - pp) + ' (' + fp((arv - pp) / (pp || 1), 1) + ')');
+  set('s-arv', arvRaw > 0 ? fm(arv) + ' (ARV)' : fm(asIsVal) + ' (as-is)');
+  set('s-equity', fm(asIsVal - pp) + ' (' + fp((asIsVal - pp) / (pp || 1), 1) + ')');
 
   const constraintLabel = {'ltv':'LTV','ltc':'LTC','arv':'ARV%'}[bindingConstraint];
   document.getElementById('s-sr-loan').innerHTML = fm(maxLoan) + ` <span class="constraint-badge ${bindingConstraint}">${constraintLabel}</span>`;
