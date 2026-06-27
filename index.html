@@ -472,6 +472,19 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   <div class="card">
     <div class="card-title">A) Income &amp; NOI</div>
     <div class="card-body">
+      <div class="row cols-1">
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:6px">
+            Direct NOI Override (Annual)
+            <span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:4px;border:1px solid #fde68a;font-weight:700">Paste from OM — overrides rent</span>
+          </label>
+          <div class="prefix-wrap" id="noi-direct-wrap"><span>$</span><input type="number" id="noi_direct" placeholder="0 — leave blank to use rent below"></div>
+        </div>
+      </div>
+      <div id="noi-override-warning" style="display:none;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 12px;font-size:11.5px;color:#92400e;margin-bottom:4px">
+        ⚠ Direct NOI is active — gross rent inputs below are <strong>ignored</strong>. Clear the Direct NOI field to use rent-based calculation.
+      </div>
+      <div id="rent-fields">
       <div class="row cols-2">
         <div class="field">
           <label>Gross Monthly Rent</label>
@@ -516,6 +529,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="suffix-wrap"><input type="number" id="appreciation" placeholder="3" step="0.5"><span>%</span></div>
         </div>
       </div>
+      </div><!-- /rent-fields -->
     </div>
   </div>
 
@@ -1083,10 +1097,23 @@ function recalc() {
 
   const totalProjectCost = asIsVal + g('rehab');
 
-  const rentMo = g('gross_rent') + g('other_income');
-  const egi    = rentMo * (1 - g('vacancy') / 100);
-  const opex   = (g('taxes') + g('insurance') + g('rm')) / 12 + egi * g('pm_pct') / 100;
-  const noiMo  = egi - opex;
+  const noiDirectAn = g('noi_direct');
+  const usingDirectNOI = noiDirectAn > 0;
+  const noiOverrideWarn = document.getElementById('noi-override-warning');
+  const rentFieldsDiv   = document.getElementById('rent-fields');
+  if (usingDirectNOI) {
+    noiOverrideWarn.style.display = 'block';
+    rentFieldsDiv.style.opacity   = '0.35';
+    rentFieldsDiv.style.pointerEvents = 'none';
+  } else {
+    noiOverrideWarn.style.display = 'none';
+    rentFieldsDiv.style.opacity   = '1';
+    rentFieldsDiv.style.pointerEvents = '';
+  }
+  const rentMo = usingDirectNOI ? 0 : (g('gross_rent') + g('other_income'));
+  const egi    = usingDirectNOI ? 0 : rentMo * (1 - g('vacancy') / 100);
+  const opex   = usingDirectNOI ? 0 : (g('taxes') + g('insurance') + g('rm')) / 12 + egi * g('pm_pct') / 100;
+  const noiMo  = usingDirectNOI ? noiDirectAn / 12 : egi - opex;
   const noiAn  = noiMo * 12;
 
   const srRate = g('sr_rate') / 100;
@@ -1499,7 +1526,7 @@ function copyLOI() {
 // ── ALL SAVEABLE FIELDS ──
 const FIELDS = [
   'address','units','prop_class',
-  'gross_rent','other_income','vacancy','pm_pct','taxes','insurance','rm','cap_rate','appreciation',
+  'noi_direct','gross_rent','other_income','vacancy','pm_pct','taxes','insurance','rm','cap_rate','appreciation',
   'purchase_price','cash_at_closing','as_is_value','arv','rehab','rehab_draw_pct',
   'sr_rate','sr_amort','sr_term','sr_ltv','sr_dscr','sr_points',
   'hm_ltc','hm_arv_pct','hm_rehab_pct','hm_rehab_months',
