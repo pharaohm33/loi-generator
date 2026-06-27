@@ -588,7 +588,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="suffix-wrap"><input type="number" id="esc2_pct" value="1" step="0.25"><span>%</span></div>
         </div>
         <div class="field">
-          <label>Acq / Bird Dog Fee</label>
+          <label>Acq / Bird Dog Fee <span id="acq-dollar" style="font-weight:700;color:#15803d;margin-left:4px"></span></label>
           <div class="suffix-wrap"><input type="number" id="acq_pct" value="1" step="0.25"><span>%</span></div>
         </div>
       </div>
@@ -733,6 +733,24 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="sum-row loi-row"><span class="lbl">Payment</span><span class="val" id="s-sc-pmt">—</span></div>
       <div class="sum-row loi-row"><span class="lbl">Balloon at Year <span id="s-balloon-yr">—</span></span><span class="val" id="s-balloon">—</span></div>
     </div>
+  </div>
+
+  <!-- CLOSING DETAIL -->
+  <div class="sum-card">
+    <div class="sum-title">E) Closing Costs Detail</div>
+    <div class="sum-body">
+      <div class="sum-row"><span class="lbl">1st Escrow Fee (% of contract)</span><span class="val" id="s-esc1">—</span></div>
+      <div class="sum-row"><span class="lbl">2nd Escrow Fee (% of ARV)</span><span class="val" id="s-esc2">—</span></div>
+      <div class="sum-row" style="background:#f0fdf4">
+        <span class="lbl" style="color:#166534;font-weight:600">Acq / Bird Dog Fee (% of ARV)</span>
+        <span class="val" style="color:#15803d;font-size:15px" id="s-acq">—</span>
+      </div>
+      <div class="sum-row"><span class="lbl">Loan Points</span><span class="val" id="s-pts">—</span></div>
+      <div class="sum-row"><span class="lbl">Mortgage Broker Fee</span><span class="val" id="s-broker">—</span></div>
+      <div class="sum-row"><span class="lbl">TAF Principal</span><span class="val" id="s-taf2">—</span></div>
+      <div class="sum-row"><span class="lbl">TAF Fee</span><span class="val" id="s-taffee">—</span></div>
+    </div>
+    <div class="sum-total"><span>Total Closing + TAF</span><span id="s-total-closing">—</span></div>
   </div>
 
   <!-- CASH BACK TO BUYER -->
@@ -951,14 +969,15 @@ function recalc() {
   const netCF  = noiMo - totalDebtMo;
   const dscr   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
 
-  const esc1   = pp  * g('esc1_pct')  / 100;
-  const esc2   = arv * g('esc2_pct')  / 100;
-  const acqFee = arv * g('acq_pct')   / 100;
+  const esc1   = cac * g('esc1_pct')  / 100;   // 1st escrow: % of CONTRACT price
+  const esc2   = arv * g('esc2_pct')  / 100;   // 2nd escrow: % of lender/ARV value
+  const acqFee = arv * g('acq_pct')   / 100;   // acq fee: % of ARV (2nd escrow)
   const pts    = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
   const closing = esc1 + esc2 + acqFee + pts + broker + g('emd');
-  const tafPrin = Math.max(0, pp + closing - maxLoan - g('buyer_cash') - cac);
+  // TAF sized as: (ARV - Senior Loan) + Closing - Buyer Cash (matches Excel v3.5 Section E)
+  const tafPrin = Math.max(0, (arv - maxLoan) + closing - g('buyer_cash') - rehabOOP);
   const tafFee  = tafPrin * g('taf_pct') / 100;
   const basis   = pp + closing + tafFee;
 
@@ -1007,6 +1026,20 @@ function recalc() {
   set('s-sr-mo',  fmd(srPmt) + '/mo');
   set('s-carry-mo', fmd(scMonthly) + '/mo');
   set('s-net-cf', fmd(netCF) + '/mo');
+
+  // ── CLOSING DETAIL ──
+  set('s-esc1',   fm(esc1));
+  set('s-esc2',   fm(esc2));
+  set('s-acq',    fm(acqFee));
+  set('s-pts',    fm(pts));
+  set('s-broker', fm(broker));
+  set('s-taf2',   fm(tafPrin));
+  set('s-taffee', fm(tafFee));
+  set('s-total-closing', fm(closing + tafFee));
+
+  // Acq fee dollar label in input panel
+  const acqDollarEl = document.getElementById('acq-dollar');
+  if (acqDollarEl) acqDollarEl.textContent = '→ ' + fm(acqFee);
 
   // ── CASH BACK TO BUYER ──
   set('s-sr-proceeds', fm(maxLoan));
