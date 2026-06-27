@@ -523,6 +523,12 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         <div class="field">
           <label>Market Cap Rate</label>
           <div class="suffix-wrap"><input type="number" id="cap_rate" placeholder="5.5" step="0.25"><span>%</span></div>
+          <div id="cap-implied-wrap" style="display:none; margin-top:5px;">
+            <button onclick="copyCapVal()" id="cap-implied-btn" style="width:100%;text-align:left;padding:6px 10px;font-size:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;cursor:pointer;color:#166534;font-weight:600;display:flex;justify-content:space-between;align-items:center;">
+              <span>Implied Value: <span id="cap-implied-val">—</span></span>
+              <span style="font-size:10px;opacity:0.7">Click to copy</span>
+            </button>
+          </div>
         </div>
         <div class="field">
           <label>Annual Appreciation</label>
@@ -1218,6 +1224,18 @@ function recalc() {
   set('s-balloon', '~' + fm(balloon));
   set('s-balloon-yr', scTerm);
 
+  // Cap rate implied valuation
+  const capRate = g('cap_rate') / 100;
+  const impliedVal = capRate > 0 && noiAn > 0 ? noiAn / capRate : 0;
+  const capWrap = document.getElementById('cap-implied-wrap');
+  if (impliedVal > 0) {
+    capWrap.style.display = 'block';
+    set('cap-implied-val', fm(impliedVal));
+    document.getElementById('cap-implied-btn')._val = Math.round(impliedVal);
+  } else {
+    capWrap.style.display = 'none';
+  }
+
   set('s-noi-mo', fmd(noiMo) + '/mo');
   set('s-sr-mo',  fmd(srPmt) + '/mo');
   set('s-carry-mo', fmd(scMonthly) + '/mo');
@@ -1511,6 +1529,18 @@ Contact:
   const sec = document.getElementById('loi-section');
   sec.classList.add('visible');
   setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+function copyCapVal() {
+  const btn = document.getElementById('cap-implied-btn');
+  const val = btn._val;
+  if (!val) return;
+  navigator.clipboard.writeText(String(val)).then(() => {
+    const span = btn.querySelector('span:first-child');
+    const orig = span.innerHTML;
+    span.textContent = '✓ Copied!';
+    setTimeout(() => { span.innerHTML = orig; }, 1800);
+  });
 }
 
 function copyLOI() {
