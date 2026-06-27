@@ -747,6 +747,11 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     These figures document how the offer was generated.
   </div>
 
+  <!-- ARV warning -->
+  <div id="arv-warning" style="display:none; background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:9px 14px; font-size:12px; color:#9f1239; margin-bottom:10px;">
+    <strong>⚠ ARV not set</strong> — using Purchase Price ($<span id="arv-fallback-val"></span>) as lender value. Enter ARV in B) Deal Pricing for accurate loan sizing.
+  </div>
+
   <!-- Address banner -->
   <div class="addr-banner" id="s-addr">—</div>
 
@@ -1059,7 +1064,9 @@ function calcCarry(carry, rate_annual, term_years, monthly_pmt) {
 function recalc() {
   const pp     = g('purchase_price');
   const cac    = g('cash_at_closing');
-  const arv    = g('arv');
+  const arvRaw = g('arv');
+  const arvFallback = arvRaw === 0 && pp > 0;
+  const arv    = arvRaw > 0 ? arvRaw : pp;   // fallback to purchase price when ARV blank
   const carry  = pp - cac;
 
   const rentMo = g('gross_rent') + g('other_income');
@@ -1132,8 +1139,18 @@ function recalc() {
   const addr = s('address'), units = Math.round(g('units'));
   set('s-addr', addr + (units ? ` · ${units} Units` : ''));
 
+  // ARV fallback warning
+  const arvWarn = document.getElementById('arv-warning');
+  if (arvFallback && pp > 0) {
+    arvWarn.style.display = 'block';
+    set('arv-fallback-val', Math.round(pp).toLocaleString());
+  } else {
+    arvWarn.style.display = 'none';
+  }
+
   set('s-pp', fm(pp)); set('s-cac', fm(cac)); set('s-carry', fm(carry));
-  set('s-noi', fm(noiAn) + '/yr'); set('s-arv', fm(arv));
+  set('s-noi', fm(noiAn) + '/yr');
+  set('s-arv', arvFallback ? fm(arv) + ' (using PP — set ARV)' : fm(arv));
   set('s-equity', fm(arv - pp) + ' (' + fp((arv - pp) / (pp || 1), 1) + ')');
 
   const constraintLabel = {'ltv':'LTV','ltc':'LTC','arv':'ARV%'}[bindingConstraint];
