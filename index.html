@@ -608,6 +608,12 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <div class="suffix-wrap"><input type="number" id="hm_rehab_pct" placeholder="100" step="5"><span>%</span></div>
           </div>
         </div>
+        <div class="row cols-1" style="margin-top:4px">
+          <div class="field">
+            <label>Rehab Completion Timeline (months)</label>
+            <input type="number" id="hm_rehab_months" placeholder="12" min="1" step="1">
+          </div>
+        </div>
         <div style="font-size:11px;color:#888;padding:4px 0 2px">Binding constraint: lowest of LTV / LTC / ARV%</div>
       </div>
     </div>
@@ -796,6 +802,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     <div class="sum-body">
       <div class="sum-row"><span class="lbl">Max Loan (% of As-Is Value)</span><span class="val" id="s-max-loan">—</span></div>
       <div class="sum-row"><span class="lbl">Rate / Amort</span><span class="val" id="s-sr-detail">—</span></div>
+      <div class="sum-row" id="s-rehab-timeline-row" style="display:none"><span class="lbl">Rehab Timeline</span><span class="val" id="s-rehab-months">—</span></div>
       <div class="sum-row"><span class="lbl">Monthly P&amp;I</span><span class="val" id="s-sr-pmt">—</span></div>
       <div class="sum-row"><span class="lbl">DSCR (all debt)</span><span class="val" id="s-dscr">—</span></div>
     </div>
@@ -821,7 +828,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="sum-row"><span class="lbl">1st Escrow Fee (% of contract)</span><span class="val" id="s-esc1">—</span></div>
       <div class="sum-row"><span class="lbl">2nd Escrow Fee (% of As-Is)</span><span class="val" id="s-esc2">—</span></div>
       <div class="sum-row" style="background:#f0fdf4">
-        <span class="lbl" style="color:#166534;font-weight:600">Acq / Bird Dog Fee (% of As-Is)</span>
+        <span class="lbl" style="color:#166534;font-weight:600">Acq / Bird Dog Fee (% of Purchase Price)</span>
         <span class="val" style="color:#15803d;font-size:15px" id="s-acq">—</span>
       </div>
       <div class="sum-row"><span class="lbl">Loan Points</span><span class="val" id="s-pts">—</span></div>
@@ -1115,7 +1122,7 @@ function recalc() {
 
   const esc1   = cac     * g('esc1_pct') / 100;  // 1st escrow: % of contract price
   const esc2   = asIsVal * g('esc2_pct') / 100;  // 2nd escrow: % of as-is/lender value
-  const acqFee = asIsVal * g('acq_pct')  / 100;  // acq fee: % of as-is value (2nd escrow)
+  const acqFee = pp * g('acq_pct') / 100;  // acq fee: % of total purchase price
   const pts    = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
@@ -1168,6 +1175,13 @@ function recalc() {
   set('s-sr-detail', fp(srRate) + ' / ' + g('sr_amort') + ' yrs');
   set('s-sr-pmt', fmd(srPmt) + '/mo');
   set('s-dscr', dscr.toFixed(2) + 'x');
+  const rehabMoRow = document.getElementById('s-rehab-timeline-row');
+  if (loanType === 'hard_money' && g('hm_rehab_months') > 0) {
+    rehabMoRow.style.display = '';
+    set('s-rehab-months', g('hm_rehab_months') + ' months');
+  } else {
+    rehabMoRow.style.display = 'none';
+  }
 
   set('s-sc-rate', fp(scRate));
   set('s-sc-term', scTerm + ' years (' + Math.round(scTerm * 12) + ' mo)');
@@ -1488,7 +1502,7 @@ const FIELDS = [
   'gross_rent','other_income','vacancy','pm_pct','taxes','insurance','rm','cap_rate','appreciation',
   'purchase_price','cash_at_closing','as_is_value','arv','rehab','rehab_draw_pct',
   'sr_rate','sr_amort','sr_term','sr_ltv','sr_dscr','sr_points',
-  'hm_ltc','hm_arv_pct','hm_rehab_pct',
+  'hm_ltc','hm_arv_pct','hm_rehab_pct','hm_rehab_months',
   'sc_rate','sc_term','monthly_principal',
   'esc1_pct','esc2_pct','acq_pct','broker_pct','emd',
   'taf_pct','buyer_cash','park_escrow','rehab_oop',
