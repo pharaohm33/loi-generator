@@ -26,15 +26,29 @@ body {
 }
 .top-bar h1 { font-size: 18px; font-weight: 700; color: #111; }
 .top-bar p  { font-size: 13px; color: #999; flex: 1; }
-.btn-share {
+.btn-share, .btn-admin {
   display: flex; align-items: center; gap: 6px;
   padding: 7px 14px; font-size: 12px; font-weight: 700;
-  background: #111; color: #fff; border: none; border-radius: 7px;
-  cursor: pointer; letter-spacing: 0.02em; white-space: nowrap;
-  transition: background 0.15s;
+  border: none; border-radius: 7px; cursor: pointer;
+  letter-spacing: 0.02em; white-space: nowrap; transition: background 0.15s;
 }
+.btn-share { background: #111; color: #fff; }
 .btn-share:hover { background: #333; }
+.btn-admin { background: #fef08a; color: #713f12; border: 1px solid #fde047; }
+.btn-admin:hover { background: #fde047; }
 .btn-share svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* Loan type toggle */
+.loan-type-toggle { display: flex; border: 1px solid #e0e0de; border-radius: 7px; overflow: hidden; margin-bottom: 12px; }
+.loan-type-toggle button { flex: 1; padding: 8px; font-size: 12px; font-weight: 700; border: none; background: #fafaf8; color: #777; cursor: pointer; transition: all 0.12s; }
+.loan-type-toggle button.active { background: #111; color: #fff; }
+.loan-type-toggle button:not(:last-child) { border-right: 1px solid #e0e0de; }
+.hm-fields { display: none; }
+.hm-fields.show { display: contents; }
+.constraint-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; margin-left: 6px; }
+.constraint-badge.ltv { background: #eff6ff; color: #1d4ed8; }
+.constraint-badge.ltc { background: #fef9c3; color: #854d0e; }
+.constraint-badge.arv { background: #f0fdf4; color: #166534; }
 
 /* Share toast */
 .share-toast {
@@ -415,11 +429,12 @@ input:focus, select:focus { border-color: #111; background: #fff; }
 <div class="top-bar">
   <h1>Suede Buffalo LLC — Seller Carryback Calculator</h1>
   <p>Acquisition &amp; LOI Generator</p>
+  <button class="btn-admin" onclick="adminTemplate()">★ Admin Template</button>
   <button class="btn-share" onclick="shareCalc()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
     </svg>
-    Share Calculator
+    Share
   </button>
 </div>
 
@@ -435,18 +450,18 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="row cols-1">
         <div class="field loi">
           <label><span class="loi-dot"></span> Property Address <span class="loi-tag">→ LOI</span></label>
-          <input type="text" id="address" value="600 N 600 E, North Logan, UT 84321">
+          <input type="text" id="address" placeholder="123 Main St, City, ST 00000">
         </div>
       </div>
       <div class="row cols-2">
         <div class="field loi">
           <label><span class="loi-dot"></span> Unit Count <span class="loi-tag">→ LOI</span></label>
-          <input type="number" id="units" value="159" min="1">
+          <input type="number" id="units" placeholder="0" min="1">
         </div>
         <div class="field">
           <label>Property Class</label>
           <select id="prop_class">
-            <option>A</option><option selected>B</option><option>C</option><option>D</option>
+            <option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option>
           </select>
         </div>
       </div>
@@ -460,45 +475,45 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="row cols-2">
         <div class="field">
           <label>Gross Monthly Rent</label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="gross_rent" value="172272"></div>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="gross_rent" placeholder="0"></div>
         </div>
         <div class="field">
           <label>Other Income (Monthly)</label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="other_income" value="0"></div>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="other_income" placeholder="0"></div>
         </div>
       </div>
       <div class="row cols-2">
         <div class="field">
           <label>Vacancy Rate</label>
-          <div class="suffix-wrap"><input type="number" id="vacancy" value="0" min="0" max="100" step="0.5"><span>%</span></div>
+          <div class="suffix-wrap"><input type="number" id="vacancy" placeholder="0" min="0" max="100" step="0.5"><span>%</span></div>
         </div>
         <div class="field">
           <label>Property Mgmt</label>
-          <div class="suffix-wrap"><input type="number" id="pm_pct" value="0" min="0" max="20" step="0.5"><span>%</span></div>
+          <div class="suffix-wrap"><input type="number" id="pm_pct" placeholder="0" min="0" max="20" step="0.5"><span>%</span></div>
         </div>
       </div>
       <div class="row cols-3">
         <div class="field">
           <label>Taxes (Annual)</label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="taxes" value="0"></div>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="taxes" placeholder="0"></div>
         </div>
         <div class="field">
           <label>Insurance (Annual)</label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="insurance" value="0"></div>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="insurance" placeholder="0"></div>
         </div>
         <div class="field">
           <label>R&amp;M / Other (Annual)</label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="rm" value="0"></div>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="rm" placeholder="0"></div>
         </div>
       </div>
       <div class="row cols-2">
         <div class="field">
           <label>Market Cap Rate</label>
-          <div class="suffix-wrap"><input type="number" id="cap_rate" value="5.5" step="0.25"><span>%</span></div>
+          <div class="suffix-wrap"><input type="number" id="cap_rate" placeholder="5.5" step="0.25"><span>%</span></div>
         </div>
         <div class="field">
           <label>Annual Appreciation</label>
-          <div class="suffix-wrap"><input type="number" id="appreciation" value="3" step="0.5"><span>%</span></div>
+          <div class="suffix-wrap"><input type="number" id="appreciation" placeholder="3" step="0.5"><span>%</span></div>
         </div>
       </div>
     </div>
@@ -511,57 +526,89 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="row cols-2">
         <div class="field loi">
           <label><span class="loi-dot"></span> Purchase Price <span class="loi-tag">→ LOI</span></label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="purchase_price" value="37000000" step="1000"></div>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="purchase_price" placeholder="0" step="1000"></div>
         </div>
         <div class="field loi">
           <label><span class="loi-dot"></span> Cash at Closing <span class="loi-tag">→ LOI</span></label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="cash_at_closing" value="17300000" step="1000"></div>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="cash_at_closing" placeholder="0" step="1000"></div>
         </div>
       </div>
       <div class="row cols-2">
         <div class="field">
-          <label>After Repair Value (ARV)</label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="arv" value="37000000" step="1000"></div>
+          <label>As-Is Market Value</label>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="as_is_value" placeholder="0" step="1000"></div>
         </div>
         <div class="field">
-          <label>Rehab Budget</label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="rehab" value="0" step="1000"></div>
+          <label>After Repair Value (ARV)</label>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="arv" placeholder="0" step="1000"></div>
+        </div>
+      </div>
+      <div class="row cols-2">
+        <div class="field">
+          <label>Rehab Budget (Total)</label>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="rehab" placeholder="0" step="1000"></div>
+        </div>
+        <div class="field">
+          <label>Rehab Draw Liquidity %</label>
+          <div class="suffix-wrap"><input type="number" id="rehab_draw_pct" placeholder="0" step="1"><span>%</span></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- DSCR SENIOR LOAN -->
+  <!-- SENIOR LOAN -->
   <div class="card">
-    <div class="card-title">C) DSCR Senior Loan</div>
+    <div class="card-title">C) Senior Loan <span id="loan-type-label" style="font-weight:400;color:#999;margin-left:6px;font-size:10px"></span></div>
     <div class="card-body">
+      <div class="loan-type-toggle">
+        <button id="lt-dscr" class="active" onclick="setLoanType('dscr')">DSCR</button>
+        <button id="lt-hm" onclick="setLoanType('hard_money')">Hard Money</button>
+      </div>
       <div class="row cols-3">
         <div class="field">
           <label>Interest Rate</label>
-          <div class="suffix-wrap"><input type="number" id="sr_rate" value="7" step="0.125"><span>%</span></div>
+          <div class="suffix-wrap"><input type="number" id="sr_rate" placeholder="7" step="0.125"><span>%</span></div>
         </div>
         <div class="field">
           <label>Amortization (yrs)</label>
-          <input type="number" id="sr_amort" value="30" min="0">
+          <input type="number" id="sr_amort" placeholder="30" min="0">
         </div>
         <div class="field">
           <label>Loan Term (mo)</label>
-          <input type="number" id="sr_term" value="360" min="12">
+          <input type="number" id="sr_term" placeholder="360" min="1">
         </div>
       </div>
       <div class="row cols-3">
         <div class="field">
-          <label>Max LTV</label>
-          <div class="suffix-wrap"><input type="number" id="sr_ltv" value="53" step="1"><span>%</span></div>
+          <label>Max LTV (of ARV)</label>
+          <div class="suffix-wrap"><input type="number" id="sr_ltv" placeholder="53" step="1"><span>%</span></div>
         </div>
-        <div class="field">
+        <div class="field" id="dscr-req-field">
           <label>Min DSCR Req</label>
-          <input type="number" id="sr_dscr" value="1.0" step="0.05">
+          <input type="number" id="sr_dscr" placeholder="1.0" step="0.05">
         </div>
         <div class="field">
           <label>Loan Points</label>
-          <div class="suffix-wrap"><input type="number" id="sr_points" value="2" step="0.25"><span>%</span></div>
+          <div class="suffix-wrap"><input type="number" id="sr_points" placeholder="2" step="0.25"><span>%</span></div>
         </div>
+      </div>
+      <!-- Hard Money extra fields -->
+      <div id="hm-fields" style="display:none">
+        <div class="row cols-3">
+          <div class="field">
+            <label>Max LTC (of cost)</label>
+            <div class="suffix-wrap"><input type="number" id="hm_ltc" placeholder="75" step="1"><span>%</span></div>
+          </div>
+          <div class="field">
+            <label>Max ARV %</label>
+            <div class="suffix-wrap"><input type="number" id="hm_arv_pct" placeholder="70" step="1"><span>%</span></div>
+          </div>
+          <div class="field">
+            <label>Rehab Financed %</label>
+            <div class="suffix-wrap"><input type="number" id="hm_rehab_pct" placeholder="100" step="5"><span>%</span></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#888;padding:4px 0 2px">Binding constraint: lowest of LTV / LTC / ARV%</div>
       </div>
     </div>
   </div>
@@ -576,11 +623,11 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="row cols-2">
         <div class="field loi">
           <label><span class="loi-dot"></span> Annual Interest Rate <span class="loi-tag">→ LOI</span></label>
-          <div class="suffix-wrap"><input type="number" id="sc_rate" value="8" step="0.25"><span>%</span></div>
+          <div class="suffix-wrap"><input type="number" id="sc_rate" placeholder="8" step="0.25"><span>%</span></div>
         </div>
         <div class="field loi">
           <label><span class="loi-dot"></span> Term (Years) <span class="loi-tag">→ LOI</span></label>
-          <input type="number" id="sc_term" value="17" min="1" max="50">
+          <input type="number" id="sc_term" placeholder="17" min="1" max="50">
         </div>
       </div>
       <div class="row cols-1">
@@ -595,7 +642,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div id="po-row" class="row cols-1">
         <div class="field loi">
           <label><span class="loi-dot"></span> Monthly Principal Payment <span class="loi-tag">→ LOI</span></label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="monthly_principal" value="30000" step="500"></div>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="monthly_principal" placeholder="0" step="500"></div>
         </div>
       </div>
     </div>
@@ -608,25 +655,25 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="row cols-3">
         <div class="field">
           <label>1st Escrow Fee</label>
-          <div class="suffix-wrap"><input type="number" id="esc1_pct" value="2" step="0.25"><span>%</span></div>
+          <div class="suffix-wrap"><input type="number" id="esc1_pct" placeholder="2" step="0.25"><span>%</span></div>
         </div>
         <div class="field">
           <label>2nd Escrow Fee</label>
-          <div class="suffix-wrap"><input type="number" id="esc2_pct" value="1" step="0.25"><span>%</span></div>
+          <div class="suffix-wrap"><input type="number" id="esc2_pct" placeholder="1" step="0.25"><span>%</span></div>
         </div>
         <div class="field">
           <label>Acq / Bird Dog Fee <span id="acq-dollar" style="font-weight:700;color:#15803d;margin-left:4px"></span></label>
-          <div class="suffix-wrap"><input type="number" id="acq_pct" value="1" step="0.25"><span>%</span></div>
+          <div class="suffix-wrap"><input type="number" id="acq_pct" placeholder="1" step="0.25"><span>%</span></div>
         </div>
       </div>
       <div class="row cols-2">
         <div class="field">
           <label>Mortgage Broker Fee</label>
-          <div class="suffix-wrap"><input type="number" id="broker_pct" value="0" step="0.25"><span>%</span></div>
+          <div class="suffix-wrap"><input type="number" id="broker_pct" placeholder="0" step="0.25"><span>%</span></div>
         </div>
         <div class="field">
           <label>EMD</label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="emd" value="0"></div>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="emd" placeholder="0"></div>
         </div>
       </div>
     </div>
@@ -639,24 +686,24 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="row cols-2">
         <div class="field">
           <label>TAF Fee</label>
-          <div class="suffix-wrap"><input type="number" id="taf_pct" value="2" step="0.25"><span>%</span></div>
+          <div class="suffix-wrap"><input type="number" id="taf_pct" placeholder="2" step="0.25"><span>%</span></div>
         </div>
         <div class="field">
           <label>Buyer Cash Contribution</label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="buyer_cash" value="0"></div>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="buyer_cash" placeholder="0"></div>
         </div>
       </div>
       <div class="row cols-2">
         <div class="field">
           <label>Park Cashback in Escrow?</label>
           <select id="park_escrow">
-            <option value="Y" selected>Yes — hold against deal</option>
-            <option value="N">No — cash back to buyer</option>
+            <option value="N" selected>No — cash back to buyer</option>
+            <option value="Y">Yes — hold against deal</option>
           </select>
         </div>
         <div class="field">
           <label>Rehab Out-of-Pocket</label>
-          <div class="prefix-wrap"><span>$</span><input type="number" id="rehab_oop" value="0"></div>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="rehab_oop" placeholder="0"></div>
         </div>
       </div>
     </div>
@@ -669,21 +716,21 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="row cols-2">
         <div class="field">
           <label>Company</label>
-          <input type="text" id="ac_name" value="Suede Buffalo LLC">
+          <input type="text" id="ac_name" placeholder="Company Name">
         </div>
         <div class="field">
           <label>Phone</label>
-          <input type="text" id="ac_phone" value="520 633 6437">
+          <input type="text" id="ac_phone" placeholder="000 000 0000">
         </div>
       </div>
       <div class="row cols-2">
         <div class="field">
           <label>Email 1</label>
-          <input type="text" id="ac_email1" value="suedebuffalofficial@gmail.com">
+          <input type="text" id="ac_email1" placeholder="email@example.com">
         </div>
         <div class="field">
           <label>Email 2</label>
-          <input type="text" id="ac_email2" value="montanoemmanuel@gmail.com">
+          <input type="text" id="ac_email2" placeholder="email@example.com">
         </div>
       </div>
     </div>
@@ -918,6 +965,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
 
 <script>
 let mode = 'principal_only';
+let loanType = 'dscr';
 
 function setMode(m) {
   mode = m;
@@ -925,6 +973,46 @@ function setMode(m) {
   document.getElementById('btn-io').className  = m === 'interest_only'  ? 'active' : '';
   document.getElementById('po-row').style.display = m === 'principal_only' ? '' : 'none';
   recalc();
+}
+
+function setLoanType(t) {
+  loanType = t;
+  document.getElementById('lt-dscr').className = t === 'dscr' ? 'active' : '';
+  document.getElementById('lt-hm').className   = t === 'hard_money' ? 'active' : '';
+  document.getElementById('hm-fields').style.display = t === 'hard_money' ? 'block' : 'none';
+  document.getElementById('dscr-req-field').style.display = t === 'dscr' ? 'flex' : 'none';
+  document.getElementById('loan-type-label').textContent = t === 'dscr' ? '(DSCR)' : '(Hard Money)';
+  recalc();
+}
+
+function adminTemplate() {
+  const vals = {
+    ac_name:     'Suede Buffalo LLC',
+    ac_email1:   'suedebuffalofficial@gmail.com',
+    ac_email2:   'montanoemmanuel@gmail.com',
+    ac_phone:    '520 633 6437',
+    appreciation: 3,
+    sr_dscr:     1.0,
+    park_escrow: 'N',
+    esc1_pct:    2,
+    esc2_pct:    1,
+    acq_pct:     1,
+    taf_pct:     2,
+    sr_rate:     7,
+    sr_amort:    30,
+    sr_term:     360,
+    sr_points:   2,
+    broker_pct:  0,
+  };
+  Object.entries(vals).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  });
+  recalc();
+  // Flash the button
+  const btn = document.querySelector('.btn-admin');
+  btn.textContent = '✓ Template Applied!';
+  setTimeout(() => btn.textContent = '★ Admin Template', 1800);
 }
 
 const g = id => parseFloat(document.getElementById(id).value) || 0;
@@ -980,10 +1068,27 @@ function recalc() {
   const noiMo  = egi - opex;
   const noiAn  = noiMo * 12;
 
-  const srRate = g('sr_rate') / 100;
-  const srLTV  = g('sr_ltv') / 100;
-  const maxLoan = arv * srLTV;
-  const srPmt  = pmtPI(srRate, g('sr_amort'), maxLoan);
+  const srRate   = g('sr_rate') / 100;
+  const srLTV    = g('sr_ltv') / 100;
+  const asIsVal  = g('as_is_value') || pp;
+  const totalProjectCost = asIsVal + g('rehab');
+
+  let maxLoan, bindingConstraint;
+  if (loanType === 'hard_money') {
+    const byLTV = srLTV > 0 ? arv * srLTV : Infinity;
+    const byLTC = g('hm_ltc') > 0 ? totalProjectCost * g('hm_ltc') / 100 : Infinity;
+    const byARV = g('hm_arv_pct') > 0 ? arv * g('hm_arv_pct') / 100 : Infinity;
+    maxLoan = Math.min(byLTV, byLTC, byARV);
+    if (!isFinite(maxLoan)) maxLoan = 0;
+    if (maxLoan === byLTV)      bindingConstraint = 'ltv';
+    else if (maxLoan === byLTC) bindingConstraint = 'ltc';
+    else                        bindingConstraint = 'arv';
+  } else {
+    maxLoan = arv * srLTV;
+    bindingConstraint = 'ltv';
+  }
+  if (!isFinite(maxLoan) || isNaN(maxLoan)) maxLoan = 0;
+  const srPmt = pmtPI(srRate, g('sr_amort'), maxLoan);
 
   const scRate = g('sc_rate') / 100;
   const scTerm = g('sc_term');
@@ -1031,7 +1136,8 @@ function recalc() {
   set('s-noi', fm(noiAn) + '/yr'); set('s-arv', fm(arv));
   set('s-equity', fm(arv - pp) + ' (' + fp((arv - pp) / (pp || 1), 1) + ')');
 
-  set('s-sr-loan', fm(maxLoan) + ' (' + fp(srLTV, 0) + ')');
+  const constraintLabel = {'ltv':'LTV','ltc':'LTC','arv':'ARV%'}[bindingConstraint];
+  document.getElementById('s-sr-loan').innerHTML = fm(maxLoan) + ` <span class="constraint-badge ${bindingConstraint}">${constraintLabel}</span>`;
   set('s-carry2',  fm(carry)   + ' (' + fp(carry / (pp || 1), 1) + ')');
   set('s-cac2',    fm(cac)     + ' (' + fp(cac   / (pp || 1), 1) + ')');
   set('s-basis', fm(basis));
@@ -1358,8 +1464,9 @@ function copyLOI() {
 const FIELDS = [
   'address','units','prop_class',
   'gross_rent','other_income','vacancy','pm_pct','taxes','insurance','rm','cap_rate','appreciation',
-  'purchase_price','cash_at_closing','arv','rehab',
+  'purchase_price','cash_at_closing','as_is_value','arv','rehab','rehab_draw_pct',
   'sr_rate','sr_amort','sr_term','sr_ltv','sr_dscr','sr_points',
+  'hm_ltc','hm_arv_pct','hm_rehab_pct',
   'sc_rate','sc_term','monthly_principal',
   'esc1_pct','esc2_pct','acq_pct','broker_pct','emd',
   'taf_pct','buyer_cash','park_escrow','rehab_oop',
@@ -1373,6 +1480,7 @@ function shareCalc() {
     if (el && el.value !== '' && el.value !== null) p.set(id, el.value);
   });
   p.set('mode', mode);
+  p.set('loan_type', loanType);
   const url = location.origin + location.pathname + '?' + p.toString();
   navigator.clipboard.writeText(url).then(() => {
     history.replaceState(null, '', '?' + p.toString());
@@ -1396,6 +1504,7 @@ function loadFromURL() {
     }
   });
   if (p.has('mode')) setMode(p.get('mode'));
+  if (p.has('loan_type')) setLoanType(p.get('loan_type'));
 }
 
 document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', recalc));
