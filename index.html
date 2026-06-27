@@ -19,13 +19,33 @@ body {
 .top-bar {
   background: #fff;
   border-bottom: 1px solid #e5e5e3;
-  padding: 16px 32px;
+  padding: 14px 32px;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
 }
 .top-bar h1 { font-size: 18px; font-weight: 700; color: #111; }
-.top-bar p  { font-size: 13px; color: #999; }
+.top-bar p  { font-size: 13px; color: #999; flex: 1; }
+.btn-share {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px; font-size: 12px; font-weight: 700;
+  background: #111; color: #fff; border: none; border-radius: 7px;
+  cursor: pointer; letter-spacing: 0.02em; white-space: nowrap;
+  transition: background 0.15s;
+}
+.btn-share:hover { background: #333; }
+.btn-share svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* Share toast */
+.share-toast {
+  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+  background: #111; color: #fff; padding: 10px 20px;
+  border-radius: 8px; font-size: 13px; font-weight: 600;
+  z-index: 9999; opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+.share-toast.show { opacity: 1; }
 
 /* ── PAGE LAYOUT ── */
 .page {
@@ -391,9 +411,16 @@ input:focus, select:focus { border-color: #111; background: #fff; }
 </head>
 <body>
 
+<div class="share-toast" id="share-toast">🔗 Link copied — share or bookmark it!</div>
 <div class="top-bar">
   <h1>Suede Buffalo LLC — Seller Carryback Calculator</h1>
   <p>Acquisition &amp; LOI Generator</p>
+  <button class="btn-share" onclick="shareCalc()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+    </svg>
+    Share Calculator
+  </button>
 </div>
 
 <div class="page">
@@ -1327,7 +1354,52 @@ function copyLOI() {
   });
 }
 
+// ── ALL SAVEABLE FIELDS ──
+const FIELDS = [
+  'address','units','prop_class',
+  'gross_rent','other_income','vacancy','pm_pct','taxes','insurance','rm','cap_rate','appreciation',
+  'purchase_price','cash_at_closing','arv','rehab',
+  'sr_rate','sr_amort','sr_term','sr_ltv','sr_dscr','sr_points',
+  'sc_rate','sc_term','monthly_principal',
+  'esc1_pct','esc2_pct','acq_pct','broker_pct','emd',
+  'taf_pct','buyer_cash','park_escrow','rehab_oop',
+  'ac_name','ac_phone','ac_email1','ac_email2'
+];
+
+function shareCalc() {
+  const p = new URLSearchParams();
+  FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value !== '' && el.value !== null) p.set(id, el.value);
+  });
+  p.set('mode', mode);
+  const url = location.origin + location.pathname + '?' + p.toString();
+  navigator.clipboard.writeText(url).then(() => {
+    history.replaceState(null, '', '?' + p.toString());
+    const t = document.getElementById('share-toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }).catch(() => {
+    // fallback: just update URL
+    history.replaceState(null, '', '?' + p.toString());
+    prompt('Copy this link:', url);
+  });
+}
+
+function loadFromURL() {
+  const p = new URLSearchParams(location.search);
+  if (!p.has('purchase_price') && !p.has('address')) return; // nothing to load
+  FIELDS.forEach(id => {
+    if (p.has(id)) {
+      const el = document.getElementById(id);
+      if (el) el.value = p.get(id);
+    }
+  });
+  if (p.has('mode')) setMode(p.get('mode'));
+}
+
 document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', recalc));
+loadFromURL();
 recalc();
 </script>
 </body>
