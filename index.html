@@ -273,7 +273,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
 }
 
 /* Viability badges */
-.viability-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #f0f0ee; }
+.viability-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 16px 8px; border-bottom: 1px solid #f0f0ee; }
 .viability-badge { border-radius: 7px; padding: 9px 12px; }
 .viability-badge .v-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
 .viability-badge .v-year  { font-size: 16px; font-weight: 700; }
@@ -755,20 +755,46 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         <div class="v-year" id="badge-balloon-yr">Yr —</div>
         <div class="v-sub">Seller payoff required</div>
       </div>
-      <div class="viability-badge badge-warn" id="badge-sale">
-        <div class="v-label">First Viable Sale</div>
-        <div class="v-year" id="badge-sale-yr">—</div>
-        <div class="v-sub" id="badge-sale-sub">calculating…</div>
-      </div>
-      <div class="viability-badge badge-warn" id="badge-refi">
-        <div class="v-label">First Viable Refi</div>
-        <div class="v-year" id="badge-refi-yr">—</div>
-        <div class="v-sub" id="badge-refi-sub">calculating…</div>
-      </div>
       <div class="viability-badge badge-warn" id="badge-cf">
         <div class="v-label">Monthly Cash Flow</div>
         <div class="v-year" id="badge-cf-val">—</div>
         <div class="v-sub" id="badge-cf-sub">after all debt service</div>
+      </div>
+      <div class="viability-badge badge-warn" id="badge-sale">
+        <div class="v-label">Sale Viable (no CF)</div>
+        <div class="v-year" id="badge-sale-yr">—</div>
+        <div class="v-sub" id="badge-sale-sub">calculating…</div>
+      </div>
+      <div class="viability-badge badge-warn" id="badge-sale-cf">
+        <div class="v-label">Sale Viable (+ CF)</div>
+        <div class="v-year" id="badge-sale-cf-yr">—</div>
+        <div class="v-sub" id="badge-sale-cf-sub">calculating…</div>
+      </div>
+      <div class="viability-badge badge-warn" id="badge-refi">
+        <div class="v-label">Refi Viable (no CF)</div>
+        <div class="v-year" id="badge-refi-yr">—</div>
+        <div class="v-sub" id="badge-refi-sub">calculating…</div>
+      </div>
+      <div class="viability-badge badge-warn" id="badge-refi-cf">
+        <div class="v-label">Refi Viable (+ CF)</div>
+        <div class="v-year" id="badge-refi-cf-yr">—</div>
+        <div class="v-sub" id="badge-refi-cf-sub">calculating…</div>
+      </div>
+    </div>
+    <div class="viability-badge badge-warn" id="badge-term-cf" style="margin:0 12px 12px; border-radius:7px; padding:10px 14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div>
+          <div class="v-label">Total CF Earned Over Full Term</div>
+          <div class="v-year" id="badge-term-cf-val">—</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="v-label">Sale Exit Value at Balloon (with CF)</div>
+          <div class="v-year" id="badge-term-sale-val">—</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="v-label">Refi Cash-Out at Balloon (with CF)</div>
+          <div class="v-year" id="badge-term-refi-val">—</div>
+        </div>
       </div>
     </div>
     <div class="exit-wrap" style="max-height:340px; overflow-y:auto; overflow-x:auto;">
@@ -778,8 +804,11 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <th>Year</th>
             <th>Prop Value</th>
             <th>Seller Owed</th>
-            <th>Sale Surplus</th>
-            <th>Refi Surplus</th>
+            <th>Cum CF</th>
+            <th>Sale (no CF)</th>
+            <th>Sale + CF</th>
+            <th>Refi (no CF)</th>
+            <th>Refi + CF</th>
           </tr>
         </thead>
         <tbody id="exit-tbody"></tbody>
@@ -974,73 +1003,95 @@ function recalc() {
 
   const maxYr = Math.max(balloonYr + 3, 10);
   let firstSaleYr = null, firstRefiYr = null;
+  let firstSaleCFYr = null, firstRefiCFYr = null;
   const tbody = document.getElementById('exit-tbody');
   tbody.innerHTML = '';
 
+  let balloonSaleSurplus = 0, balloonRefiSurplus = 0, balloonCumCF = 0;
+
   for (let yr = 1; yr <= maxYr; yr++) {
-    const propVal   = arv * Math.pow(1 + appr, yr);
-    const srBal     = srBalAt(yr * 12);
-    const sellerOwe = sellerOwedAt(yr);
-    const salePct   = propVal * (1 - saleClosingPct);
-    const saleSurplus = salePct - srBal - sellerOwe;
-    const refiProc  = propVal * refiLTV;
-    const refiSurplus = refiProc - srBal - sellerOwe;
-    const isBalloon = yr === balloonYr;
+    const propVal    = arv * Math.pow(1 + appr, yr);
+    const srBal      = srBalAt(yr * 12);
+    const sellerOwe  = sellerOwedAt(yr);
+    const cumCF      = netCF * 12 * yr;
+    const salePct    = propVal * (1 - saleClosingPct);
+    const saleSurplus  = salePct - srBal - sellerOwe;
+    const refiProc   = propVal * refiLTV;
+    const refiSurplus  = refiProc - srBal - sellerOwe;
+    const saleCF     = saleSurplus + cumCF;
+    const refiCF     = refiSurplus + cumCF;
+    const isBalloon  = yr === balloonYr;
 
-    if (saleSurplus > 0 && firstSaleYr === null) firstSaleYr = yr;
-    if (refiSurplus > 0 && firstRefiYr === null) firstRefiYr = yr;
+    if (isBalloon) { balloonSaleSurplus = saleSurplus; balloonRefiSurplus = refiSurplus; balloonCumCF = cumCF; }
 
-    const saleViable = saleSurplus > 0;
-    const refiViable = refiSurplus > 0;
+    if (saleSurplus > 0  && firstSaleYr   === null) firstSaleYr   = yr;
+    if (refiSurplus > 0  && firstRefiYr   === null) firstRefiYr   = yr;
+    if (saleCF      > 0  && firstSaleCFYr === null) firstSaleCFYr = yr;
+    if (refiCF      > 0  && firstRefiCFYr === null) firstRefiCFYr = yr;
 
     const tr = document.createElement('tr');
     if (isBalloon) tr.className = 'balloon-row';
-    else if (saleViable && refiViable) tr.className = 'row-viable';
+    else if (saleCF > 0 && refiCF > 0) tr.className = 'row-viable';
 
     const yrLabel = isBalloon ? `Yr ${yr} ★ BALLOON` : `Yr ${yr}`;
+    const cls = v => v > 0 ? 'val-pos' : v < 0 ? 'val-neg' : 'val-zero';
+    const sgn = v => v > 0 ? '+' : '';
 
     tr.innerHTML = `
       <td>${yrLabel}</td>
       <td>${fm(propVal)}</td>
       <td>${fm(sellerOwe)}</td>
-      <td class="${saleViable ? 'val-pos' : 'val-neg'}">${saleViable ? '+' : ''}${fm(saleSurplus)}</td>
-      <td class="${refiViable ? 'val-pos' : 'val-neg'}">${refiViable ? '+' : ''}${fm(refiSurplus)}</td>
+      <td class="${cls(cumCF)}">${sgn(cumCF)}${fm(cumCF)}</td>
+      <td class="${cls(saleSurplus)}">${sgn(saleSurplus)}${fm(saleSurplus)}</td>
+      <td class="${cls(saleCF)}">${sgn(saleCF)}${fm(saleCF)}</td>
+      <td class="${cls(refiSurplus)}">${sgn(refiSurplus)}${fm(refiSurplus)}</td>
+      <td class="${cls(refiCF)}">${sgn(refiCF)}${fm(refiCF)}</td>
     `;
     tbody.appendChild(tr);
   }
 
   // ── VIABILITY BADGES ──
-  const balloonBadge = document.getElementById('badge-balloon');
-  const saleBadge    = document.getElementById('badge-sale');
-  const refiBadge    = document.getElementById('badge-refi');
-  const cfBadge      = document.getElementById('badge-cf');
+  function setBadge(id, yr, maxYr, balloon) {
+    const el = document.getElementById(id);
+    const yrEl = document.getElementById(id + '-yr');
+    const subEl = document.getElementById(id + '-sub');
+    if (yr !== null) {
+      el.className = `viability-badge ${yr <= balloon ? 'badge-green' : 'badge-red'}`;
+      yrEl.textContent = `Yr ${yr}`;
+      subEl.textContent = yr <= balloon ? 'Before balloon ✓' : `${yr - balloon} yr${yr - balloon > 1 ? 's' : ''} after balloon`;
+    } else {
+      el.className = 'viability-badge badge-red';
+      yrEl.textContent = 'NEVER';
+      subEl.textContent = `Not viable within ${maxYr} yrs`;
+    }
+  }
 
   set('badge-balloon-yr', `Yr ${balloonYr}`);
 
-  if (firstSaleYr !== null) {
-    saleBadge.className = `viability-badge ${firstSaleYr <= balloonYr ? 'badge-green' : 'badge-red'}`;
-    set('badge-sale-yr', `Yr ${firstSaleYr}`);
-    set('badge-sale-sub', firstSaleYr <= balloonYr ? 'Before balloon ✓' : `${firstSaleYr - balloonYr} yrs after balloon`);
-  } else {
-    saleBadge.className = 'viability-badge badge-red';
-    set('badge-sale-yr', 'NEVER');
-    set('badge-sale-sub', `Not viable within ${maxYr} yrs`);
-  }
-
-  if (firstRefiYr !== null) {
-    refiBadge.className = `viability-badge ${firstRefiYr <= balloonYr ? 'badge-green' : 'badge-red'}`;
-    set('badge-refi-yr', `Yr ${firstRefiYr}`);
-    set('badge-refi-sub', firstRefiYr <= balloonYr ? 'Before balloon ✓' : `${firstRefiYr - balloonYr} yrs after balloon`);
-  } else {
-    refiBadge.className = 'viability-badge badge-red';
-    set('badge-refi-yr', 'NEVER');
-    set('badge-refi-sub', `Not viable within ${maxYr} yrs`);
-  }
+  setBadge('badge-sale',    firstSaleYr,   maxYr, balloonYr);
+  setBadge('badge-sale-cf', firstSaleCFYr, maxYr, balloonYr);
+  setBadge('badge-refi',    firstRefiYr,   maxYr, balloonYr);
+  setBadge('badge-refi-cf', firstRefiCFYr, maxYr, balloonYr);
 
   const cfPos = netCF >= 0;
+  const cfBadge = document.getElementById('badge-cf');
   cfBadge.className = `viability-badge ${cfPos ? 'badge-green' : 'badge-red'}`;
   set('badge-cf-val', fmd(netCF) + '/mo');
   set('badge-cf-sub', cfPos ? 'Positive cash flow ✓' : 'Negative — review terms');
+
+  // ── TERM SUMMARY BANNER ──
+  const termBanner = document.getElementById('badge-term-cf');
+  const termCFPos  = balloonCumCF >= 0;
+  termBanner.className = `viability-badge ${termCFPos ? 'badge-green' : 'badge-red'}`;
+  set('badge-term-cf-val',   (balloonCumCF >= 0 ? '+' : '') + fm(balloonCumCF));
+  const saleWithCF = balloonSaleSurplus + balloonCumCF;
+  const refiWithCF = balloonRefiSurplus + balloonCumCF;
+  const saleEl = document.getElementById('badge-term-sale-val');
+  const refiEl = document.getElementById('badge-term-refi-val');
+  saleEl.textContent = (saleWithCF >= 0 ? '+' : '') + fm(saleWithCF);
+  saleEl.style.color = saleWithCF >= 0 ? '#15803d' : '#dc2626';
+  refiEl.textContent = (refiWithCF >= 0 ? '+' : '') + fm(refiWithCF);
+  refiEl.style.color = refiWithCF >= 0 ? '#15803d' : '#dc2626';
 }
 
 function generateLOI() {
