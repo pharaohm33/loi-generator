@@ -272,18 +272,42 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   background: #fefce8;
 }
 
-/* Exit table */
-.exit-wrap { padding: 0 16px 12px; overflow-x: auto; }
-.exit-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 240px; }
+/* Viability badges */
+.viability-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #f0f0ee; }
+.viability-badge { border-radius: 7px; padding: 9px 12px; }
+.viability-badge .v-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
+.viability-badge .v-year  { font-size: 16px; font-weight: 700; }
+.viability-badge .v-sub   { font-size: 10px; margin-top: 2px; }
+.badge-green { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.badge-green .v-label, .badge-green .v-sub { color: #166534; }
+.badge-green .v-year { color: #15803d; }
+.badge-red   { background: #fff1f2; border: 1px solid #fecdd3; }
+.badge-red .v-label, .badge-red .v-sub { color: #9f1239; }
+.badge-red .v-year  { color: #be123c; }
+.badge-warn  { background: #fffbeb; border: 1px solid #fde68a; }
+.badge-warn .v-label, .badge-warn .v-sub { color: #92400e; }
+.badge-warn .v-year  { color: #b45309; }
+
+/* Exit paydown table */
+.exit-wrap { overflow-x: auto; }
+.exit-table { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 340px; }
 .exit-table th {
   font-size: 10px; font-weight: 600; color: #999;
-  padding: 6px 8px; text-align: right; border-bottom: 1px solid #f0f0ee;
-  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 7px 10px; text-align: right; border-bottom: 1px solid #e5e5e3;
+  background: #fafaf8; position: sticky; top: 0;
+  text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
 }
 .exit-table th:first-child { text-align: left; }
-.exit-table td { padding: 6px 8px; text-align: right; font-weight: 600; color: #111; border-bottom: 1px solid #f9f9f7; }
-.exit-table td:first-child { text-align: left; color: #777; font-weight: 400; }
+.exit-table td { padding: 6px 10px; text-align: right; font-weight: 600; border-bottom: 1px solid #f5f5f3; white-space: nowrap; }
+.exit-table td:first-child { text-align: left; color: #555; font-weight: 500; }
 .exit-table tr:last-child td { border-bottom: none; }
+.exit-table .val-pos { color: #15803d; }
+.exit-table .val-neg { color: #dc2626; }
+.exit-table .val-zero { color: #999; }
+.exit-table tr.balloon-row td { background: #fffbeb; }
+.exit-table tr.balloon-row td:first-child { color: #b45309; font-weight: 700; }
+.exit-table tr.row-green td:first-child { color: #15803d; }
+.exit-table tr.row-viable td { background: #f0fdf4; }
 
 /* GENERATE BUTTON */
 .btn-generate {
@@ -724,16 +748,41 @@ input:focus, select:focus { border-color: #111; background: #fff; }
 
   <!-- EXIT ANALYSIS -->
   <div class="sum-card">
-    <div class="sum-title">Exit @ <span id="s-appr-pct">3</span>% Appreciation</div>
-    <div class="exit-wrap">
+    <div class="sum-title">Exit Analysis @ <span id="s-appr-pct">3</span>% Appreciation</div>
+    <div class="viability-grid">
+      <div class="viability-badge badge-warn" id="badge-balloon">
+        <div class="v-label">Balloon Due</div>
+        <div class="v-year" id="badge-balloon-yr">Yr —</div>
+        <div class="v-sub">Seller payoff required</div>
+      </div>
+      <div class="viability-badge badge-warn" id="badge-sale">
+        <div class="v-label">First Viable Sale</div>
+        <div class="v-year" id="badge-sale-yr">—</div>
+        <div class="v-sub" id="badge-sale-sub">calculating…</div>
+      </div>
+      <div class="viability-badge badge-warn" id="badge-refi">
+        <div class="v-label">First Viable Refi</div>
+        <div class="v-year" id="badge-refi-yr">—</div>
+        <div class="v-sub" id="badge-refi-sub">calculating…</div>
+      </div>
+      <div class="viability-badge badge-warn" id="badge-cf">
+        <div class="v-label">Monthly Cash Flow</div>
+        <div class="v-year" id="badge-cf-val">—</div>
+        <div class="v-sub" id="badge-cf-sub">after all debt service</div>
+      </div>
+    </div>
+    <div class="exit-wrap" style="max-height:340px; overflow-y:auto; overflow-x:auto;">
       <table class="exit-table">
-        <thead><tr><th></th><th>1 yr</th><th>3 yr</th><th>5 yr</th><th>10 yr</th></tr></thead>
-        <tbody>
-          <tr><td>Exit Value</td><td id="ev1">—</td><td id="ev3">—</td><td id="ev5">—</td><td id="ev10">—</td></tr>
-          <tr><td>Sale Profit</td><td id="es1">—</td><td id="es3">—</td><td id="es5">—</td><td id="es10">—</td></tr>
-          <tr><td>Refi Cash-Out</td><td id="er1">—</td><td id="er3">—</td><td id="er5">—</td><td id="er10">—</td></tr>
-          <tr><td>Hold CF</td><td id="ecf1">—</td><td id="ecf3">—</td><td id="ecf5">—</td><td id="ecf10">—</td></tr>
-        </tbody>
+        <thead>
+          <tr>
+            <th>Year</th>
+            <th>Prop Value</th>
+            <th>Seller Owed</th>
+            <th>Sale Surplus</th>
+            <th>Refi Surplus</th>
+          </tr>
+        </thead>
+        <tbody id="exit-tbody"></tbody>
       </table>
     </div>
   </div>
@@ -897,12 +946,101 @@ function recalc() {
   set('s-r-total', '~' + fm(totalReceipts));
 
   set('s-appr-pct', g('appreciation'));
-  [1,3,5,10].forEach(y => {
-    set('ev'+y,  fm(exitVal(y)));
-    set('es'+y,  fm(saleProfit(y)));
-    set('er'+y,  fm(refiCash(y)));
-    set('ecf'+y, fm(holdCF(y)));
-  });
+
+  // ── PAYDOWN GRID ──
+  const refiLTV = srLTV;
+  const saleClosingPct = 0.08; // ~8% realtor + closing
+  const balloonYr = scTerm;
+
+  // Compute year-by-year senior balance (standard amortization)
+  function srBalAt(months) {
+    if (srRate === 0 || g('sr_amort') === 0) return Math.max(maxLoan - srPmt * months, 0);
+    const r = srRate / 12, n = g('sr_amort') * 12;
+    return maxLoan * (Math.pow(1+r, n) - Math.pow(1+r, months)) / (Math.pow(1+r, n) - 1);
+  }
+
+  // Compute total seller owed at year Y (principal remaining + accrued interest)
+  function sellerOwedAt(yr) {
+    const months = Math.round(yr * 12);
+    const rM = scRate / 12;
+    let bal = carry, interest = 0;
+    for (let i = 0; i < months; i++) {
+      interest += bal * rM;
+      if (mode === 'principal_only') { bal -= scMpmt; if (bal < 0) bal = 0; }
+    }
+    if (mode === 'principal_only') return Math.max(bal, 0) + interest;
+    return carry; // IO: principal never changes, interest paid monthly
+  }
+
+  const maxYr = Math.max(balloonYr + 3, 10);
+  let firstSaleYr = null, firstRefiYr = null;
+  const tbody = document.getElementById('exit-tbody');
+  tbody.innerHTML = '';
+
+  for (let yr = 1; yr <= maxYr; yr++) {
+    const propVal   = arv * Math.pow(1 + appr, yr);
+    const srBal     = srBalAt(yr * 12);
+    const sellerOwe = sellerOwedAt(yr);
+    const salePct   = propVal * (1 - saleClosingPct);
+    const saleSurplus = salePct - srBal - sellerOwe;
+    const refiProc  = propVal * refiLTV;
+    const refiSurplus = refiProc - srBal - sellerOwe;
+    const isBalloon = yr === balloonYr;
+
+    if (saleSurplus > 0 && firstSaleYr === null) firstSaleYr = yr;
+    if (refiSurplus > 0 && firstRefiYr === null) firstRefiYr = yr;
+
+    const saleViable = saleSurplus > 0;
+    const refiViable = refiSurplus > 0;
+
+    const tr = document.createElement('tr');
+    if (isBalloon) tr.className = 'balloon-row';
+    else if (saleViable && refiViable) tr.className = 'row-viable';
+
+    const yrLabel = isBalloon ? `Yr ${yr} ★ BALLOON` : `Yr ${yr}`;
+
+    tr.innerHTML = `
+      <td>${yrLabel}</td>
+      <td>${fm(propVal)}</td>
+      <td>${fm(sellerOwe)}</td>
+      <td class="${saleViable ? 'val-pos' : 'val-neg'}">${saleViable ? '+' : ''}${fm(saleSurplus)}</td>
+      <td class="${refiViable ? 'val-pos' : 'val-neg'}">${refiViable ? '+' : ''}${fm(refiSurplus)}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  // ── VIABILITY BADGES ──
+  const balloonBadge = document.getElementById('badge-balloon');
+  const saleBadge    = document.getElementById('badge-sale');
+  const refiBadge    = document.getElementById('badge-refi');
+  const cfBadge      = document.getElementById('badge-cf');
+
+  set('badge-balloon-yr', `Yr ${balloonYr}`);
+
+  if (firstSaleYr !== null) {
+    saleBadge.className = `viability-badge ${firstSaleYr <= balloonYr ? 'badge-green' : 'badge-red'}`;
+    set('badge-sale-yr', `Yr ${firstSaleYr}`);
+    set('badge-sale-sub', firstSaleYr <= balloonYr ? 'Before balloon ✓' : `${firstSaleYr - balloonYr} yrs after balloon`);
+  } else {
+    saleBadge.className = 'viability-badge badge-red';
+    set('badge-sale-yr', 'NEVER');
+    set('badge-sale-sub', `Not viable within ${maxYr} yrs`);
+  }
+
+  if (firstRefiYr !== null) {
+    refiBadge.className = `viability-badge ${firstRefiYr <= balloonYr ? 'badge-green' : 'badge-red'}`;
+    set('badge-refi-yr', `Yr ${firstRefiYr}`);
+    set('badge-refi-sub', firstRefiYr <= balloonYr ? 'Before balloon ✓' : `${firstRefiYr - balloonYr} yrs after balloon`);
+  } else {
+    refiBadge.className = 'viability-badge badge-red';
+    set('badge-refi-yr', 'NEVER');
+    set('badge-refi-sub', `Not viable within ${maxYr} yrs`);
+  }
+
+  const cfPos = netCF >= 0;
+  cfBadge.className = `viability-badge ${cfPos ? 'badge-green' : 'badge-red'}`;
+  set('badge-cf-val', fmd(netCF) + '/mo');
+  set('badge-cf-sub', cfPos ? 'Positive cash flow ✓' : 'Negative — review terms');
 }
 
 function generateLOI() {
