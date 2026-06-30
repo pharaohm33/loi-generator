@@ -1556,6 +1556,7 @@ function generateBuyerPresentation() {
   const D = v => '$' + Math.round(v).toLocaleString();
   const Dfmt = v => '$' + (+v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   const P = r => (r * 100).toFixed(2) + '%';
+  const pctOf = (part, whole) => whole > 0 ? ((part / whole) * 100).toFixed(1) + '%' : '—';
 
   const addr  = s('address'), units = Math.round(g('units'));
   const acName = s('ac_name');
@@ -1577,6 +1578,7 @@ function generateBuyerPresentation() {
 
   const capRate = g('cap_rate') / 100;
   const impliedVal = capRate > 0 && noiAn > 0 ? noiAn / capRate : 0;
+  const asIsCapRate = asIsVal > 0 && noiAn > 0 ? noiAn / asIsVal : 0;
 
   const srRate = g('sr_rate') / 100;
   const srLTV  = g('sr_ltv') / 100;
@@ -1594,6 +1596,7 @@ function generateBuyerPresentation() {
     bindingConstraint = 'LTV (As-Is)';
   }
   const srPmt = pmtPI(srRate, g('sr_amort'), maxLoan);
+  const actualLTV = asIsVal > 0 ? maxLoan / asIsVal : 0;
 
   const scRate = g('sc_rate') / 100;
   const scTerm = g('sc_term');
@@ -1602,6 +1605,8 @@ function generateBuyerPresentation() {
 
   const totalDebtMo = srPmt + scMonthly;
   const netCF = noiMo - totalDebtMo;
+  const dscrAllDebt = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
+  const dscrSrOnly  = srPmt > 0 ? noiAn / (srPmt * 12) : 0;
 
   const esc1 = cac * g('esc1_pct') / 100;
   const esc2 = asIsVal * g('esc2_pct') / 100;
@@ -1654,19 +1659,21 @@ ${addr}${units ? ' — ' + units + ' Units' : ''}
 DEAL SUMMARY
 ══════════════════════════════════════
 Purchase Price: ${D(pp)}
-As-Is Market Value: ${D(asIsVal)}
-${arvRaw > 0 ? `After Repair Value (ARV): ${D(arv)}\n` : ''}${impliedVal > 0 ? `Cap Rate Implied Valuation: ${D(impliedVal)} (at ${P(capRate)} cap on ${D(noiAn)} NOI)\n` : ''}NOI (Annual): ${D(noiAn)}
-Cash to Seller at Closing: ${D(cac)}
-Seller Carryback Note: ${D(carry)}
+As-Is Market Value: ${D(asIsVal)} (${pctOf(asIsVal, pp)} of purchase price)
+${asIsCapRate > 0 ? `As-Is Cap Rate: ${P(asIsCapRate)} (NOI ÷ As-Is Value)\n` : ''}${arvRaw > 0 ? `After Repair Value (ARV): ${D(arv)} (${pctOf(arv, pp)} of purchase price)\n` : ''}${impliedVal > 0 ? `Cap Rate Implied Valuation: ${D(impliedVal)} (at ${P(capRate)} market cap on ${D(noiAn)} NOI)\n` : ''}NOI (Annual): ${D(noiAn)}
+Cash to Seller at Closing: ${D(cac)} (${pctOf(cac, pp)} of purchase price)
+Seller Carryback Note: ${D(carry)} (${pctOf(carry, pp)} of purchase price)
 
 ══════════════════════════════════════
 FINANCING STRUCTURE
 ══════════════════════════════════════
 Loan Type: ${loanType === 'hard_money' ? 'Hard Money' : 'DSCR'}
-Senior Loan Amount: ${D(maxLoan)} (binding constraint: ${bindingConstraint})
+Senior Loan Amount: ${D(maxLoan)} — ${P(actualLTV)} LTV of As-Is Value (binding constraint: ${bindingConstraint})
 Interest Rate: ${P(srRate)}
 Amortization: ${g('sr_amort')} years
 Senior Monthly Payment: ${Dfmt(srPmt)}/mo
+DSCR (Senior Only): ${dscrSrOnly.toFixed(2)}x
+DSCR (All Debt incl. Seller Carry): ${dscrAllDebt.toFixed(2)}x
 
 Seller Carry Terms:
   Rate: ${P(scRate)} simple interest
@@ -1681,31 +1688,31 @@ Monthly Net Cash Flow: ${Dfmt(netCF)}/mo ${netCF >= 0 ? '(positive ✓)' : '(neg
 ══════════════════════════════════════
 CASH TO CLOSE — BUYER POSITION
 ══════════════════════════════════════
-Senior Loan Proceeds: +${D(maxLoan)}
+Senior Loan Proceeds: +${D(maxLoan)} (${pctOf(maxLoan, pp)} of purchase price)
 + Buyer Cash In: +${D(g('buyer_cash'))}
-− Cash to Seller: −${D(cac)}
-− Closing Costs: −${D(closing)}
-− TAF Fee: −${D(tafFee)}
+− Cash to Seller: −${D(cac)} (${pctOf(cac, pp)} of purchase price)
+− Closing Costs: −${D(closing)} (${pctOf(closing, pp)} of purchase price)
+− TAF Fee: −${D(tafFee)} (${pctOf(tafFee, tafPrin)} of TAF principal)
 − Rehab Out-of-Pocket: −${D(rehabOOP)}
 ${'─'.repeat(40)}
-${buyerNet >= 0 ? 'CASH BACK TO BUYER' : 'CASH NEEDED FROM BUYER'}: ${buyerNet >= 0 ? '+' : ''}${D(buyerNet)}
+${buyerNet >= 0 ? 'CASH BACK TO BUYER' : 'CASH NEEDED FROM BUYER'}: ${buyerNet >= 0 ? '+' : ''}${D(buyerNet)} (${pctOf(Math.abs(buyerNet), pp)} of purchase price)
 ${buyerNet >= 0 ? (parkEscrow ? '(Held in escrow against the deal, not taken home)' : '(Returned to buyer at closing)') : '(Buyer must bring this amount to close)'}
 
 ══════════════════════════════════════
 EXIT PROFIT PROJECTION (Year ${balloonYr} — Balloon Due)
 ══════════════════════════════════════
-Projected Property Value: ${D(exitPropVal)} (at ${P(appr)}/yr appreciation)
-Senior Loan Balance Remaining: ${D(exitSrBal)}
-Seller Carry Balance Owed: ${D(exitSellerOwed)}
+Projected Property Value: ${D(exitPropVal)} (${pctOf(exitPropVal - arv, arv)} total appreciation since acquisition, at ${P(appr)}/yr)
+Senior Loan Balance Remaining: ${D(exitSrBal)} (${pctOf(exitSrBal, exitPropVal)} of exit value)
+Seller Carry Balance Owed: ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, exitPropVal)} of exit value)
 Cumulative Net Cash Flow Held: ${D(cumCF)}
 
   SALE EXIT:
-  Net Profit (excl. held CF): ${saleNet >= 0 ? '+' : ''}${D(saleNet)}
-  Net Profit (incl. held CF): ${saleNetWithCF >= 0 ? '+' : ''}${D(saleNetWithCF)}
+  Net Profit (excl. held CF): ${saleNet >= 0 ? '+' : ''}${D(saleNet)} (${pctOf(Math.abs(saleNet), pp)} of purchase price)
+  Net Profit (incl. held CF): ${saleNetWithCF >= 0 ? '+' : ''}${D(saleNetWithCF)} (${pctOf(Math.abs(saleNetWithCF), pp)} of purchase price)
 
   REFINANCE EXIT:
-  Net Cash-Out (excl. held CF): ${refiNet >= 0 ? '+' : ''}${D(refiNet)}
-  Net Cash-Out (incl. held CF): ${refiNetWithCF >= 0 ? '+' : ''}${D(refiNetWithCF)}
+  Net Cash-Out (excl. held CF): ${refiNet >= 0 ? '+' : ''}${D(refiNet)} (${pctOf(Math.abs(refiNet), pp)} of purchase price)
+  Net Cash-Out (incl. held CF): ${refiNetWithCF >= 0 ? '+' : ''}${D(refiNetWithCF)} (${pctOf(Math.abs(refiNetWithCF), pp)} of purchase price)
 
 ══════════════════════════════════════
 DISCLAIMER
