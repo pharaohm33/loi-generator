@@ -1452,8 +1452,26 @@ function generateLOI() {
   const P = r => (r * 100).toFixed(2) + '%';
   const Dfmt = v => '$' + (+v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 
+  const zeroInterest = scRate === 0;
+
   let pmtBlock, narr;
-  if (mode === 'principal_only') {
+  if (zeroInterest) {
+    // 0% interest — principal-only, no interest language
+    pmtBlock =
+`Monthly Principal-Reduction Payments:
+Months 1–${months}: ${D(scMonthly)}/month
+Total Monthly Principal Payments Over ${scTerm} Years: ${D(totalPmts)}
+Balloon Payment at Year ${scTerm}: Approximately ${D(balloon)}
+Total Seller Receipts Over ${scTerm} Years: ${D(totalReceipts)}`;
+    narr =
+`The seller receives ${D(cac)} at closing and carries back ${D(carry)}.
+
+During the ${scTerm}-year term, buyer will make monthly principal-reduction payments totaling approximately ${D(totalPmts)}. These payments reduce the seller carry balance.
+
+At the end of year ${scTerm}, buyer will pay the remaining principal balance through a balloon payment of approximately ${D(balloon)}.
+
+Total seller receipts are ${D(totalReceipts)}.`;
+  } else if (mode === 'principal_only') {
     pmtBlock =
 `Monthly Principal-Reduction Payments:
 Months 1–${months}: ${D(scMonthly)}/month
@@ -1489,6 +1507,14 @@ At the end of year ${scTerm}, buyer will pay the full principal balance of ${D(c
 Total seller receipts are approximately ${D(totalReceipts)}, which includes the full ${D(pp)} purchase price plus approximately ${D(finIncome)} in seller financing income.`;
   }
 
+  const sellerCarryHeader = zeroInterest
+    ? `Seller Carryback Note: ${D(carry)}
+Principal Only Seller Carryback
+Term: ${scTerm} Years`
+    : `Seller Carryback Note: ${D(carry)}
+Interest Rate: ${P(scRate)} simple interest
+Term: ${scTerm} Years`;
+
   const loi =
 `Non-Exclusive LOI
 Deal Terms - Seller Summary
@@ -1498,9 +1524,7 @@ Purchase Price: ${D(pp)}
 
 SELLER RECEIVES:
 Cash at Closing: ${D(cac)}
-Seller Carryback Note: ${D(carry)}
-Interest Rate: ${P(scRate)} simple interest
-Term: ${scTerm} Years
+${sellerCarryHeader}
 
 SELLER CARRY NOTE
 ${pmtBlock}
