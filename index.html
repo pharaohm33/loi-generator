@@ -780,6 +780,15 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <input type="text" id="ac_email2" placeholder="email@example.com">
         </div>
       </div>
+      <div class="row cols-1" style="margin-top:6px;">
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:6px">
+            Buyer Company
+            <span style="font-size:10px;background:#dbeafe;color:#1e40af;padding:2px 7px;border-radius:4px;border:1px solid #bfdbfe;font-weight:700">fills LOI heading &amp; removes non-circumvent</span>
+          </label>
+          <input type="text" id="buyer_company" placeholder="Leave blank for Non-Exclusive LOI">
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1097,10 +1106,11 @@ function setLoanType(t) {
 
 function adminTemplate() {
   const vals = {
-    ac_name:     'Suede Buffalo LLC',
-    ac_email1:   'suedebuffalofficial@gmail.com',
-    ac_email2:   'montanoemmanuel@gmail.com',
-    ac_phone:    '520 633 6437',
+    ac_name:       'Suede Buffalo LLC',
+    ac_email1:     'suedebuffalofficial@gmail.com',
+    ac_email2:     'montanoemmanuel@gmail.com',
+    ac_phone:      '520 633 6437',
+    buyer_company: 'Don Ava Capital LLC',
     appreciation: 3,
     sr_dscr:     1.0,
     park_escrow: 'N',
@@ -1604,107 +1614,115 @@ function generateLOI() {
 
   const addr   = s('address'), units = Math.round(g('units'));
   const acName = s('ac_name'), acE1 = s('ac_email1'), acE2 = s('ac_email2'), acPh = s('ac_phone');
+  const buyerCo = s('buyer_company');
+  const hasBuyer = buyerCo.trim().length > 0;
 
   const D = v => '$' + Math.round(v).toLocaleString();
   const P = r => (r * 100).toFixed(2) + '%';
   const Dfmt = v => '$' + (+v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  // Escape HTML entities in dynamic strings so innerHTML is safe
+  const esc = str => String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Bold header rendered as its own line
+  const H = txt => `<strong>${esc(txt)}</strong>`;
 
   const zeroInterest = scRate === 0;
 
   let pmtBlock, narr;
   if (zeroInterest) {
-    // 0% interest — principal-only, no interest language
     pmtBlock =
 `Monthly Principal-Reduction Payments:
-Months 1–${months}: ${D(scMonthly)}/month
-Total Monthly Principal Payments Over ${scTerm} Years: ${D(totalPmts)}
-Balloon Payment at Year ${scTerm}: Approximately ${D(balloon)}
-Total Seller Receipts Over ${scTerm} Years: ${D(totalReceipts)}`;
+Months 1–${months}: ${esc(D(scMonthly))}/month
+Total Monthly Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
+Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))}
+Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
     narr =
-`The seller receives ${D(cac)} at closing and carries back ${D(carry)}.
+`The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
-During the ${scTerm}-year term, buyer will make monthly principal-reduction payments totaling approximately ${D(totalPmts)}. These payments reduce the seller carry balance.
+During the ${scTerm}-year term, buyer will make monthly principal-reduction payments totaling approximately ${esc(D(totalPmts))}. These payments reduce the seller carry balance.
 
-At the end of year ${scTerm}, buyer will pay the remaining principal balance through a balloon payment of approximately ${D(balloon)}.
+At the end of year ${scTerm}, buyer will pay the remaining principal balance through a balloon payment of approximately ${esc(D(balloon))}.
 
-Total seller receipts are ${D(totalReceipts)}.`;
+Total seller receipts are ${esc(D(totalReceipts))}.`;
   } else if (mode === 'principal_only') {
     pmtBlock =
 `Monthly Principal-Reduction Payments:
-Months 1–${months}: ${D(scMonthly)}/month
-Total Monthly Principal Payments Over ${scTerm} Years: ${D(totalPmts)}
-Balloon Payment at Year ${scTerm}: Approximately ${D(balloon)}
-Total Seller Receipts Over ${scTerm} Years: Approximately ${D(totalReceipts)}`;
+Months 1–${months}: ${esc(D(scMonthly))}/month
+Total Monthly Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
+Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))}
+Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
     narr =
-`The seller receives ${D(cac)} at closing and carries back ${D(carry)}.
+`The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
-During the ${scTerm}-year term, buyer will make monthly principal-reduction payments totaling approximately ${D(totalPmts)}. These payments reduce the seller carry balance.
+During the ${scTerm}-year term, buyer will make monthly principal-reduction payments totaling approximately ${esc(D(totalPmts))}. These payments reduce the seller carry balance.
 
-Interest accrues separately at ${P(scRate)} simple interest on the declining principal balance and is paid at the end of the term with the remaining principal balance.
+Interest accrues separately at ${esc(P(scRate))} simple interest on the declining principal balance and is paid at the end of the term with the remaining principal balance.
 
-At the end of year ${scTerm}, buyer will pay the remaining principal balance plus accrued interest through a balloon payment of approximately ${D(balloon)}.
+At the end of year ${scTerm}, buyer will pay the remaining principal balance plus accrued interest through a balloon payment of approximately ${esc(D(balloon))}.
 
-Total seller receipts are approximately ${D(totalReceipts)}, which includes the full ${D(pp)} purchase price plus approximately ${D(finIncome)} in seller financing income.`;
+Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
   } else {
     pmtBlock =
 `Monthly Interest-Only Payments:
-Months 1–${months}: ${Dfmt(scMonthly)}/month
-Total Interest Paid Over ${scTerm} Years: ${D(totalPmts)}
-Balloon Payment at Year ${scTerm}: ${D(balloon)} (full principal)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${D(totalReceipts)}`;
+Months 1–${months}: ${esc(Dfmt(scMonthly))}/month
+Total Interest Paid Over ${scTerm} Years: ${esc(D(totalPmts))}
+Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (full principal)
+Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
     narr =
-`The seller receives ${D(cac)} at closing and carries back ${D(carry)}.
+`The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
-During the ${scTerm}-year term, buyer will make monthly interest-only payments of ${Dfmt(scMonthly)}, totaling approximately ${D(totalPmts)} in interest.
+During the ${scTerm}-year term, buyer will make monthly interest-only payments of ${esc(Dfmt(scMonthly))}, totaling approximately ${esc(D(totalPmts))} in interest.
 
-Interest is calculated at ${P(scRate)} simple interest on the outstanding principal balance of ${D(carry)}.
+Interest is calculated at ${esc(P(scRate))} simple interest on the outstanding principal balance of ${esc(D(carry))}.
 
-At the end of year ${scTerm}, buyer will pay the full principal balance of ${D(carry)} through a balloon payment.
+At the end of year ${scTerm}, buyer will pay the full principal balance of ${esc(D(carry))} through a balloon payment.
 
-Total seller receipts are approximately ${D(totalReceipts)}, which includes the full ${D(pp)} purchase price plus approximately ${D(finIncome)} in seller financing income.`;
+Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
   }
 
   const sellerCarryHeader = zeroInterest
-    ? `Seller Carryback Note: ${D(carry)}
+    ? `Seller Carryback Note: ${esc(D(carry))}
 Principal Only Seller Carryback
 Term: ${scTerm} Years`
-    : `Seller Carryback Note: ${D(carry)}
-Interest Rate: ${P(scRate)} simple interest
+    : `Seller Carryback Note: ${esc(D(carry))}
+Interest Rate: ${esc(P(scRate))} simple interest
 Term: ${scTerm} Years`;
 
-  const loi =
-`Non-Exclusive LOI
-Deal Terms - Seller Summary
+  const title = hasBuyer ? 'LOI' : 'Non-Exclusive LOI';
 
-Property: ${addr} - ${units} Units
-Purchase Price: ${D(pp)}
+  const bottomBlock = hasBuyer
+    ? `Seller Signature
 
-SELLER RECEIVES:
-Cash at Closing: ${D(cac)}
-${sellerCarryHeader}
+________________________________________
+Seller Name (Print)
 
-SELLER CARRY NOTE
-${pmtBlock}
+________________________________________
+Date
 
-${narr}
+________________________________________
 
-SELLER PROTECTION BY SENIOR EQUITY INTEREST
-Your position is documented as a Senior Equity Interest, giving you first-priority claim to all cash flow and proceeds from operations, refinance, or sale — ahead of all buyer equity. If the buyer defaults on the note, the operating agreement allows you to take over the buyer's interest in the property without foreclosure.
 
-TIMELINE:
-Closing: Within 45-90 days of signed purchase and sales agreement.
+${H('Acquisition Correspondent:')}
+${esc(acName)}
+Contact:
+        Email:
+            ${esc(acE1)}
+            ${esc(acE2)}
+        Phone:
+            ${esc(acPh)}
 
-────────────────────────────────────────────────────
+${H('Buyer:')}
+${esc(buyerCo)}`
+    : `────────────────────────────────────────────────
 
-Non-Circumvent
+${H('Non-Circumvent')}
 
 The Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.
 
 Circumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.
 
-The Acquisition Correspondent's fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing. If it becomes apparent that the Acquisition Correspondent is not on track to be paid before closing, it is the Acquisition Correspondent's duty to disclose this to Seller, and Seller's duty to respond to such communication in a timely manner.
+The Acquisition Correspondent’s fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing. If it becomes apparent that the Acquisition Correspondent is not on track to be paid before closing, it is the Acquisition Correspondent’s duty to disclose this to Seller, and Seller’s duty to respond to such communication in a timely manner.
 
-Non-Exclusive Nature:
+${H('Non-Exclusive Nature:')}
 Seller may entertain other offers until final purchase and sales agreement is in place with end buyer. At point of signing purchase and sales agreement, seller may not entertain other offers and honor the closing timeline set in purchase and sales agreement.
 
 
@@ -1719,16 +1737,41 @@ Date
 ________________________________________
 
 
-Acquisition Correspondent:
-${acName}
+${H('Acquisition Correspondent:')}
+${esc(acName)}
 Contact:
         Email:
-            ${acE1}
-            ${acE2}
+            ${esc(acE1)}
+            ${esc(acE2)}
         Phone:
-            ${acPh}`;
+            ${esc(acPh)}`;
 
-  document.getElementById('loi-text').textContent = loi;
+  const loiHtml =
+`${H(title)}
+${H('Deal Terms - Seller Summary')}
+
+Property: ${esc(addr)}${units ? ' - ' + units + ' Units' : ''}
+Purchase Price: ${esc(D(pp))}
+
+${H('SELLER RECEIVES:')}
+Cash at Closing: ${esc(D(cac))}
+${sellerCarryHeader}
+
+${H('SELLER CARRY NOTE:')}
+${pmtBlock}
+
+${narr}
+
+${H('SELLER PROTECTION BY SENIOR EQUITY INTEREST:')}
+Your position is documented as a Senior Equity Interest, giving you first-priority claim to all cash flow and proceeds from operations, refinance, or sale — ahead of all buyer equity. If the buyer defaults on the note, the operating agreement allows you to take over the buyer’s interest in the property without foreclosure.
+
+${H('TIMELINE:')}
+Closing: Within 45-90 days of signed purchase and sales agreement.
+
+${bottomBlock}`;
+
+  const loiEl = document.getElementById('loi-text');
+  loiEl.innerHTML = loiHtml.replace(/\n/g, '<br>');
   const sec = document.getElementById('loi-section');
   sec.classList.add('visible');
   setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
@@ -2023,7 +2066,8 @@ function copyCapVal() {
 }
 
 function copyLOI() {
-  const text = document.getElementById('loi-text').textContent;
+  const el = document.getElementById('loi-text');
+  const text = el.innerText;
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('copy-btn');
     btn.textContent = '✓ Copied!';
@@ -2042,7 +2086,7 @@ const FIELDS = [
   'sc_rate','sc_term','monthly_principal',
   'esc1_pct','esc2_pct','acq_pct','broker_pct','emd',
   'taf_pct','buyer_cash','park_escrow','rehab_oop',
-  'ac_name','ac_phone','ac_email1','ac_email2'
+  'ac_name','ac_phone','ac_email1','ac_email2','buyer_company'
 ];
 
 function shareCalc() {
