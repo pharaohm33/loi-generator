@@ -1881,11 +1881,15 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
   }
 
   const rateOrNone = zeroInterest ? 'Principal Only Seller Carryback' : `Interest Rate: ${esc(P(scRate))} simple interest`;
-  const modeLabel = { principal_only:'Deferred-Simple', interest_only:'Interest-Only', pi:'P&I Amortizing', deferred_exit:'Deferred-To-Exit', deferred_then_pay:'Deferred-Then-Pay', io_deferred:'IO + Deferred Simple' }[mode] || '';
+  const ioRate  = g('sc_rate');
+  const defRate = g('sc_deferred_rate');
+  const paymentTypeLabel = mode === 'io_deferred'
+    ? `${ioRate}% IO + ${defRate}% Deferred Simple | ${ioRate + defRate}% total simple interest`
+    : { principal_only:'Deferred-Simple', interest_only:'Interest-Only', pi:'P&I Amortizing', deferred_exit:'Deferred-To-Exit', deferred_then_pay:'Deferred-Then-Pay' }[mode] || '';
   const sellerCarryHeader =
 `Seller Carryback Note: ${esc(D(carry))}
 ${rateOrNone}
-Payment Mode: ${modeLabel}
+Payment Type: ${esc(paymentTypeLabel)}
 Term: ${scTerm} Years`;
 
   const title = hasBuyer ? 'LOI' : 'Non-Exclusive LOI';
