@@ -1880,7 +1880,7 @@ At the end of year ${scTerm}, buyer will pay the full principal balance of ${esc
 Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
   }
 
-  const rateOrNone = zeroInterest ? 'Principal Only Seller Carryback' : `Interest Rate: ${esc(P(scRate))} simple interest`;
+  const rateOrNone = zeroInterest ? 'Principal Only Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`;
   const ioRate  = g('sc_rate');
   const defRate = g('sc_deferred_rate');
   const paymentTypeLabel = mode === 'io_deferred'
