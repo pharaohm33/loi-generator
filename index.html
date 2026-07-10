@@ -686,6 +686,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <button id="btn-pi"  onclick="setMode('pi')"                              style="flex:1;min-width:120px">P&amp;I (Amortizing)</button>
             <button id="btn-de"  onclick="setMode('deferred_exit')"                   style="flex:1;min-width:120px">Deferred-To-Exit</button>
             <button id="btn-dtp" onclick="setMode('deferred_then_pay')"               style="flex:1;min-width:120px">Deferred-Then-Pay</button>
+            <button id="btn-iod" onclick="setMode('io_deferred')"                     style="flex:1;min-width:120px">IO + Deferred Simple</button>
           </div>
           <div style="font-size:10.5px;color:#78716c;margin-top:4px;" id="mode-desc">Flat principal/mo; interest accrues on declining balance and is paid at balloon.</div>
         </div>
@@ -709,6 +710,13 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         <div class="field loi">
           <label><span class="loi-dot"></span> Deferral Period (months) <span class="loi-tag">→ LOI</span></label>
           <input type="number" id="sc_defer_months" placeholder="24" step="1" min="1">
+        </div>
+      </div>
+      <!-- IO + Deferred Simple: second deferred rate -->
+      <div id="iod-row" class="row cols-1" style="display:none">
+        <div class="field loi">
+          <label><span class="loi-dot"></span> Deferred Simple Interest Rate <span class="loi-tag">→ LOI</span></label>
+          <div class="suffix-wrap"><input type="number" id="sc_deferred_rate" placeholder="4" step="0.25"><span>%</span></div>
         </div>
       </div>
     </div>
@@ -1111,18 +1119,20 @@ const MODE_DESC = {
   pi:                'Fully amortizing payment (P&I) on seller carry; balloon = remaining balance at term end.',
   deferred_exit:     'No payments during term; all principal + accrued simple interest due at balloon.',
   deferred_then_pay: 'Zero payments during deferral period (interest accrues), then monthly IO payments; deferred interest rolls into balloon.',
+  io_deferred:       'Monthly IO payments at sc_rate% PLUS a separate simple interest rate that accrues on the full principal and is due at balloon.',
 };
 
 function setMode(m) {
   mode = m;
-  ['po','io','pi','de','dtp'].forEach(id => {
+  ['po','io','pi','de','dtp','iod'].forEach(id => {
     document.getElementById('btn-' + id).className = '';
   });
-  const btnMap = { principal_only:'btn-po', interest_only:'btn-io', pi:'btn-pi', deferred_exit:'btn-de', deferred_then_pay:'btn-dtp' };
+  const btnMap = { principal_only:'btn-po', interest_only:'btn-io', pi:'btn-pi', deferred_exit:'btn-de', deferred_then_pay:'btn-dtp', io_deferred:'btn-iod' };
   document.getElementById(btnMap[m]).className = 'active';
   document.getElementById('po-row').style.display       = m === 'principal_only'   ? '' : 'none';
   document.getElementById('sc-amort-row').style.display = m === 'pi'               ? '' : 'none';
   document.getElementById('dtp-row').style.display      = m === 'deferred_then_pay'? '' : 'none';
+  document.getElementById('iod-row').style.display      = m === 'io_deferred'      ? '' : 'none';
   document.getElementById('mode-desc').textContent = MODE_DESC[m] || '';
   recalc();
 }
@@ -1238,6 +1248,15 @@ function calcCarry(carry, rate_annual, term_years, monthly_pmt) {
     const totalPmts = monthly * payMo;
     const balloon  = carry + deferred;              // principal + rolled deferred interest
     return { monthly, totalPmts, balloon, deferMo, payMo, deferred };
+  }
+
+  if (mode === 'io_deferred') {
+    const deferredRate = g('sc_deferred_rate') / 100;
+    const monthly     = carry * rM;
+    const totalPmts   = monthly * months;
+    const deferredInt = carry * deferredRate * term_years;
+    const balloon     = carry + deferredInt;
+    return { monthly, totalPmts, balloon, deferredInt };
   }
 
   // fallback
@@ -1398,6 +1417,7 @@ function recalc() {
     pi:                fmd(scMonthly) + '/mo (P&I amortizing)',
     deferred_exit:     '$0/mo — all deferred to balloon',
     deferred_then_pay: '$0/mo × ' + (g('sc_defer_months')||0) + ' mo, then ' + fmd(scMonthly) + '/mo (IO)',
+    io_deferred:       fmd(scMonthly) + '/mo IO + ' + g('sc_deferred_rate') + '% deferred simple → balloon',
   }[mode] || '—';
   set('s-sc-pmt', scPmtLabel);
   set('s-balloon', '~' + fm(balloon));
@@ -1472,6 +1492,7 @@ function recalc() {
     pi:                'Total P&I Paid',
     deferred_exit:     'Monthly Payments Total',
     deferred_then_pay: 'Total IO Payments',
+    io_deferred:       'Total IO Payments (excl. deferred)',
   }[mode] || 'Total Payments';
   set('s-r-pmts', fm(totalPmts));
   set('s-r-balloon', '~' + fm(balloon));
@@ -1834,10 +1855,33 @@ Beginning in month ${deferMo + 1}, buyer will make monthly interest-only payment
 At the end of year ${scTerm}, buyer will pay the full principal balance of ${esc(D(carry))} plus the ${esc(D(deferred))} in deferred interest through a balloon payment of approximately ${esc(D(balloon))}.
 
 Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
+
+  } else if (mode === 'io_deferred') {
+    const deferredRate = g('sc_deferred_rate') / 100;
+    const deferredInt  = carry * deferredRate * scTerm;
+    pmtBlock =
+`IO + Deferred Simple Interest:
+Monthly IO Payments at ${esc(P(scRate))}:
+Months 1–${months}: ${esc(Dfmt(scMonthly))}/month
+Total IO Paid Over ${scTerm} Years: ${esc(D(totalPmts))}
+Deferred Simple Interest at ${esc(P(deferredRate))} (accrues on full principal):
+Deferred Interest Due at Balloon: Approximately ${esc(D(deferredInt))}
+Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))} (principal + ${esc(D(deferredInt))} deferred interest)
+Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+    narr =
+`The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
+
+During the ${scTerm}-year term, buyer will make monthly interest-only payments of ${esc(Dfmt(scMonthly))}/month based on a ${esc(P(scRate))} IO rate, totaling ${esc(D(totalPmts))}.
+
+Separately, simple interest at ${esc(P(deferredRate))} accrues annually on the full outstanding principal balance of ${esc(D(carry))}. This deferred interest is not paid monthly — it accumulates and is due in full at the balloon.
+
+At the end of year ${scTerm}, buyer will pay the full principal balance of ${esc(D(carry))} plus approximately ${esc(D(deferredInt))} in deferred simple interest, for a total balloon payment of approximately ${esc(D(balloon))}.
+
+Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
   }
 
   const rateOrNone = zeroInterest ? 'Principal Only Seller Carryback' : `Interest Rate: ${esc(P(scRate))} simple interest`;
-  const modeLabel = { principal_only:'Deferred-Simple', interest_only:'Interest-Only', pi:'P&I Amortizing', deferred_exit:'Deferred-To-Exit', deferred_then_pay:'Deferred-Then-Pay' }[mode] || '';
+  const modeLabel = { principal_only:'Deferred-Simple', interest_only:'Interest-Only', pi:'P&I Amortizing', deferred_exit:'Deferred-To-Exit', deferred_then_pay:'Deferred-Then-Pay', io_deferred:'IO + Deferred Simple' }[mode] || '';
   const sellerCarryHeader =
 `Seller Carryback Note: ${esc(D(carry))}
 ${rateOrNone}
@@ -2049,6 +2093,11 @@ function generateBuyerPresentation() {
       const deferMo = Math.round(g('sc_defer_months') || 0);
       return mo <= deferMo ? carry + carry * rM * mo : carry + carry * rM * deferMo;
     }
+    if (mode === 'io_deferred') {
+      // IO payments cover current interest monthly; deferred simple interest accrues separately
+      const deferredRate = g('sc_deferred_rate') / 100;
+      return carry + carry * deferredRate * yr;
+    }
     return carry;
   }
   const exitPropVal    = arv * Math.pow(1 + appr, balloonYr);
@@ -2165,6 +2214,7 @@ Seller Carry Terms:
     pi:                Dfmt(scMonthly) + '/mo (P&I amortizing, ' + (g('sc_amort_yrs')||30) + '-yr amort)',
     deferred_exit:     '$0/mo — all principal + interest deferred to balloon',
     deferred_then_pay: '$0/mo × ' + (g('sc_defer_months')||0) + ' mo deferral, then ' + Dfmt(scMonthly) + '/mo (IO)',
+    io_deferred:       Dfmt(scMonthly) + '/mo IO + ' + g('sc_deferred_rate') + '% deferred simple interest → balloon',
   }[mode] || Dfmt(scMonthly) + '/mo'}
   Balloon at Year ${balloonYr}: ~${D(balloon)}
 
@@ -2256,7 +2306,7 @@ const FIELDS = [
   'purchase_price','cash_at_closing','as_is_value','arv','rehab','rehab_draw_pct',
   'sr_rate','sr_amort','sr_term','sr_ltv','sr_dscr','sr_points',
   'hm_ltc','hm_arv_pct','hm_rehab_pct','hm_rehab_months',
-  'sc_rate','sc_term','monthly_principal','sc_amort_yrs','sc_defer_months',
+  'sc_rate','sc_term','monthly_principal','sc_amort_yrs','sc_defer_months','sc_deferred_rate',
   'esc1_pct','esc2_pct','acq_pct','broker_pct','emd',
   'taf_pct','buyer_cash','park_escrow','rehab_oop',
   'ac_name','ac_phone','ac_email1','ac_email2','buyer_company'
