@@ -53,6 +53,7 @@ All inputs are URL-shareable (Share Calculator button encodes state into the URL
 | P&I (Amortizing) | Standard amortizing payment; balloon = remaining balance at term |
 | Deferred-To-Exit | $0/mo; all principal + simple interest due at balloon |
 | Deferred-Then-Pay | Deferral period ($0/mo, interest accrues), then IO payments; deferred interest rolls to balloon |
+| IO + Deferred Simple | Monthly IO payments at sc_rate% + separate simple interest at sc_deferred_rate% accrues on full principal → balloon |
 
 ### E) Closing Costs & Fees
 - 1st escrow fee (% of contract price)
@@ -144,8 +145,11 @@ Click **★ Admin Template** to pre-fill Suede Buffalo LLC defaults:
 
 ## Version History
 
+See the [`versions/`](versions/) folder for full release notes.
+
 | Version | Notes |
 |---|---|
+| v1.1 | Added IO + Deferred Simple payment mode (6th mode); LOI label renamed to "Monthly Payment Interest Rate" |
 | v1.0 | Full web calculator: 5 seller carry modes, proforma NOI, DSCR/HM loan types, LOI generator with buyer toggle, buyer presentation with percentages, URL sharing, admin template |
 
 ---
