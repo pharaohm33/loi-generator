@@ -2135,42 +2135,37 @@ function generateBuyerPresentation() {
   // Build proforma block (only if proforma NOI is set)
   const pfBlock = hasProforma ? `
 ══════════════════════════════════════
-PROFORMA NOI ANALYSIS
+EXIT PROFIT PROJECTION (Year ${balloonYr} — Balloon Due, Proforma NOI Path)
 ══════════════════════════════════════
-Current NOI (Day-1): ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)
-Proforma NOI Target: ${D(pfNOIatStab)}/yr  (${Dfmt(pfNOIatStab/12)}/mo)
-NOI Increase to Proforma: +${D(pfNOIatStab - noiAn)}/yr  (+${pctOf(pfNOIatStab - noiAn, noiAn)} increase)
-${stabMonths > 0
-  ? `Stabilization Path: Linear ramp from ${D(noiAn)}/yr → ${D(pfNOIatStab)}/yr over ${stabMonths} months (${stabYrs.toFixed(1)} yrs)`
-  : `Stabilization Path: Immediate jump to proforma NOI at acquisition`}
-${noiGrowthRate > 0 ? `Post-Stabilization Growth: ${P(noiGrowthRate)}/yr thereafter\n` : ''}\
-DEBT SERVICE (fixed — does not change):
-  Senior Monthly P&I:       ${Dfmt(srPmt)}/mo
-  Seller Carry Payment:     ${Dfmt(scMonthly)}/mo
-  Total Debt Service:       ${Dfmt(totalDebtMo)}/mo  (${D(totalDebtMo*12)}/yr)
+NOI RAMP TO PROFORMA:
+  Day-1 NOI:                ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)
+  Proforma NOI Target:      ${D(pfNOIatStab)}/yr  (${Dfmt(pfNOIatStab/12)}/mo)
+  NOI Increase:             +${D(pfNOIatStab - noiAn)}/yr  (+${pctOf(pfNOIatStab - noiAn, noiAn)})
+  ${stabMonths > 0
+    ? `Stabilization:  Linear ramp over ${stabMonths} months (${stabYrs.toFixed(1)} yrs)`
+    : `Stabilization:  Immediate jump to proforma NOI at acquisition`}
+  ${noiGrowthRate > 0 ? `Post-Stabilization Growth: ${P(noiGrowthRate)}/yr` : ''}
 
-AT STABILIZATION (proforma NOI reached):
+AT STABILIZATION:
   Proforma NOI:             ${D(pfNOIatStab)}/yr  (${Dfmt(pfNOIatStab/12)}/mo)
-  Total Debt Service:       ${D(totalDebtMo*12)}/yr
+  Total Debt Service:       ${D(totalDebtMo*12)}/yr  (${Dfmt(totalDebtMo)}/mo — unchanged)
   Net Cash Flow:            ${pfNetCFatStab >= 0 ? '+' : ''}${Dfmt(pfNetCFatStab)}/mo  (${pfNetCFatStab >= 0 ? 'positive ✓' : 'negative'})
   DSCR (all debt):          ${pfDSCRatStab.toFixed(2)}x${capRate > 0 ? `
-  Implied Value @ ${P(capRate)} cap:  ${D(pfNOIatStab/capRate)}  (vs. current implied ${D(impliedVal > 0 ? impliedVal : 0)})` : ''}
+  Implied Value @ ${P(capRate)} cap:  ${D(pfNOIatStab/capRate)}  (vs. current ${D(impliedVal > 0 ? impliedVal : 0)})` : ''}
 ${noiGrowthRate > 0 && pfNOIatBalloon !== pfNOIatStab ? `
 AT BALLOON (Year ${balloonYr} — after ${P(noiGrowthRate)}/yr growth post-stabilization):
   Proforma NOI:             ${D(pfNOIatBalloon)}/yr  (${Dfmt(pfNOIatBalloon/12)}/mo)
   NOI Growth vs. Day-1:     +${D(pfNOIatBalloon - noiAn)}/yr  (+${pctOf(pfNOIatBalloon - noiAn, noiAn)})
   DSCR (all debt):          ${pfDSCRatBalloon.toFixed(2)}x${capRate > 0 ? `
-  Implied Value @ ${P(capRate)} cap:  ${D(pfNOIatBalloon/capRate)}` : ''}` : ''}
-
-══════════════════════════════════════
-PROFORMA EXIT PROJECTION (Year ${balloonYr} — Stabilized Path)
-══════════════════════════════════════
-${capRate > 0
-  ? `Proforma Implied Value @ ${P(capRate)} cap: ${D(pfImplied)}  (${D(pfNOIatBalloon)}/yr NOI ÷ ${P(capRate)})`
-  : `Proforma Exit Value (appreciation-based): ${D(pfImplied)}`}
-Senior Loan Balance:        ${D(exitSrBal)} (${pctOf(exitSrBal, pfImplied)} of proforma exit value)
-Seller Carry Owed:          ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, pfImplied)} of proforma exit value)
-Cumulative CF (proforma path): ${pfCumCF >= 0 ? '+' : ''}${D(pfCumCF)}
+  Implied Value @ ${P(capRate)} cap:  ${D(pfNOIatBalloon/capRate)}` : ''}
+` : ''}
+EXIT VALUE & PROCEEDS:
+  ${capRate > 0
+    ? `Proforma Implied Value @ ${P(capRate)} cap: ${D(pfImplied)}  (${D(pfNOIatBalloon)}/yr ÷ ${P(capRate)})`
+    : `Proforma Exit Value (appreciation-based): ${D(pfImplied)}`}
+  Senior Loan Balance:      ${D(exitSrBal)} (${pctOf(exitSrBal, pfImplied)} of exit value)
+  Seller Carry Owed:        ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, pfImplied)} of exit value)
+  Cumulative CF (proforma): ${pfCumCF >= 0 ? '+' : ''}${D(pfCumCF)}
 
   PROFORMA SALE EXIT:
   Net Profit (excl. CF):    ${pfSaleNet >= 0 ? '+' : ''}${D(pfSaleNet)} (${pctOf(Math.abs(pfSaleNet), pp)} of purchase price)
@@ -2238,14 +2233,14 @@ Senior Loan Proceeds: +${D(maxLoan)} (${pctOf(maxLoan, pp)} of purchase price)
 ${'─'.repeat(40)}
 ${buyerNet >= 0 ? 'CASH BACK TO BUYER' : 'CASH NEEDED FROM BUYER'}: ${buyerNet >= 0 ? '+' : ''}${D(buyerNet)} (${pctOf(Math.abs(buyerNet), pp)} of purchase price)
 ${buyerNet >= 0 ? (parkEscrow ? '(Held in escrow against the deal, not taken home)' : '(Returned to buyer at closing)') : '(Buyer must bring this amount to close)'}
-${pfBlock}
 ══════════════════════════════════════
 EXIT PROFIT PROJECTION (Year ${balloonYr} — Balloon Due, Current NOI Path)
 ══════════════════════════════════════
-Projected Property Value: ${D(exitPropVal)} (${pctOf(exitPropVal - arv, arv)} total appreciation since acquisition, at ${P(appr)}/yr)
+Day-1 NOI: ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)${noiGrowthRate > 0 ? `  →  growing at ${P(noiGrowthRate)}/yr` : '  (held flat)'}
+${noiGrowthRate > 0 ? `NOI at Balloon (Year ${balloonYr}): ${D(bpNOIatYear(balloonYr))}/yr\n` : ''}Projected Property Value: ${D(exitPropVal)} (${P(appr)}/yr appreciation — ${pctOf(exitPropVal - arv, arv)} total gain since acquisition)
 Senior Loan Balance Remaining: ${D(exitSrBal)} (${pctOf(exitSrBal, exitPropVal)} of exit value)
 Seller Carry Balance Owed: ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, exitPropVal)} of exit value)
-Cumulative Net Cash Flow${noiGrowthRate > 0 ? ` (at ${P(noiGrowthRate)}/yr NOI growth)` : ''}: ${cumCF >= 0 ? '+' : ''}${D(cumCF)}
+Cumulative Net Cash Flow${noiGrowthRate > 0 ? ` (NOI-growth adjusted)` : ''}: ${cumCF >= 0 ? '+' : ''}${D(cumCF)}
 
   SALE EXIT:
   Net Profit (excl. held CF): ${saleNet >= 0 ? '+' : ''}${D(saleNet)} (${pctOf(Math.abs(saleNet), pp)} of purchase price)
@@ -2254,6 +2249,7 @@ Cumulative Net Cash Flow${noiGrowthRate > 0 ? ` (at ${P(noiGrowthRate)}/yr NOI g
   REFINANCE EXIT:
   Net Cash-Out (excl. held CF): ${refiNet >= 0 ? '+' : ''}${D(refiNet)} (${pctOf(Math.abs(refiNet), pp)} of purchase price)
   Net Cash-Out (incl. held CF): ${refiNetWithCF >= 0 ? '+' : ''}${D(refiNetWithCF)} (${pctOf(Math.abs(refiNetWithCF), pp)} of purchase price)
+${pfBlock}
 
 ══════════════════════════════════════
 DISCLAIMER
