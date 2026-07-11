@@ -1112,6 +1112,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
 <script>
 let mode = 'principal_only';
 let loanType = 'dscr';
+let _exitCache = {}; // populated by recalc, consumed by generateBuyerPresentation
 
 const MODE_DESC = {
   principal_only:    'Flat principal/mo; interest accrues on declining balance and is paid at balloon.',
@@ -1604,6 +1605,25 @@ function recalc() {
       balloonPfNOI        = pfNOIyr;
       balloonPfSaleWithCF = pfSaleWithCF;
       balloonPfRefiWithCF = pfRefiWithCF;
+      // Cache for generateBuyerPresentation to use the exact same computed values
+      _exitCache = {
+        exitPropVal: propVal,
+        exitSrBal: srBal,
+        exitSellerOwed: sellerOwe,
+        cumCF,
+        saleNet: saleSurplus,
+        saleNetWithCF: saleCF,
+        refiNet: refiSurplus,
+        refiNetWithCF: refiCF,
+        pfCumCF,
+        pfSaleNet: pfSale,
+        pfSaleWithCF,
+        pfRefiNet: pfRefi,
+        pfRefiWithCF,
+        pfNOIatBalloon: pfNOIyr,
+        totalDebtMo,
+        balloonYr,
+      };
     }
 
     if (saleSurplus > 0  && firstSaleYr   === null) firstSaleYr   = yr;
@@ -2104,33 +2124,28 @@ function generateBuyerPresentation() {
     }
     return carry;
   }
-  const exitPropVal    = arv * Math.pow(1 + appr, balloonYr);
-  const exitSrBal      = srBalAt(balloonYr * 12);
-  const exitSellerOwed = sellerOwedAt(balloonYr);
+  // Use values computed by recalc to guarantee consistency with the exit grid badges
+  const exitPropVal    = _exitCache.exitPropVal    ?? arv * Math.pow(1 + appr, balloonYr);
+  const exitSrBal      = _exitCache.exitSrBal      ?? srBalAt(balloonYr * 12);
+  const exitSellerOwed = _exitCache.exitSellerOwed ?? sellerOwedAt(balloonYr);
+  const cumCF          = _exitCache.cumCF          ?? 0;
+  const saleNet        = _exitCache.saleNet        ?? (exitPropVal * 0.92 - exitSrBal - exitSellerOwed);
+  const saleNetWithCF  = _exitCache.saleNetWithCF  ?? (saleNet + cumCF);
+  const refiNet        = _exitCache.refiNet        ?? (exitPropVal * srLTV - exitSrBal - exitSellerOwed);
+  const refiNetWithCF  = _exitCache.refiNetWithCF  ?? (refiNet + cumCF);
 
-  // Cumulative CF — uses NOI growth path (not flat)
-  let cumCF = 0;
-  for (let yr = 1; yr <= balloonYr; yr++) cumCF += bpNOIatYear(yr) - totalDebtMo * 12;
-
-  const saleNet        = exitPropVal * 0.92 - exitSrBal - exitSellerOwed;
-  const saleNetWithCF  = saleNet + cumCF;
-  const refiNet        = exitPropVal * srLTV - exitSrBal - exitSellerOwed;
-  const refiNetWithCF  = refiNet + cumCF;
-
-  // Proforma exit values
-  let pfCumCF = 0;
-  for (let yr = 1; yr <= balloonYr; yr++) pfCumCF += bpPfNOIatYear(yr) - totalDebtMo * 12;
+  // Proforma exit values (also from cache when available)
   const pfNOIatStab    = hasProforma ? noiProforma : 0;
-  const pfNOIatBalloon = hasProforma ? bpPfNOIatYear(balloonYr) : 0;
+  const pfNOIatBalloon = _exitCache.pfNOIatBalloon ?? (hasProforma ? bpPfNOIatYear(balloonYr) : 0);
   const pfNetCFatStab  = hasProforma ? pfNOIatStab / 12 - totalDebtMo : 0;
   const pfDSCRatStab   = hasProforma && totalDebtMo > 0 ? pfNOIatStab / (totalDebtMo * 12) : 0;
   const pfDSCRatBalloon = hasProforma && totalDebtMo > 0 ? pfNOIatBalloon / (totalDebtMo * 12) : 0;
-  // Proforma exit valuation: implied by cap rate (NOI / capRate)
   const pfImplied      = hasProforma && capRate > 0 ? pfNOIatBalloon / capRate : exitPropVal;
-  const pfSaleNet      = pfImplied * 0.92 - exitSrBal - exitSellerOwed;
-  const pfSaleWithCF   = pfSaleNet + pfCumCF;
-  const pfRefiNet      = pfImplied * srLTV - exitSrBal - exitSellerOwed;
-  const pfRefiWithCF   = pfRefiNet + pfCumCF;
+  const pfCumCF        = _exitCache.pfCumCF        ?? 0;
+  const pfSaleNet      = _exitCache.pfSaleNet      ?? (pfImplied * 0.92 - exitSrBal - exitSellerOwed);
+  const pfSaleWithCF   = _exitCache.pfSaleWithCF   ?? (pfSaleNet + pfCumCF);
+  const pfRefiNet      = _exitCache.pfRefiNet      ?? (pfImplied * srLTV - exitSrBal - exitSellerOwed);
+  const pfRefiWithCF   = _exitCache.pfRefiWithCF   ?? (pfRefiNet + pfCumCF);
 
   // Build proforma block (only if proforma NOI is set)
   const pfBlock = hasProforma ? `
