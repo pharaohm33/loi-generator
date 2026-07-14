@@ -2655,9 +2655,15 @@ ${ph2Enabled && bpPh2 ? `
 
 Total Monthly Debt Service (Day-1 / Period 1): ${Dfmt(totalDebtMo)}/mo${ph2Enabled && bpPh2 ? `
 Total Monthly Debt Service (Period 2): ${Dfmt(srPmt + scMonthly2)}/mo` : ''}
-Monthly NOI (Day-1): ${Dfmt(noiMo)}/mo
-Monthly Net Cash Flow (Day-1): ${Dfmt(netCF)}/mo ${netCF >= 0 ? '(positive ✓)' : '(negative — review terms)'}${ph2Enabled && bpPh2 ? `
-Monthly Net Cash Flow (Period 2): ${Dfmt(noiMo - srPmt - scMonthly2)}/mo ${(noiMo - srPmt - scMonthly2) >= 0 ? '(positive ✓)' : '(negative)'}` : ''}
+Monthly NOI (Day-1 / Current): ${Dfmt(noiMo)}/mo
+Monthly Net Cash Flow (Day-1, current NOI): ${Dfmt(netCF)}/mo ${netCF >= 0 ? '(positive ✓)' : '(negative — review terms)'}${ph2Enabled && bpPh2 ? (() => {
+  const ph2CF = noiMo - srPmt - scMonthly2;
+  const note = hasProforma
+    ? `  ← current NOI only; see Proforma section for NOI-adjusted figure`
+    : '';
+  return `
+Monthly Net Cash Flow (Period 2, current NOI): ${Dfmt(ph2CF)}/mo ${ph2CF >= 0 ? '(positive ✓)' : '(negative at current NOI)'}${note}`;
+})() : ''}
 
 ══════════════════════════════════════
 CASH TO CLOSE — BUYER POSITION
