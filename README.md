@@ -149,6 +149,7 @@ See the [`versions/`](versions/) folder for full release notes.
 
 | Version | Notes |
 |---|---|
+| v1.2 | Buyer presentation exit values guaranteed to match exit grid badges; current NOI path leads in buyer presentation; LOI timeline 45-60 days + loan/appraisal contingency; admin template sr rate → 8% |
 | v1.1 | Added IO + Deferred Simple payment mode (6th mode); LOI label renamed to "Monthly Payment Interest Rate" |
 | v1.0 | Full web calculator: 5 seller carry modes, proforma NOI, DSCR/HM loan types, LOI generator with buyer toggle, buyer presentation with percentages, URL sharing, admin template |
 
