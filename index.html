@@ -1028,6 +1028,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         <div class="sum-row" style="background:#f0fdf4"><span class="lbl" style="color:#166534">DSCR at Stabilization</span><span class="val" id="s-pf-dscr-stab" style="color:#15803d">—</span></div>
         <div class="sum-row" style="background:#f0fdf4" id="s-pf-balloon-row"><span class="lbl" style="color:#166534">Proforma NOI at Balloon (Yr <span id="s-pf-balloon-yr">—</span>)</span><span class="val" id="s-pf-noi-balloon" style="color:#15803d">—</span></div>
         <div class="sum-row" style="background:#f0fdf4" id="s-pf-dscr-balloon-row"><span class="lbl" style="color:#166534">DSCR at Balloon</span><span class="val" id="s-pf-dscr-balloon" style="color:#15803d">—</span></div>
+        <div class="sum-row" style="background:#f0fdf4" id="s-pf-netcf-balloon-row"><span class="lbl" style="font-weight:600;color:#166534">Net CF / mo at Balloon</span><span class="val" id="s-pf-netcf-balloon" style="font-size:15px">—</span></div>
       </div>
     </div>
   </div>
@@ -1889,9 +1890,12 @@ function recalc() {
     const pfNOIballoon = pfNOIatYear(balloonYr);
     const pfNetCFstab  = pfNOIstab / 12 - totalDebtMo;
     const pfDSCRstab   = totalDebtMo > 0 ? pfNOIstab / (totalDebtMo * 12) : 0;
-    const pfDSCRball   = totalDebtMo > 0 ? pfNOIballoon / (totalDebtMo * 12) : 0;
+    // Debt service at balloon year — accounts for Phase 2 if enabled
+    const debtMoAtBalloon = srPmt + scMonthlyAtYear(balloonYr);
+    const pfNetCFball  = pfNOIballoon / 12 - debtMoAtBalloon;
+    const pfDSCRball   = debtMoAtBalloon > 0 ? pfNOIballoon / (debtMoAtBalloon * 12) : 0;
     set('s-pf-noi-stab',     fmd(pfNOIstab / 12) + '/mo  (' + fm(pfNOIstab) + '/yr)');
-    set('s-pf-debt-mo',      fmd(totalDebtMo) + '/mo  (unchanged)');
+    set('s-pf-debt-mo',      fmd(totalDebtMo) + '/mo' + (ph2Enabled && ph2Result ? `  →  ${fmd(debtMoAtBalloon)}/mo (Period 2)` : '  (unchanged)'));
     const pfCFEl = document.getElementById('s-pf-net-cf');
     pfCFEl.textContent = fmd(pfNetCFstab) + '/mo';
     pfCFEl.style.color = pfNetCFstab >= 0 ? '#15803d' : '#dc2626';
@@ -1899,10 +1903,14 @@ function recalc() {
     set('s-pf-balloon-yr',   balloonYr);
     set('s-pf-noi-balloon',  fmd(pfNOIballoon / 12) + '/mo  (' + fm(pfNOIballoon) + '/yr)');
     set('s-pf-dscr-balloon', pfDSCRball.toFixed(2) + 'x');
-    // hide balloon row if no noi_growth (balloon NOI = stab NOI)
+    const pfNetCFballEl = document.getElementById('s-pf-netcf-balloon');
+    pfNetCFballEl.textContent = fmd(pfNetCFball) + '/mo';
+    pfNetCFballEl.style.color = pfNetCFball >= 0 ? '#15803d' : '#dc2626';
+    // hide balloon rows if no noi_growth (balloon NOI = stab NOI)
     const showBalloonRow = noiGrowthRate > 0;
-    document.getElementById('s-pf-balloon-row').style.display      = showBalloonRow ? '' : 'none';
-    document.getElementById('s-pf-dscr-balloon-row').style.display = showBalloonRow ? '' : 'none';
+    document.getElementById('s-pf-balloon-row').style.display         = showBalloonRow ? '' : 'none';
+    document.getElementById('s-pf-dscr-balloon-row').style.display    = showBalloonRow ? '' : 'none';
+    document.getElementById('s-pf-netcf-balloon-row').style.display   = showBalloonRow ? '' : 'none';
   } else {
     pfCFSection.style.display = 'none';
   }
