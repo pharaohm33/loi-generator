@@ -719,6 +719,80 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="suffix-wrap"><input type="number" id="sc_deferred_rate" placeholder="4" step="0.25"><span>%</span></div>
         </div>
       </div>
+
+      <!-- ── PHASE 2 TOGGLE ── -->
+      <div style="margin-top:10px; padding-top:10px; border-top:2px dashed #fde047;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-weight:600;font-size:13px;color:#854d0e;">Two-Phase Note</span>
+          <button id="ph2-toggle-btn" onclick="togglePh2()"
+            style="padding:3px 14px;border-radius:20px;border:1.5px solid #ca8a04;background:#fff;color:#854d0e;font-weight:700;font-size:12px;cursor:pointer;">
+            OFF
+          </button>
+          <span style="font-size:11px;color:#a16207;">Adds a second payment period (e.g., IO → P&amp;I after NOI stabilizes)</span>
+        </div>
+
+        <div id="ph2-section" style="display:none;background:#fffbeb;border:1px solid #fde047;border-radius:8px;padding:10px 12px;margin-top:4px;">
+          <!-- Phase 1 duration -->
+          <div style="font-size:11px;font-weight:700;color:#854d0e;margin-bottom:6px;letter-spacing:.04em;">PERIOD 1 (current settings above)</div>
+          <div class="row cols-2">
+            <div class="field loi">
+              <label><span class="loi-dot"></span> Period 1 Duration (years) <span class="loi-tag">→ LOI</span></label>
+              <input type="number" id="ph1_years" placeholder="2" min="1" step="1">
+            </div>
+            <div class="field" style="display:flex;align-items:flex-end;padding-bottom:4px;">
+              <div id="ph2-duration-info" style="font-size:11px;color:#78716c;line-height:1.5;"></div>
+            </div>
+          </div>
+
+          <!-- Phase 2 fields -->
+          <div style="font-size:11px;font-weight:700;color:#854d0e;margin:8px 0 6px;letter-spacing:.04em;border-top:1px solid #fde047;padding-top:8px;">PERIOD 2 — PAYMENT STRUCTURE</div>
+          <div class="row cols-2">
+            <div class="field loi">
+              <label><span class="loi-dot"></span> Period 2 Interest Rate <span class="loi-tag">→ LOI</span></label>
+              <div class="suffix-wrap"><input type="number" id="ph2_rate" placeholder="8" step="0.25"><span>%</span></div>
+            </div>
+          </div>
+          <div class="row cols-1">
+            <div class="field loi">
+              <label><span class="loi-dot"></span> Period 2 Payment Mode <span class="loi-tag">→ LOI</span></label>
+              <div class="toggle" style="flex-wrap:wrap;gap:4px;">
+                <button id="btn2-po"  onclick="setMode2('principal_only')"    style="flex:1;min-width:120px">Deferred-Simple</button>
+                <button id="btn2-io"  class="active" onclick="setMode2('interest_only')" style="flex:1;min-width:120px">Interest-Only (IO)</button>
+                <button id="btn2-pi"  onclick="setMode2('pi')"                style="flex:1;min-width:120px">P&amp;I (Amortizing)</button>
+                <button id="btn2-de"  onclick="setMode2('deferred_exit')"     style="flex:1;min-width:120px">Deferred-To-Exit</button>
+                <button id="btn2-dtp" onclick="setMode2('deferred_then_pay')" style="flex:1;min-width:120px">Deferred-Then-Pay</button>
+                <button id="btn2-iod" onclick="setMode2('io_deferred')"       style="flex:1;min-width:120px">IO + Deferred Simple</button>
+              </div>
+              <div style="font-size:10.5px;color:#78716c;margin-top:4px;" id="mode2-desc"></div>
+            </div>
+          </div>
+          <!-- Period 2 mode-specific fields -->
+          <div id="ph2-po-row" class="row cols-1" style="display:none">
+            <div class="field loi">
+              <label><span class="loi-dot"></span> Period 2 Monthly Principal Payment <span class="loi-tag">→ LOI</span></label>
+              <div class="prefix-wrap"><span>$</span><input type="number" id="ph2_monthly_principal" placeholder="0" step="500"></div>
+            </div>
+          </div>
+          <div id="ph2-amort-row" class="row cols-1" style="display:none">
+            <div class="field loi">
+              <label><span class="loi-dot"></span> Period 2 Amortization Period (years) <span class="loi-tag">→ LOI</span></label>
+              <input type="number" id="ph2_sc_amort_yrs" placeholder="30" step="1" min="1">
+            </div>
+          </div>
+          <div id="ph2-dtp-row" class="row cols-1" style="display:none">
+            <div class="field loi">
+              <label><span class="loi-dot"></span> Period 2 Deferral Period (months) <span class="loi-tag">→ LOI</span></label>
+              <input type="number" id="ph2_defer_months" placeholder="12" step="1" min="1">
+            </div>
+          </div>
+          <div id="ph2-iod-row" class="row cols-1" style="display:none">
+            <div class="field loi">
+              <label><span class="loi-dot"></span> Period 2 Deferred Simple Interest Rate <span class="loi-tag">→ LOI</span></label>
+              <div class="suffix-wrap"><input type="number" id="ph2_deferred_rate" placeholder="4" step="0.25"><span>%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -940,7 +1014,8 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     <div class="sum-body">
       <div class="sum-row"><span class="lbl">NOI / mo (current)</span><span class="val" id="s-noi-mo">—</span></div>
       <div class="sum-row"><span class="lbl">DSCR Pmt / mo</span><span class="val" id="s-sr-mo">—</span></div>
-      <div class="sum-row"><span class="lbl">Carry Pmt / mo</span><span class="val" id="s-carry-mo">—</span></div>
+      <div class="sum-row"><span class="lbl">Carry Pmt / mo (Period 1)</span><span class="val" id="s-carry-mo">—</span></div>
+      <div class="sum-row" id="s-carry-ph2-row" style="display:none"><span class="lbl">Carry Pmt / mo (Period 2)</span><span class="val" id="s-carry-mo-ph2">—</span></div>
       <div class="sum-row" style="border-top: 1px solid #e5e5e3"><span class="lbl" style="font-weight:600">Net CF / mo (current)</span><span class="val" id="s-net-cf" style="font-size:15px">—</span></div>
     </div>
     <!-- Proforma debt service section — shown only when Proforma NOI is set -->
@@ -1111,7 +1186,9 @@ input:focus, select:focus { border-color: #111; background: #fff; }
 
 <script>
 let mode = 'principal_only';
+let mode2 = 'interest_only';
 let loanType = 'dscr';
+let ph2Enabled = false;
 let _exitCache = {}; // populated by recalc, consumed by generateBuyerPresentation
 
 const MODE_DESC = {
@@ -1136,6 +1213,114 @@ function setMode(m) {
   document.getElementById('iod-row').style.display      = m === 'io_deferred'      ? '' : 'none';
   document.getElementById('mode-desc').textContent = MODE_DESC[m] || '';
   recalc();
+}
+
+function togglePh2() {
+  ph2Enabled = !ph2Enabled;
+  document.getElementById('ph2-section').style.display = ph2Enabled ? '' : 'none';
+  const btn = document.getElementById('ph2-toggle-btn');
+  btn.textContent = ph2Enabled ? 'ON' : 'OFF';
+  btn.style.background = ph2Enabled ? '#fef08a' : '#fff';
+  btn.style.color = ph2Enabled ? '#854d0e' : '#854d0e';
+  if (ph2Enabled) setMode2(mode2); // refresh mode2 button state
+  recalc();
+}
+
+function setMode2(m) {
+  mode2 = m;
+  ['po','io','pi','de','dtp','iod'].forEach(id => {
+    const el = document.getElementById('btn2-' + id);
+    if (el) el.className = '';
+  });
+  const btnMap = { principal_only:'btn2-po', interest_only:'btn2-io', pi:'btn2-pi',
+                   deferred_exit:'btn2-de', deferred_then_pay:'btn2-dtp', io_deferred:'btn2-iod' };
+  const activeBtn = document.getElementById(btnMap[m]);
+  if (activeBtn) activeBtn.className = 'active';
+  document.getElementById('ph2-po-row').style.display    = m === 'principal_only'    ? '' : 'none';
+  document.getElementById('ph2-amort-row').style.display = m === 'pi'                ? '' : 'none';
+  document.getElementById('ph2-dtp-row').style.display   = m === 'deferred_then_pay' ? '' : 'none';
+  document.getElementById('ph2-iod-row').style.display   = m === 'io_deferred'       ? '' : 'none';
+  document.getElementById('mode2-desc').textContent = MODE_DESC[m] || '';
+  recalc();
+}
+
+// ── Generic single-phase carry calculator ──
+// Returns { monthly, balAtEnd, accruedDeferred, balloon, totalPmts, ...extras }
+function calcPhase(principal, rate, termYears, modeStr, extra) {
+  const rM = rate / 12;
+  const months = Math.round(termYears * 12);
+  if (modeStr === 'principal_only') {
+    const mpmt = extra.monthlyPmt || 0;
+    let bal = principal, accrued = 0;
+    for (let i = 0; i < months; i++) { accrued += bal * rM; bal -= mpmt; if (bal < 0) bal = 0; }
+    const rem = Math.max(bal, 0);
+    return { monthly: mpmt, balAtEnd: rem, accruedDeferred: accrued,
+             balloon: rem + accrued, totalPmts: (principal - rem) };
+  }
+  if (modeStr === 'interest_only') {
+    const monthly = principal * rM;
+    return { monthly, balAtEnd: principal, accruedDeferred: 0,
+             balloon: principal, totalPmts: monthly * months };
+  }
+  if (modeStr === 'pi') {
+    const n = (extra.amortYrs || 30) * 12;
+    const monthly = rM > 0 ? principal * rM * Math.pow(1+rM,n) / (Math.pow(1+rM,n)-1) : principal/n;
+    const balAtEnd = rM > 0
+      ? principal * (Math.pow(1+rM,n) - Math.pow(1+rM,months)) / (Math.pow(1+rM,n)-1)
+      : Math.max(principal - monthly*months, 0);
+    return { monthly, balAtEnd: Math.max(balAtEnd,0), accruedDeferred: 0,
+             balloon: Math.max(balAtEnd,0), totalPmts: monthly * months };
+  }
+  if (modeStr === 'deferred_exit') {
+    const accrued = principal * rM * months;
+    return { monthly: 0, balAtEnd: principal, accruedDeferred: accrued,
+             balloon: principal + accrued, totalPmts: 0 };
+  }
+  if (modeStr === 'deferred_then_pay') {
+    const deferMo = Math.min(extra.deferMonths || 0, months);
+    const payMo = months - deferMo;
+    const deferred = principal * rM * deferMo;
+    const monthly = principal * rM;
+    return { monthly, balAtEnd: principal, accruedDeferred: deferred,
+             balloon: principal + deferred, totalPmts: monthly * payMo,
+             deferMo, payMo, deferred };
+  }
+  if (modeStr === 'io_deferred') {
+    const defRate = extra.deferredRate || 0;
+    const monthly = principal * rM;
+    const defInt = principal * defRate * termYears;
+    return { monthly, balAtEnd: principal, accruedDeferred: defInt,
+             balloon: principal + defInt, totalPmts: monthly * months, deferredInt: defInt };
+  }
+  return { monthly: 0, balAtEnd: principal, accruedDeferred: 0, balloon: principal, totalPmts: 0 };
+}
+
+// ── Generic seller-owed-at-year for a single phase ──
+function sellerOwedAtPhase(principal, rate, yr, modeStr, extra) {
+  const mo = Math.round(yr * 12);
+  const rM = rate / 12;
+  if (modeStr === 'principal_only') {
+    const mpmt = extra.monthlyPmt || 0;
+    let bal = principal, interest = 0;
+    for (let i = 0; i < mo; i++) { interest += bal * rM; bal -= mpmt; if (bal < 0) bal = 0; }
+    return Math.max(bal, 0) + interest;
+  }
+  if (modeStr === 'interest_only') return principal;
+  if (modeStr === 'pi') {
+    const n = (extra.amortYrs || 30) * 12;
+    if (rM === 0) return Math.max(principal - (extra.monthly || 0) * mo, 0);
+    return Math.max(principal * (Math.pow(1+rM,n) - Math.pow(1+rM,mo)) / (Math.pow(1+rM,n)-1), 0);
+  }
+  if (modeStr === 'deferred_exit') return principal + principal * rM * mo;
+  if (modeStr === 'deferred_then_pay') {
+    const deferMo = extra.deferMonths || 0;
+    return mo <= deferMo ? principal + principal * rM * mo : principal + principal * rM * deferMo;
+  }
+  if (modeStr === 'io_deferred') {
+    const defRate = extra.deferredRate || 0;
+    return principal + principal * defRate * yr;
+  }
+  return principal;
 }
 
 function setLoanType(t) {
@@ -1339,11 +1524,45 @@ function recalc() {
   const scRate = g('sc_rate') / 100;
   const scTerm = g('sc_term');
   const scMpmt = g('monthly_principal');
-  const { monthly: scMonthly, totalPmts, balloon } = calcCarry(carry, scRate, scTerm, scMpmt);
+
+  // ── Phase-aware seller carry math ──
+  const ph1Years = ph2Enabled ? Math.min(g('ph1_years') || 1, scTerm) : scTerm;
+  const ph2Years = ph2Enabled ? Math.max(scTerm - ph1Years, 0) : 0;
+  const ph2Rate  = ph2Enabled ? g('ph2_rate') / 100 : 0;
+
+  const ph1Extra = {
+    monthlyPmt:  scMpmt,
+    amortYrs:    g('sc_amort_yrs') || 30,
+    deferMonths: Math.round(g('sc_defer_months') || 0),
+    deferredRate: g('sc_deferred_rate') / 100,
+  };
+  const ph2Extra = {
+    monthlyPmt:  g('ph2_monthly_principal') || 0,
+    amortYrs:    g('ph2_sc_amort_yrs') || 30,
+    deferMonths: Math.round(g('ph2_defer_months') || 0),
+    deferredRate: g('ph2_deferred_rate') / 100,
+  };
+
+  const ph1Result = calcPhase(carry, scRate, ph1Years, mode, ph1Extra);
+  const ph1EndBal = ph1Result.balAtEnd + ph1Result.accruedDeferred; // starting principal for phase 2
+  const ph2Result = (ph2Enabled && ph2Years > 0)
+    ? calcPhase(ph1EndBal, ph2Rate, ph2Years, mode2, ph2Extra)
+    : null;
+
+  const scMonthly  = ph1Result.monthly;          // Phase 1 monthly (used for Day-1 CF display)
+  const scMonthly2 = ph2Result ? ph2Result.monthly : 0;
+  const balloon    = ph2Result ? ph2Result.balloon : ph1Result.balloon;
+  const totalPmts  = ph1Result.totalPmts + (ph2Result ? ph2Result.totalPmts : 0);
   const totalReceipts = cac + totalPmts + balloon;
   const finIncome = totalReceipts - pp;
 
-  const totalDebtMo = srPmt + scMonthly;
+  // Helper: SC monthly payment at a given year (switches at phase boundary)
+  function scMonthlyAtYear(yr) {
+    if (!ph2Enabled || yr <= ph1Years) return scMonthly;
+    return scMonthly2;
+  }
+
+  const totalDebtMo = srPmt + scMonthly;  // Phase 1 debt service for Day-1 CF display
   const netCF  = noiMo - totalDebtMo;
   const dscr   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
 
@@ -1412,7 +1631,7 @@ function recalc() {
 
   set('s-sc-rate', fp(scRate));
   set('s-sc-term', scTerm + ' years (' + Math.round(scTerm * 12) + ' mo)');
-  const scPmtLabel = {
+  const modeLabel = {
     principal_only:    fm(scMonthly) + '/mo (principal only)',
     interest_only:     fmd(scMonthly) + '/mo (interest only)',
     pi:                fmd(scMonthly) + '/mo (P&I amortizing)',
@@ -1420,9 +1639,20 @@ function recalc() {
     deferred_then_pay: '$0/mo × ' + (g('sc_defer_months')||0) + ' mo, then ' + fmd(scMonthly) + '/mo (IO)',
     io_deferred:       fmd(scMonthly) + '/mo IO + ' + g('sc_deferred_rate') + '% deferred simple → balloon',
   }[mode] || '—';
+  const scPmtLabel = ph2Enabled && ph2Result
+    ? `Period 1 (Yrs 1–${ph1Years}): ${modeLabel} → Period 2 (Yrs ${ph1Years+1}–${scTerm}): ${fmd(scMonthly2)}/mo`
+    : modeLabel;
   set('s-sc-pmt', scPmtLabel);
   set('s-balloon', '~' + fm(balloon));
   set('s-balloon-yr', scTerm);
+
+  // Phase 2 duration info label
+  const ph2DurEl = document.getElementById('ph2-duration-info');
+  if (ph2DurEl) {
+    ph2DurEl.textContent = ph2Enabled && ph1Years > 0 && scTerm > 0
+      ? `Period 1: ${ph1Years} yr${ph1Years!==1?'s':''} → Period 2: ${ph2Years} yr${ph2Years!==1?'s':''} → Total: ${scTerm} yrs | Phase 2 starts from balance of ${ph1EndBal > 0 ? '$' + Math.round(ph1EndBal).toLocaleString() : '—'}`
+      : '';
+  }
 
   // Cap rate implied valuation
   const capRate = g('cap_rate') / 100;
@@ -1438,7 +1668,11 @@ function recalc() {
 
   set('s-noi-mo', fmd(noiMo) + '/mo');
   set('s-sr-mo',  fmd(srPmt) + '/mo');
-  set('s-carry-mo', fmd(scMonthly) + '/mo');
+  set('s-carry-mo', fmd(scMonthly) + '/mo' + (ph2Enabled ? ` (Yrs 1–${ph1Years})` : ''));
+  // Phase 2 carry row
+  const ph2CarryRow = document.getElementById('s-carry-ph2-row');
+  if (ph2CarryRow) ph2CarryRow.style.display = (ph2Enabled && ph2Result) ? '' : 'none';
+  set('s-carry-mo-ph2', ph2Result ? fmd(scMonthly2) + `/mo (Yrs ${ph1Years+1}–${scTerm})` : '—');
   set('s-net-cf', fmd(netCF) + '/mo');
 
   // ── CLOSING DETAIL ──
@@ -1513,47 +1747,13 @@ function recalc() {
     return maxLoan * (Math.pow(1+r, n) - Math.pow(1+r, months)) / (Math.pow(1+r, n) - 1);
   }
 
-  // Seller owed at year Y — what remains on the note (principal + any accrued interest)
+  // Seller owed at year Y — phase-aware
   function sellerOwedAt(yr) {
-    const mo  = Math.round(yr * 12);
-    const rM  = scRate / 12;
-
-    if (mode === 'principal_only') {
-      let bal = carry, interest = 0;
-      for (let i = 0; i < mo; i++) {
-        interest += bal * rM;
-        bal -= scMpmt; if (bal < 0) bal = 0;
-      }
-      return Math.max(bal, 0) + interest;
+    if (!ph2Enabled || yr <= ph1Years) {
+      return sellerOwedAtPhase(carry, scRate, Math.min(yr, ph1Years), mode, ph1Extra);
     }
-
-    if (mode === 'interest_only') {
-      return carry; // principal unchanged, interest paid monthly
-    }
-
-    if (mode === 'pi') {
-      const scAmortYrs = g('sc_amort_yrs') || 30;
-      const n = scAmortYrs * 12;
-      if (rM === 0) return Math.max(carry - scMonthly * mo, 0);
-      return carry * (Math.pow(1+rM, n) - Math.pow(1+rM, mo)) / (Math.pow(1+rM, n) - 1);
-    }
-
-    if (mode === 'deferred_exit') {
-      // Simple interest accrues on full principal — no payments at all
-      return carry + carry * rM * mo;
-    }
-
-    if (mode === 'deferred_then_pay') {
-      const deferMo = Math.round(g('sc_defer_months') || 0);
-      if (mo <= deferMo) {
-        // Still in deferral: interest accruing
-        return carry + carry * rM * mo;
-      }
-      // Past deferral: IO payments cover current interest; deferred interest locked to balloon
-      return carry + carry * rM * deferMo;
-    }
-
-    return carry;
+    // In phase 2: start from ph1EndBal, count years since phase 1 ended
+    return sellerOwedAtPhase(ph1EndBal, ph2Rate, yr - ph1Years, mode2, { ...ph2Extra, monthly: scMonthly2 });
   }
 
   const maxYr = Math.max(balloonYr + 3, 10);
@@ -1576,9 +1776,10 @@ function recalc() {
     const srBal      = srBalAt(yr * 12);
     const sellerOwe  = sellerOwedAt(yr);
 
-    // Base CF: current NOI growing at noi_growth%/yr
+    // Base CF: current NOI growing at noi_growth%/yr; SC payment switches at phase boundary
     const baseNOIyr  = baseNOIatYear(yr);
-    baseCumCF       += baseNOIyr - totalDebtMo * 12;
+    const scMoAtYr   = scMonthlyAtYear(yr);
+    baseCumCF       += baseNOIyr - (srPmt + scMoAtYr) * 12;
     const cumCF      = baseCumCF;
 
     const salePct    = propVal * (1 - saleClosingPct);
@@ -1589,9 +1790,9 @@ function recalc() {
     const refiCF     = refiSurplus + cumCF;
     const isBalloon  = yr === balloonYr;
 
-    // Proforma path: NOI ramps to proforma, then grows
+    // Proforma path: NOI ramps to proforma, then grows; phase-aware SC payment
     const pfNOIyr    = pfNOIatYear(yr);
-    pfCumCF         += pfNOIyr - totalDebtMo * 12;
+    pfCumCF         += pfNOIyr - (srPmt + scMonthlyAtYear(yr)) * 12;
     // Proforma exit value: implied by cap rate (NOI / capRate) rather than raw appreciation
     const capRate    = g('cap_rate') / 100;
     const pfImplied  = hasProforma && capRate > 0 ? pfNOIyr / capRate : propVal;
@@ -1756,7 +1957,22 @@ function generateLOI() {
   const scRate = g('sc_rate') / 100;
   const scTerm = g('sc_term');
   const months  = Math.round(scTerm * 12);
-  const { monthly: scMonthly, totalPmts, balloon } = calcCarry(carry, scRate, scTerm, g('monthly_principal'));
+
+  // Phase-aware carry math (mirrors recalc)
+  const loiPh1Yrs  = ph2Enabled ? Math.min(g('ph1_years') || 1, scTerm) : scTerm;
+  const loiPh2Yrs  = ph2Enabled ? Math.max(scTerm - loiPh1Yrs, 0) : 0;
+  const loiPh2Rate = ph2Enabled ? g('ph2_rate') / 100 : 0;
+  const loiPh1Extra = { monthlyPmt: g('monthly_principal') || 0, amortYrs: g('sc_amort_yrs') || 30,
+    deferMonths: Math.round(g('sc_defer_months') || 0), deferredRate: g('sc_deferred_rate') / 100 };
+  const loiPh2Extra = { monthlyPmt: g('ph2_monthly_principal') || 0, amortYrs: g('ph2_sc_amort_yrs') || 30,
+    deferMonths: Math.round(g('ph2_defer_months') || 0), deferredRate: g('ph2_deferred_rate') / 100 };
+  const loiPh1 = calcPhase(carry, scRate, loiPh1Yrs, mode, loiPh1Extra);
+  const loiPh1EndBal = loiPh1.balAtEnd + loiPh1.accruedDeferred;
+  const loiPh2 = (ph2Enabled && loiPh2Yrs > 0) ? calcPhase(loiPh1EndBal, loiPh2Rate, loiPh2Yrs, mode2, loiPh2Extra) : null;
+  const scMonthly    = loiPh1.monthly;
+  const scMonthly2   = loiPh2 ? loiPh2.monthly : 0;
+  const balloon      = loiPh2 ? loiPh2.balloon : loiPh1.balloon;
+  const totalPmts    = loiPh1.totalPmts + (loiPh2 ? loiPh2.totalPmts : 0);
   const totalReceipts = cac + totalPmts + balloon;
   const finIncome = totalReceipts - pp;
 
@@ -1900,12 +2116,81 @@ At the end of year ${scTerm}, buyer will pay the full principal balance of ${esc
 Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
   }
 
-  const rateOrNone = zeroInterest ? 'Principal Only Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`;
+  // ── Two-phase LOI override ──
+  if (ph2Enabled && loiPh2 && loiPh2Yrs > 0) {
+    // Helper: plain-English description of a payment mode for one phase
+    function phaseDesc(modeStr, rate, yrs, monthly, extra, startBal) {
+      const mo = Math.round(yrs * 12);
+      const rPct = P(rate);
+      if (modeStr === 'principal_only') {
+        return `monthly principal-reduction payments of ${esc(Dfmt(monthly))}/month at ${esc(rPct)} simple interest (interest accrues on the declining balance and is due at balloon)`;
+      }
+      if (modeStr === 'interest_only') {
+        return `monthly interest-only payments of ${esc(Dfmt(monthly))}/month at ${esc(rPct)} simple interest`;
+      }
+      if (modeStr === 'pi') {
+        return `fully amortizing principal and interest payments of ${esc(Dfmt(monthly))}/month (${esc(rPct)}, ${extra.amortYrs || 30}-year amortization schedule)`;
+      }
+      if (modeStr === 'deferred_exit') {
+        return `no monthly payments; interest accrues at ${esc(rPct)} simple interest on the full outstanding balance`;
+      }
+      if (modeStr === 'deferred_then_pay') {
+        const df = extra.deferMonths || 0;
+        return `no payments for the first ${df} months (interest accrues at ${esc(rPct)}), then monthly interest-only payments of ${esc(Dfmt(monthly))}/month for the remaining ${mo - df} months`;
+      }
+      if (modeStr === 'io_deferred') {
+        return `monthly interest-only payments of ${esc(Dfmt(monthly))}/month at ${esc(rPct)}, plus ${esc(P(extra.deferredRate || 0))} simple interest accruing on the outstanding balance (deferred to balloon)`;
+      }
+      return `payments of ${esc(Dfmt(monthly))}/month`;
+    }
+
+    const ph1Desc = phaseDesc(mode,  scRate,    loiPh1Yrs, scMonthly,  loiPh1Extra, carry);
+    const ph2Desc = phaseDesc(mode2, loiPh2Rate, loiPh2Yrs, scMonthly2, loiPh2Extra, loiPh1EndBal);
+    const ph1Months = Math.round(loiPh1Yrs * 12);
+    const ph2StartMo = ph1Months + 1;
+    const totalMonths = Math.round(scTerm * 12);
+    const ph1TotPmts = loiPh1.totalPmts;
+    const ph2TotPmts = loiPh2.totalPmts;
+
+    pmtBlock =
+`Payment Period 1 (Months 1–${ph1Months} — Years 1–${loiPh1Yrs}):
+${ph1Desc.charAt(0).toUpperCase() + ph1Desc.slice(1)}
+Total payments Period 1: Approximately ${esc(D(ph1TotPmts))}
+Carry balance entering Period 2: Approximately ${esc(D(loiPh1EndBal))}
+
+Payment Period 2 (Months ${ph2StartMo}–${totalMonths} — Years ${loiPh1Yrs+1}–${scTerm}):
+${ph2Desc.charAt(0).toUpperCase() + ph2Desc.slice(1)}
+Total payments Period 2: Approximately ${esc(D(ph2TotPmts))}
+
+Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))}
+Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+
+    narr =
+`The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
+
+For the first ${loiPh1Yrs} year${loiPh1Yrs!==1?'s':''} of the note (Months 1–${ph1Months}), buyer will make ${ph1Desc}, totaling approximately ${esc(D(ph1TotPmts))}.
+
+Beginning in Month ${ph2StartMo} (Year ${loiPh1Yrs+1}) and continuing through the balloon, the outstanding balance — approximately ${esc(D(loiPh1EndBal))} — will be subject to ${ph2Desc}, totaling approximately ${esc(D(ph2TotPmts))}.
+
+At the end of year ${scTerm}, buyer will pay the remaining balance through a balloon payment of approximately ${esc(D(balloon))}.
+
+Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
+  }
+
+  // ── Seller Carry Header ──
+  const ph2Active = ph2Enabled && loiPh2 && loiPh2Yrs > 0;
+  const rateOrNone = ph2Active
+    ? `Period 1 Rate: ${esc(P(scRate))} | Period 2 Rate: ${esc(P(loiPh2Rate))}`
+    : (zeroInterest ? 'Principal Only Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
   const ioRate  = g('sc_rate');
   const defRate = g('sc_deferred_rate');
-  const paymentTypeLabel = mode === 'io_deferred'
-    ? `${ioRate}% IO + ${defRate}% Deferred Simple | ${ioRate + defRate}% total simple interest`
-    : { principal_only:'Deferred-Simple', interest_only:'Interest-Only', pi:'P&I Amortizing', deferred_exit:'Deferred-To-Exit', deferred_then_pay:'Deferred-Then-Pay' }[mode] || '';
+  const modeNames = { principal_only:'Deferred-Simple', interest_only:'Interest-Only', pi:'P&I Amortizing',
+    deferred_exit:'Deferred-To-Exit', deferred_then_pay:'Deferred-Then-Pay', io_deferred:'IO + Deferred Simple' };
+  const paymentTypeLabel = ph2Active
+    ? `${modeNames[mode]||mode} (Yrs 1–${loiPh1Yrs}) → ${modeNames[mode2]||mode2} (Yrs ${loiPh1Yrs+1}–${scTerm})`
+    : (mode === 'io_deferred'
+      ? `${ioRate}% IO + ${defRate}% Deferred Simple | ${ioRate + defRate}% total simple interest`
+      : modeNames[mode] || '');
   const sellerCarryHeader =
 `Seller Carryback Note: ${esc(D(carry))}
 ${rateOrNone}
@@ -2052,7 +2337,21 @@ function generateBuyerPresentation() {
   const scRate = g('sc_rate') / 100;
   const scTerm = g('sc_term');
   const scMpmt = g('monthly_principal');
-  const { monthly: scMonthly, totalPmts, balloon } = calcCarry(carry, scRate, scTerm, scMpmt);
+
+  // Phase-aware (mirrors recalc)
+  const bpPh1Yrs  = ph2Enabled ? Math.min(g('ph1_years') || 1, scTerm) : scTerm;
+  const bpPh2Yrs  = ph2Enabled ? Math.max(scTerm - bpPh1Yrs, 0) : 0;
+  const bpPh2Rate = ph2Enabled ? g('ph2_rate') / 100 : 0;
+  const bpPh1Extra = { monthlyPmt: scMpmt, amortYrs: g('sc_amort_yrs')||30,
+    deferMonths: Math.round(g('sc_defer_months')||0), deferredRate: g('sc_deferred_rate')/100 };
+  const bpPh2Extra = { monthlyPmt: g('ph2_monthly_principal')||0, amortYrs: g('ph2_sc_amort_yrs')||30,
+    deferMonths: Math.round(g('ph2_defer_months')||0), deferredRate: g('ph2_deferred_rate')/100 };
+  const bpPh1     = calcPhase(carry, scRate, bpPh1Yrs, mode, bpPh1Extra);
+  const bpPh1End  = bpPh1.balAtEnd + bpPh1.accruedDeferred;
+  const bpPh2     = (ph2Enabled && bpPh2Yrs > 0) ? calcPhase(bpPh1End, bpPh2Rate, bpPh2Yrs, mode2, bpPh2Extra) : null;
+  const scMonthly  = bpPh1.monthly;
+  const scMonthly2 = bpPh2 ? bpPh2.monthly : 0;
+  const balloon    = bpPh2 ? bpPh2.balloon : bpPh1.balloon;
 
   const totalDebtMo = srPmt + scMonthly;
   const netCF = noiMo - totalDebtMo;
@@ -2100,30 +2399,10 @@ function generateBuyerPresentation() {
     return maxLoan * (Math.pow(1+r, n) - Math.pow(1+r, months)) / (Math.pow(1+r, n) - 1);
   }
   function sellerOwedAt(yr) {
-    const mo = Math.round(yr * 12);
-    const rM = scRate / 12;
-    if (mode === 'principal_only') {
-      let bal = carry, interest = 0;
-      for (let i = 0; i < mo; i++) { interest += bal * rM; bal -= scMpmt; if (bal < 0) bal = 0; }
-      return Math.max(bal, 0) + interest;
+    if (!ph2Enabled || yr <= bpPh1Yrs) {
+      return sellerOwedAtPhase(carry, scRate, Math.min(yr, bpPh1Yrs), mode, { ...bpPh1Extra, monthly: scMonthly });
     }
-    if (mode === 'interest_only') return carry;
-    if (mode === 'pi') {
-      const n = (g('sc_amort_yrs') || 30) * 12;
-      if (rM === 0) return Math.max(carry - scMonthly * mo, 0);
-      return carry * (Math.pow(1+rM, n) - Math.pow(1+rM, mo)) / (Math.pow(1+rM, n) - 1);
-    }
-    if (mode === 'deferred_exit') return carry + carry * rM * mo;
-    if (mode === 'deferred_then_pay') {
-      const deferMo = Math.round(g('sc_defer_months') || 0);
-      return mo <= deferMo ? carry + carry * rM * mo : carry + carry * rM * deferMo;
-    }
-    if (mode === 'io_deferred') {
-      // IO payments cover current interest monthly; deferred simple interest accrues separately
-      const deferredRate = g('sc_deferred_rate') / 100;
-      return carry + carry * deferredRate * yr;
-    }
-    return carry;
+    return sellerOwedAtPhase(bpPh1End, bpPh2Rate, yr - bpPh1Yrs, mode2, { ...bpPh2Extra, monthly: scMonthly2 });
   }
   // Use values computed by recalc to guarantee consistency with the exit grid badges
   const exitPropVal    = _exitCache.exitPropVal    ?? arv * Math.pow(1 + appr, balloonYr);
@@ -2221,8 +2500,31 @@ DSCR (Senior Only): ${dscrSrOnly.toFixed(2)}x
 DSCR (All Debt incl. Seller Carry): ${dscrAllDebt.toFixed(2)}x
 
 Seller Carry Terms:
-  Rate: ${P(scRate)} simple interest
-  Term: ${scTerm} years
+  Total Term: ${scTerm} years${ph2Enabled && bpPh2 ? ` (${bpPh1Yrs}-yr Period 1 + ${bpPh2Yrs}-yr Period 2)` : ''}
+${ph2Enabled && bpPh2 ? `
+  PERIOD 1 (Years 1–${bpPh1Yrs}):
+    Rate: ${P(scRate)} simple interest
+    Payment: ${{
+      principal_only:    D(scMonthly) + '/mo (principal only, interest accrues to balloon)',
+      interest_only:     Dfmt(scMonthly) + '/mo (interest only)',
+      pi:                Dfmt(scMonthly) + '/mo (P&I amortizing, ' + (g('sc_amort_yrs')||30) + '-yr amort)',
+      deferred_exit:     '$0/mo — deferred to balloon',
+      deferred_then_pay: '$0/mo × ' + (g('sc_defer_months')||0) + ' mo, then ' + Dfmt(scMonthly) + '/mo IO',
+      io_deferred:       Dfmt(scMonthly) + '/mo IO + ' + g('sc_deferred_rate') + '% deferred → balloon',
+    }[mode] || Dfmt(scMonthly) + '/mo'}
+    Balance entering Period 2: ~${D(bpPh1End)}
+
+  PERIOD 2 (Years ${bpPh1Yrs+1}–${scTerm}):
+    Rate: ${P(bpPh2Rate)} simple interest
+    Payment: ${{
+      principal_only:    D(scMonthly2) + '/mo (principal only, interest accrues to balloon)',
+      interest_only:     Dfmt(scMonthly2) + '/mo (interest only)',
+      pi:                Dfmt(scMonthly2) + '/mo (P&I amortizing, ' + (g('ph2_sc_amort_yrs')||30) + '-yr amort)',
+      deferred_exit:     '$0/mo — deferred to balloon',
+      deferred_then_pay: '$0/mo × ' + (g('ph2_defer_months')||0) + ' mo, then ' + Dfmt(scMonthly2) + '/mo IO',
+      io_deferred:       Dfmt(scMonthly2) + '/mo IO + ' + g('ph2_deferred_rate') + '% deferred → balloon',
+    }[mode2] || Dfmt(scMonthly2) + '/mo'}
+` : `  Rate: ${P(scRate)} simple interest
   Payment: ${{
     principal_only:    D(scMonthly) + '/mo (principal only, interest accrues to balloon)',
     interest_only:     Dfmt(scMonthly) + '/mo (interest only)',
@@ -2231,11 +2533,13 @@ Seller Carry Terms:
     deferred_then_pay: '$0/mo × ' + (g('sc_defer_months')||0) + ' mo deferral, then ' + Dfmt(scMonthly) + '/mo (IO)',
     io_deferred:       Dfmt(scMonthly) + '/mo IO + ' + g('sc_deferred_rate') + '% deferred simple interest → balloon',
   }[mode] || Dfmt(scMonthly) + '/mo'}
-  Balloon at Year ${balloonYr}: ~${D(balloon)}
+`}  Balloon at Year ${balloonYr}: ~${D(balloon)}
 
-Total Monthly Debt Service: ${Dfmt(totalDebtMo)}/mo
+Total Monthly Debt Service (Day-1 / Period 1): ${Dfmt(totalDebtMo)}/mo${ph2Enabled && bpPh2 ? `
+Total Monthly Debt Service (Period 2): ${Dfmt(srPmt + scMonthly2)}/mo` : ''}
 Monthly NOI (Day-1): ${Dfmt(noiMo)}/mo
-Monthly Net Cash Flow (Day-1): ${Dfmt(netCF)}/mo ${netCF >= 0 ? '(positive ✓)' : '(negative — review terms)'}
+Monthly Net Cash Flow (Day-1): ${Dfmt(netCF)}/mo ${netCF >= 0 ? '(positive ✓)' : '(negative — review terms)'}${ph2Enabled && bpPh2 ? `
+Monthly Net Cash Flow (Period 2): ${Dfmt(noiMo - srPmt - scMonthly2)}/mo ${(noiMo - srPmt - scMonthly2) >= 0 ? '(positive ✓)' : '(negative)'}` : ''}
 
 ══════════════════════════════════════
 CASH TO CLOSE — BUYER POSITION
@@ -2323,6 +2627,7 @@ const FIELDS = [
   'sr_rate','sr_amort','sr_term','sr_ltv','sr_dscr','sr_points',
   'hm_ltc','hm_arv_pct','hm_rehab_pct','hm_rehab_months',
   'sc_rate','sc_term','monthly_principal','sc_amort_yrs','sc_defer_months','sc_deferred_rate',
+  'ph1_years','ph2_rate','ph2_monthly_principal','ph2_sc_amort_yrs','ph2_defer_months','ph2_deferred_rate',
   'esc1_pct','esc2_pct','acq_pct','broker_pct','emd',
   'taf_pct','buyer_cash','park_escrow','rehab_oop',
   'ac_name','ac_phone','ac_email1','ac_email2','buyer_company'
@@ -2336,6 +2641,7 @@ function shareCalc() {
   });
   p.set('mode', mode);
   p.set('loan_type', loanType);
+  if (ph2Enabled) { p.set('ph2_enabled', '1'); p.set('mode2', mode2); }
   const url = location.origin + location.pathname + '?' + p.toString();
   navigator.clipboard.writeText(url).then(() => {
     history.replaceState(null, '', '?' + p.toString());
@@ -2360,6 +2666,8 @@ function loadFromURL() {
   });
   if (p.has('mode')) setMode(p.get('mode'));
   if (p.has('loan_type')) setLoanType(p.get('loan_type'));
+  if (p.has('ph2_enabled') && p.get('ph2_enabled') === '1') { if (!ph2Enabled) togglePh2(); }
+  if (p.has('mode2')) setMode2(p.get('mode2'));
 }
 
 document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', recalc));
