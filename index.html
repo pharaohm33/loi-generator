@@ -2153,7 +2153,7 @@ Interest accrues separately at ${esc(P(scRate))} simple interest on the declinin
 At the end of year ${scTerm}, buyer will pay the remaining principal balance plus accrued interest through a balloon payment of approximately ${esc(D(balloon))}.
 
 ${finIncome <= 0
-  ? `Total seller receipts equal the full ${esc(D(pp))} purchase price — no interest charged on this note.`
+  ? `Total seller receipts equal the full ${esc(D(pp))} purchase price — each payment made reduces the outstanding principal balance directly.`
   : `Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`}`;
 
   } else if (mode === 'interest_only') {
@@ -2258,7 +2258,7 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
       const mo = Math.round(yrs * 12);
       const rPct = P(rate);
       if (modeStr === 'principal_only') {
-        if (rate === 0) return `monthly principal-reduction payments of ${esc(Dfmt(monthly))}/month (no interest — principal only)`;
+        if (rate === 0) return `monthly principal-reduction payments of ${esc(Dfmt(monthly))}/month (each payment directly reduces the outstanding balance)`;
         return `monthly principal-reduction payments of ${esc(Dfmt(monthly))}/month at ${esc(rPct)} simple interest (interest accrues on the declining balance and is due at balloon)`;
       }
       if (modeStr === 'interest_only') {
@@ -2330,7 +2330,7 @@ Beginning in Month ${ph2StartMo} (Year ${loiPh1Yrs+1}) and continuing through th
 At the end of year ${scTerm}, buyer will pay the remaining balance through a balloon payment of approximately ${esc(D(balloon))}.
 
 ${finIncome <= 0
-  ? `Total seller receipts equal the full ${esc(D(pp))} purchase price — no interest charged on this note.`
+  ? `Total seller receipts equal the full ${esc(D(pp))} purchase price — each payment made reduces the outstanding principal balance directly.`
   : `Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`}`;
   }
 
@@ -2360,7 +2360,7 @@ ${finIncome <= 0
   const allZeroInterest = ph2Active && scRate === 0 && loiPh2Rate === 0;
   const blendedLine = ph2Active
     ? (allZeroInterest
-        ? 'No interest — principal reduction payments only throughout the full term'
+        ? 'Principal Only — each payment directly reduces the outstanding balance throughout the full term'
         : ratesMatch
           ? `Effective Rate: consistent ${esc(P(ph1CombinedRate))} throughout the full ${scTerm}-year term`
           : `Effective Rate: ${esc(P(blendedRate))} blended avg over full ${scTerm}-year term`)
@@ -2372,7 +2372,7 @@ Period 2 (Yrs ${loiPh1Yrs+1}–${scTerm}): ${ph2RateLabel}
 ${blendedLine}`
     : poDeferredRate > 0
       ? `Principal Only + ${esc(P(poDeferredRate))} Deferred Simple Interest (accrues on declining balance → balloon)`
-      : (zeroInterest ? 'Principal Only — Interest-Free Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
+      : (zeroInterest ? 'Principal Only Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
   const ioRate  = g('sc_rate');
   const defRate = g('sc_deferred_rate');
   // Mode display names — use "Principal Only" instead of "Deferred-Simple" when rate is 0
