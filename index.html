@@ -2217,7 +2217,8 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
   // ── Two-phase LOI override ──
   if (ph2Enabled && loiPh2 && loiPh2Yrs > 0) {
     // Helper: plain-English description of a payment mode for one phase
-    function phaseDesc(modeStr, rate, yrs, monthly, extra, startBal) {
+    // ph1RollsDeferred: true when this is Phase 1 of a two-phase note and deferred interest rolls into Phase 2 balance (not to balloon)
+    function phaseDesc(modeStr, rate, yrs, monthly, extra, startBal, ph1RollsDeferred) {
       const mo = Math.round(yrs * 12);
       const rPct = P(rate);
       if (modeStr === 'principal_only') {
@@ -2237,24 +2238,38 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
         return `no payments for the first ${df} months (interest accrues at ${esc(rPct)}), then monthly interest-only payments of ${esc(Dfmt(monthly))}/month for the remaining ${mo - df} months`;
       }
       if (modeStr === 'io_deferred') {
-        return `monthly interest-only payments of ${esc(Dfmt(monthly))}/month at ${esc(rPct)}, plus ${esc(P(extra.deferredRate || 0))} simple interest accruing on the outstanding balance (deferred to balloon)`;
+        const defRatePct = P(extra.deferredRate || 0);
+        // When Phase 2 follows, the accrued deferred interest rolls into Phase 2 principal — not held to the final balloon
+        const deferDest = ph1RollsDeferred
+          ? `accruing on the outstanding balance and rolling into the Period 2 starting balance`
+          : `accruing on the outstanding balance and due in full at the balloon`;
+        return `monthly interest-only payments of ${esc(Dfmt(monthly))}/month at ${esc(rPct)}, plus ${esc(defRatePct)} simple interest ${deferDest}`;
       }
       return `payments of ${esc(Dfmt(monthly))}/month`;
     }
 
-    const ph1Desc = phaseDesc(mode,  scRate,    loiPh1Yrs, scMonthly,  loiPh1Extra, carry);
-    const ph2Desc = phaseDesc(mode2, loiPh2Rate, loiPh2Yrs, scMonthly2, loiPh2Extra, loiPh1EndBal);
-    const ph1Months = Math.round(loiPh1Yrs * 12);
+    // Determine if Phase 1 carries accrued deferred interest that rolls into Phase 2 balance
+    const ph1HasDeferredRollup = (mode === 'io_deferred' || mode === 'deferred_exit' || mode === 'deferred_then_pay' || mode === 'principal_only') && loiPh1.accruedDeferred > 0;
+    const ph1AccruedDeferred   = loiPh1.accruedDeferred;  // deferred interest built up in Phase 1
+
+    const ph1Desc = phaseDesc(mode,  scRate,     loiPh1Yrs, scMonthly,  loiPh1Extra, carry,          true);
+    const ph2Desc = phaseDesc(mode2, loiPh2Rate, loiPh2Yrs, scMonthly2, loiPh2Extra, loiPh1EndBal,   false);
+    const ph1Months  = Math.round(loiPh1Yrs * 12);
     const ph2StartMo = ph1Months + 1;
     const totalMonths = Math.round(scTerm * 12);
     const ph1TotPmts = loiPh1.totalPmts;
     const ph2TotPmts = loiPh2.totalPmts;
 
+    // Balance breakdown note shown when Phase 1 deferred interest rolls into Phase 2 principal
+    const balBreakdown = ph1HasDeferredRollup
+      ? `\n  (= ${esc(D(carry))} original carry + ${esc(D(ph1AccruedDeferred))} accrued ${P(mode === 'io_deferred' ? (loiPh1Extra.deferredRate || 0) : scRate)} deferred interest from Period 1)`
+      : '';
+
     pmtBlock =
 `Payment Period 1 (Months 1–${ph1Months} — Years 1–${loiPh1Yrs}):
 ${ph1Desc.charAt(0).toUpperCase() + ph1Desc.slice(1)}
 Total payments Period 1: Approximately ${esc(D(ph1TotPmts))}
-Carry balance entering Period 2: Approximately ${esc(D(loiPh1EndBal))}
+Carry balance entering Period 2: Approximately ${esc(D(loiPh1EndBal))}${balBreakdown}
 
 Payment Period 2 (Months ${ph2StartMo}–${totalMonths} — Years ${loiPh1Yrs+1}–${scTerm}):
 ${ph2Desc.charAt(0).toUpperCase() + ph2Desc.slice(1)}
@@ -2263,10 +2278,15 @@ Total payments Period 2: Approximately ${esc(D(ph2TotPmts))}
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))}
 Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
 
+    // Narrative rollup sentence for when Phase 1 carries accrued deferred into Phase 2
+    const deferredRollupSentence = ph1HasDeferredRollup
+      ? ` The ${esc(D(ph1AccruedDeferred))} in accrued deferred interest from Period 1 is added to the original ${esc(D(carry))} carry balance, bringing the Period 2 starting balance to approximately ${esc(D(loiPh1EndBal))}.`
+      : '';
+
     narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
-For the first ${loiPh1Yrs} year${loiPh1Yrs!==1?'s':''} of the note (Months 1–${ph1Months}), buyer will make ${ph1Desc}, totaling approximately ${esc(D(ph1TotPmts))}.
+For the first ${loiPh1Yrs} year${loiPh1Yrs!==1?'s':''} of the note (Months 1–${ph1Months}), buyer will make ${ph1Desc}, totaling approximately ${esc(D(ph1TotPmts))} in monthly payments.${deferredRollupSentence}
 
 Beginning in Month ${ph2StartMo} (Year ${loiPh1Yrs+1}) and continuing through the balloon, the outstanding balance — approximately ${esc(D(loiPh1EndBal))} — will be subject to ${ph2Desc}, totaling approximately ${esc(D(ph2TotPmts))}.
 
