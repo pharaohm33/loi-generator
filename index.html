@@ -2152,7 +2152,9 @@ Interest accrues separately at ${esc(P(scRate))} simple interest on the declinin
 
 At the end of year ${scTerm}, buyer will pay the remaining principal balance plus accrued interest through a balloon payment of approximately ${esc(D(balloon))}.
 
-Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
+${finIncome <= 0
+  ? `Total seller receipts equal the full ${esc(D(pp))} purchase price — no interest charged on this note.`
+  : `Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`}`;
 
   } else if (mode === 'interest_only') {
     pmtBlock =
@@ -2256,6 +2258,7 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
       const mo = Math.round(yrs * 12);
       const rPct = P(rate);
       if (modeStr === 'principal_only') {
+        if (rate === 0) return `monthly principal-reduction payments of ${esc(Dfmt(monthly))}/month (no interest — principal only)`;
         return `monthly principal-reduction payments of ${esc(Dfmt(monthly))}/month at ${esc(rPct)} simple interest (interest accrues on the declining balance and is due at balloon)`;
       }
       if (modeStr === 'interest_only') {
@@ -2326,7 +2329,9 @@ Beginning in Month ${ph2StartMo} (Year ${loiPh1Yrs+1}) and continuing through th
 
 At the end of year ${scTerm}, buyer will pay the remaining balance through a balloon payment of approximately ${esc(D(balloon))}.
 
-Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
+${finIncome <= 0
+  ? `Total seller receipts equal the full ${esc(D(pp))} purchase price — no interest charged on this note.`
+  : `Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`}`;
   }
 
   // ── Seller Carry Header ──
@@ -2338,13 +2343,13 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
   const ph2ModeShort = { principal_only:'principal-only', interest_only:'IO', pi:'P&I amortizing',
     deferred_exit:'deferred-to-exit', deferred_then_pay:'deferred then IO', io_deferred:'IO + deferred' }[mode2] || '';
 
-  // Phase 1 rate label
+  // Phase 1 rate label — show "Principal Only" when rate is 0
   const ph1RateLabel = ph2Active && mode === 'io_deferred'
     ? `${esc(P(scRate))} IO + ${esc(P(deferredRate))} Deferred = ${esc(P(ph1CombinedRate))} combined`
-    : esc(P(scRate));
-  // Phase 2 rate label — always includes the payment mode short name
+    : (scRate === 0 ? 'Principal Only' : esc(P(scRate)));
+  // Phase 2 rate label — show "Principal Only" when rate is 0, otherwise rate + mode short name
   const ph2RateLabel = ph2Active
-    ? `${esc(P(loiPh2Rate))} ${esc(ph2ModeShort)}`
+    ? (loiPh2Rate === 0 ? 'Principal Only' : `${esc(P(loiPh2Rate))} ${esc(ph2ModeShort)}`)
     : '';
 
   // Weighted-average rate across both phases (by years)
@@ -2352,10 +2357,13 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
     ? (ph1CombinedRate * loiPh1Yrs + loiPh2Rate * loiPh2Yrs) / scTerm
     : ph1CombinedRate;
   const ratesMatch = ph2Active && Math.abs(ph1CombinedRate - loiPh2Rate) < 0.00001;
+  const allZeroInterest = ph2Active && scRate === 0 && loiPh2Rate === 0;
   const blendedLine = ph2Active
-    ? (ratesMatch
-        ? `Effective Rate: consistent ${esc(P(ph1CombinedRate))} throughout the full ${scTerm}-year term`
-        : `Effective Rate: ${esc(P(blendedRate))} blended avg over full ${scTerm}-year term`)
+    ? (allZeroInterest
+        ? 'No interest — principal reduction payments only throughout the full term'
+        : ratesMatch
+          ? `Effective Rate: consistent ${esc(P(ph1CombinedRate))} throughout the full ${scTerm}-year term`
+          : `Effective Rate: ${esc(P(blendedRate))} blended avg over full ${scTerm}-year term`)
     : '';
 
   const rateOrNone = ph2Active
@@ -2364,16 +2372,20 @@ Period 2 (Yrs ${loiPh1Yrs+1}–${scTerm}): ${ph2RateLabel}
 ${blendedLine}`
     : poDeferredRate > 0
       ? `Principal Only + ${esc(P(poDeferredRate))} Deferred Simple Interest (accrues on declining balance → balloon)`
-      : (zeroInterest ? 'Principal Only — 0.00% Interest (Interest-Free Seller Carryback)' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
+      : (zeroInterest ? 'Principal Only — Interest-Free Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
   const ioRate  = g('sc_rate');
   const defRate = g('sc_deferred_rate');
-  const modeNames = { principal_only:'Deferred-Simple', interest_only:'Interest-Only', pi:'P&I Amortizing',
-    deferred_exit:'Deferred-To-Exit', deferred_then_pay:'Deferred-Then-Pay', io_deferred:'IO + Deferred Simple' };
+  // Mode display names — use "Principal Only" instead of "Deferred-Simple" when rate is 0
+  const modeNameFor = (m, r) => {
+    if (m === 'principal_only' && r === 0) return 'Principal Only';
+    return { principal_only:'Deferred-Simple', interest_only:'Interest-Only', pi:'P&I Amortizing',
+      deferred_exit:'Deferred-To-Exit', deferred_then_pay:'Deferred-Then-Pay', io_deferred:'IO + Deferred Simple' }[m] || m;
+  };
   const paymentTypeLabel = ph2Active
-    ? `${modeNames[mode]||mode} (Yrs 1–${loiPh1Yrs}) → ${modeNames[mode2]||mode2} (Yrs ${loiPh1Yrs+1}–${scTerm})`
+    ? `${modeNameFor(mode, scRate)} (Yrs 1–${loiPh1Yrs}) → ${modeNameFor(mode2, loiPh2Rate)} (Yrs ${loiPh1Yrs+1}–${scTerm})`
     : (mode === 'io_deferred'
       ? `${ioRate}% IO + ${defRate}% Deferred Simple | ${ioRate + defRate}% total simple interest`
-      : modeNames[mode] || '');
+      : modeNameFor(mode, scRate));
   const sellerCarryHeader =
 `Seller Carryback Note: ${esc(D(carry))}
 ${rateOrNone}
