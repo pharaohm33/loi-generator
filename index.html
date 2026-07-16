@@ -2299,19 +2299,35 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
   const ph2Active = ph2Enabled && loiPh2 && loiPh2Yrs > 0;
   const deferredRate = g('sc_deferred_rate') / 100;
   const ph1CombinedRate = ph2Active && mode === 'io_deferred' ? scRate + deferredRate : scRate;
+
+  // Short mode label for Phase 2 rate — appended so seller immediately knows payment type
+  const ph2ModeShort = { principal_only:'principal-only', interest_only:'IO', pi:'P&I amortizing',
+    deferred_exit:'deferred-to-exit', deferred_then_pay:'deferred then IO', io_deferred:'IO + deferred' }[mode2] || '';
+
+  // Phase 1 rate label
   const ph1RateLabel = ph2Active && mode === 'io_deferred'
-    ? `${esc(P(scRate))} IO + ${esc(P(deferredRate))} Deferred (${esc(P(ph1CombinedRate))} combined)`
+    ? `${esc(P(scRate))} IO + ${esc(P(deferredRate))} Deferred = ${esc(P(ph1CombinedRate))} combined`
     : esc(P(scRate));
-  // Weighted-average rate across both phases (by years), shown only when Phase 1 combined ≠ Phase 2 rate
+  // Phase 2 rate label — always includes the payment mode short name
+  const ph2RateLabel = ph2Active
+    ? `${esc(P(loiPh2Rate))} ${esc(ph2ModeShort)}`
+    : '';
+
+  // Weighted-average rate across both phases (by years)
   const blendedRate = ph2Active
     ? (ph1CombinedRate * loiPh1Yrs + loiPh2Rate * loiPh2Yrs) / scTerm
     : ph1CombinedRate;
   const ratesMatch = ph2Active && Math.abs(ph1CombinedRate - loiPh2Rate) < 0.00001;
-  const blendedSuffix = ph2Active && !ratesMatch
-    ? ` | ${esc(P(blendedRate))} blended avg over term`
-    : (ratesMatch ? ` | consistent ${esc(P(ph1CombinedRate))} effective rate throughout` : '');
+  const blendedLine = ph2Active
+    ? (ratesMatch
+        ? `Effective Rate: consistent ${esc(P(ph1CombinedRate))} throughout the full ${scTerm}-year term`
+        : `Effective Rate: ${esc(P(blendedRate))} blended avg over full ${scTerm}-year term`)
+    : '';
+
   const rateOrNone = ph2Active
-    ? `Period 1 Rate: ${ph1RateLabel} | Period 2 Rate: ${esc(P(loiPh2Rate))}${blendedSuffix}`
+    ? `Period 1 (Yrs 1–${loiPh1Yrs}): ${ph1RateLabel}
+Period 2 (Yrs ${loiPh1Yrs+1}–${scTerm}): ${ph2RateLabel}
+${blendedLine}`
     : (zeroInterest ? 'Principal Only Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
   const ioRate  = g('sc_rate');
   const defRate = g('sc_deferred_rate');
