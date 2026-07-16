@@ -2297,11 +2297,21 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
 
   // ── Seller Carry Header ──
   const ph2Active = ph2Enabled && loiPh2 && loiPh2Yrs > 0;
+  const deferredRate = g('sc_deferred_rate') / 100;
+  const ph1CombinedRate = ph2Active && mode === 'io_deferred' ? scRate + deferredRate : scRate;
   const ph1RateLabel = ph2Active && mode === 'io_deferred'
-    ? `${esc(P(scRate))} IO + ${esc(P(g('sc_deferred_rate') / 100))} Deferred`
+    ? `${esc(P(scRate))} IO + ${esc(P(deferredRate))} Deferred (${esc(P(ph1CombinedRate))} combined)`
     : esc(P(scRate));
+  // Weighted-average rate across both phases (by years), shown only when Phase 1 combined ≠ Phase 2 rate
+  const blendedRate = ph2Active
+    ? (ph1CombinedRate * loiPh1Yrs + loiPh2Rate * loiPh2Yrs) / scTerm
+    : ph1CombinedRate;
+  const ratesMatch = ph2Active && Math.abs(ph1CombinedRate - loiPh2Rate) < 0.00001;
+  const blendedSuffix = ph2Active && !ratesMatch
+    ? ` | ${esc(P(blendedRate))} blended avg over term`
+    : (ratesMatch ? ` | consistent ${esc(P(ph1CombinedRate))} effective rate throughout` : '');
   const rateOrNone = ph2Active
-    ? `Period 1 Rate: ${ph1RateLabel} | Period 2 Rate: ${esc(P(loiPh2Rate))}`
+    ? `Period 1 Rate: ${ph1RateLabel} | Period 2 Rate: ${esc(P(loiPh2Rate))}${blendedSuffix}`
     : (zeroInterest ? 'Principal Only Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
   const ioRate  = g('sc_rate');
   const defRate = g('sc_deferred_rate');
