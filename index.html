@@ -2093,16 +2093,50 @@ function generateLOI() {
   const payMo    = months - deferMo;
   const deferred = carry * (scRate / 12) * deferMo;
 
+  // Detect: principal_only + zero interest rate + separate deferred simple rate set
+  // sc_deferred_rate is normally only for io_deferred; here we apply it explicitly for display + LOI math
+  const poDeferredRate = (mode === 'principal_only' && zeroInterest && !ph2Enabled)
+    ? (g('sc_deferred_rate') / 100) : 0;
+  let poAccruedDeferred = 0;
+  if (poDeferredRate > 0) {
+    let bal = carry;
+    for (let m = 0; m < months; m++) {
+      poAccruedDeferred += bal * poDeferredRate / 12;
+      bal = Math.max(bal - scMonthly, 0);
+    }
+  }
+  const poBalloon      = poDeferredRate > 0 ? (loiPh1.balAtEnd + poAccruedDeferred) : balloon;
+  const poReceipts     = poDeferredRate > 0 ? (cac + totalPmts + poBalloon) : totalReceipts;
+  const poFinIncome    = poReceipts - pp;
+
   let pmtBlock, narr;
 
   if (zeroInterest || mode === 'principal_only') {
-    pmtBlock =
+    pmtBlock = poDeferredRate > 0
+?`Monthly Principal-Reduction Payments:
+Months 1–${months}: ${esc(D(scMonthly))}/month
+Total Monthly Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
+Deferred Simple Interest at ${esc(P(poDeferredRate))} (accrues on declining balance):
+Accrued Interest Due at Balloon: Approximately ${esc(D(poAccruedDeferred))}
+Balloon Payment at Year ${scTerm}: Approximately ${esc(D(poBalloon))} (remaining principal + ${esc(D(poAccruedDeferred))} deferred interest)
+Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(poReceipts))}`
+:
 `Monthly Principal-Reduction Payments:
 Months 1–${months}: ${esc(D(scMonthly))}/month
 Total Monthly Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))}
 Total Seller Receipts Over ${scTerm} Years: ${zeroInterest ? '' : 'Approximately '}${esc(D(totalReceipts))}`;
-    narr = zeroInterest
+    narr = (zeroInterest && poDeferredRate > 0)
+      ? `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
+
+During the ${scTerm}-year term, buyer will make monthly principal-reduction payments of ${esc(D(scMonthly))}/month, totaling approximately ${esc(D(totalPmts))}. These payments reduce the seller carry balance.
+
+Separately, simple interest at ${esc(P(poDeferredRate))} accrues annually on the declining principal balance. This deferred interest is not paid monthly — it accumulates over the ${scTerm}-year term (approximately ${esc(D(poAccruedDeferred))} total) and is due in full at the balloon.
+
+At the end of year ${scTerm}, buyer will pay the remaining principal balance plus approximately ${esc(D(poAccruedDeferred))} in accrued deferred interest through a balloon payment of approximately ${esc(D(poBalloon))}.
+
+Total seller receipts are approximately ${esc(D(poReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(poFinIncome))} in seller financing income.`
+      : zeroInterest
       ? `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
 During the ${scTerm}-year term, buyer will make monthly principal-reduction payments totaling approximately ${esc(D(totalPmts))}. These payments reduce the seller carry balance.
@@ -2328,7 +2362,9 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
     ? `Period 1 (Yrs 1–${loiPh1Yrs}): ${ph1RateLabel}
 Period 2 (Yrs ${loiPh1Yrs+1}–${scTerm}): ${ph2RateLabel}
 ${blendedLine}`
-    : (zeroInterest ? 'Principal Only Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
+    : poDeferredRate > 0
+      ? `Principal Only + ${esc(P(poDeferredRate))} Deferred Simple Interest (accrues on declining balance → balloon)`
+      : (zeroInterest ? 'Principal Only Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
   const ioRate  = g('sc_rate');
   const defRate = g('sc_deferred_rate');
   const modeNames = { principal_only:'Deferred-Simple', interest_only:'Interest-Only', pi:'P&I Amortizing',
