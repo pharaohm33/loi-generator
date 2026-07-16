@@ -2364,7 +2364,7 @@ Period 2 (Yrs ${loiPh1Yrs+1}–${scTerm}): ${ph2RateLabel}
 ${blendedLine}`
     : poDeferredRate > 0
       ? `Principal Only + ${esc(P(poDeferredRate))} Deferred Simple Interest (accrues on declining balance → balloon)`
-      : (zeroInterest ? 'Principal Only Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
+      : (zeroInterest ? 'Principal Only — 0.00% Interest (Interest-Free Seller Carryback)' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
   const ioRate  = g('sc_rate');
   const defRate = g('sc_deferred_rate');
   const modeNames = { principal_only:'Deferred-Simple', interest_only:'Interest-Only', pi:'P&I Amortizing',
