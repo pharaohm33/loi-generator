@@ -1913,10 +1913,11 @@ function recalc() {
 
   // ── PROFORMA CASH FLOW DISPLAY ──
   const pfCFSection = document.getElementById('s-proforma-cf-section');
-  if (hasProforma) {
+  const hasCFStory = hasProforma || noiGrowthRate > 0 || (ph2Enabled && ph2Result);
+  if (hasCFStory) {
     pfCFSection.style.display = 'block';
     const stabYrs = stabMonths > 0 ? stabMonths / 12 : 0;
-    const pfNOIstab  = noiProforma; // NOI at full stabilization
+    const pfNOIstab  = hasProforma ? noiProforma : noiAn; // at stabilization or day-1 if no ramp
     const pfNOIballoon = pfNOIatYear(balloonYr);
     const pfNetCFstab  = pfNOIstab / 12 - totalDebtMo;
     const pfDSCRstab   = totalDebtMo > 0 ? pfNOIstab / (totalDebtMo * 12) : 0;
@@ -1933,26 +1934,38 @@ function recalc() {
     day1CFEl.style.color = day1CF >= 0 ? '#15803d' : '#dc2626';
     set('s-pf-day1-dscr', day1DSCR.toFixed(2) + 'x');
 
-    // ── SNAPSHOT 2: At Stabilization ──
-    // Which debt service applies at stabilization month?
-    const debtMoAtStab = srPmt + scMonthlyAtYear(stabYr);
-    const pfNetCFstabAdj = pfNOIstab / 12 - debtMoAtStab;
-    const pfDSCRstabAdj  = debtMoAtStab > 0 ? pfNOIstab / (debtMoAtStab * 12) : 0;
-    // Label shows which period debt service applies at stab
-    const stabPhaseNote = ph2Enabled && ph2Result
-      ? (stabYr > ph1Years ? '  (Period 2 pmts)' : '  (Period 1 pmts)')
-      : '';
-    set('s-pf-noi-stab',  fmd(pfNOIstab / 12) + '/mo  (' + fm(pfNOIstab) + '/yr)');
-    set('s-pf-debt-mo',   fmd(debtMoAtStab) + '/mo' + stabPhaseNote);
-    const pfCFEl = document.getElementById('s-pf-net-cf');
-    pfCFEl.textContent = fmd(pfNetCFstabAdj) + '/mo';
-    pfCFEl.style.color = pfNetCFstabAdj >= 0 ? '#15803d' : '#dc2626';
-    set('s-pf-dscr-stab', pfDSCRstabAdj.toFixed(2) + 'x');
-    // Update stab header label
-    const stabHeader = document.getElementById('s-pf-stab-header');
-    if (stabHeader) stabHeader.textContent = stabMonths > 0
-      ? `AT STABILIZATION (Mo ${stabMonths} / Yr ${stabYr.toFixed(1)})`
-      : 'AT STABILIZATION (immediate)';
+    // ── SNAPSHOT 2: At Stabilization (only when there's a proforma NOI ramp) ──
+    const stabSnapEl = document.getElementById('s-pf-stab-header') && document.getElementById('s-pf-stab-header').closest
+      ? document.getElementById('s-pf-stab-header').parentElement : null;
+    if (hasProforma) {
+      const debtMoAtStab = srPmt + scMonthlyAtYear(stabYr);
+      const pfNetCFstabAdj = pfNOIstab / 12 - debtMoAtStab;
+      const pfDSCRstabAdj  = debtMoAtStab > 0 ? pfNOIstab / (debtMoAtStab * 12) : 0;
+      const stabPhaseNote = ph2Enabled && ph2Result
+        ? (stabYr > ph1Years ? '  (Period 2 pmts)' : '  (Period 1 pmts)')
+        : '';
+      set('s-pf-noi-stab',  fmd(pfNOIstab / 12) + '/mo  (' + fm(pfNOIstab) + '/yr)');
+      set('s-pf-debt-mo',   fmd(debtMoAtStab) + '/mo' + stabPhaseNote);
+      const pfCFEl = document.getElementById('s-pf-net-cf');
+      pfCFEl.textContent = fmd(pfNetCFstabAdj) + '/mo';
+      pfCFEl.style.color = pfNetCFstabAdj >= 0 ? '#15803d' : '#dc2626';
+      set('s-pf-dscr-stab', pfDSCRstabAdj.toFixed(2) + 'x');
+      const stabHeader = document.getElementById('s-pf-stab-header');
+      if (stabHeader) stabHeader.textContent = stabMonths > 0
+        ? `AT STABILIZATION (Mo ${stabMonths} / Yr ${stabYr.toFixed(1)})`
+        : 'AT STABILIZATION (immediate)';
+      // show stab block rows
+      ['s-pf-stab-header','s-pf-noi-stab','s-pf-debt-mo','s-pf-net-cf','s-pf-dscr-stab'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { const row = el.closest('.sum-row') || el; row.style.display = ''; }
+      });
+    } else {
+      // Hide stab snapshot rows when no proforma NOI ramp
+      ['s-pf-stab-header','s-pf-noi-stab','s-pf-debt-mo','s-pf-net-cf','s-pf-dscr-stab'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { const row = el.closest('.sum-row') || el; row.style.display = 'none'; }
+      });
+    }
 
     // ── SNAPSHOT 3: Phase 2 Start ──
     const ph2Section = document.getElementById('s-pf-ph2-section');
@@ -2537,19 +2550,9 @@ AT PERIOD 2 START (Year ${bpPh1Yrs + 1} — seller payment ${scMonthly2 > scMont
   Net Cash Flow:            ${bpPh2CF >= 0 ? '+' : ''}${Dfmt(bpPh2CF)}/mo  (${bpPh2CF >= 0 ? 'positive ✓' : 'negative — building toward exit'})
   DSCR (all debt):          ${bpPh2DSCR.toFixed(2)}x` : '';
 
-  // Build proforma block (only if proforma NOI is set)
-  const pfBlock = hasProforma ? `
-══════════════════════════════════════
-EXIT PROFIT PROJECTION (Year ${balloonYr} — Balloon Due, Proforma NOI Path)
-══════════════════════════════════════
-CASH FLOW STORY:
-
-  DAY 1 (current NOI, Period 1 payments):
-  Current NOI:              ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)
-  Total Debt Service:       ${Dfmt(totalDebtMo)}/mo
-  Net Cash Flow:            ${noiMo - totalDebtMo >= 0 ? '+' : ''}${Dfmt(noiMo - totalDebtMo)}/mo  (${noiMo - totalDebtMo >= 0 ? 'cash flowing ✓' : 'negative — grows as NOI ramps'})
-  DSCR:                     ${totalDebtMo > 0 ? (noiAn / (totalDebtMo * 12)).toFixed(2) : '—'}x
-
+  // Build CF story / proforma block when there's anything to show
+  const hasCFStory = hasProforma || noiGrowthRate > 0 || (ph2Enabled && bpPh2);
+  const stabSection = hasProforma ? `
   NOI Ramp: ${stabMonths > 0
     ? `Linear ramp from ${D(noiAn)}/yr → ${D(pfNOIatStab)}/yr over ${stabMonths} months (${stabYrs.toFixed(1)} yrs)`
     : `Immediate jump to proforma ${D(pfNOIatStab)}/yr at acquisition`}
@@ -2557,21 +2560,25 @@ CASH FLOW STORY:
   ${noiGrowthRate > 0 ? `Post-Stabilization Growth: ${P(noiGrowthRate)}/yr` : ''}
 
 AT STABILIZATION${stabMonths > 0 ? ` (Month ${stabMonths} / Yr ${stabYrs.toFixed(1)})` : ' (immediate)'}${bpStabPhaseLabel}:
-  Proforma NOI:             ${D(pfNOIatStab)}/yr  (${Dfmt(pfNOIatStab/12)}/mo)
+  NOI:                      ${D(pfNOIatStab)}/yr  (${Dfmt(pfNOIatStab/12)}/mo)
   Total Debt Service:       ${Dfmt(bpDebtAtStab)}/mo${bpStabPhaseLabel}
   Net Cash Flow:            ${bpPfNetCFatStab >= 0 ? '+' : ''}${Dfmt(bpPfNetCFatStab)}/mo  (${bpPfNetCFatStab >= 0 ? 'positive ✓' : 'negative'})
   DSCR (all debt):          ${bpPfDSCRatStab.toFixed(2)}x${capRate > 0 ? `
-  Implied Value @ ${P(capRate)} cap:  ${D(pfNOIatStab/capRate)}  (vs. current ${D(impliedVal > 0 ? impliedVal : 0)})` : ''}
-${ph2SnapshotBlock}
-${noiGrowthRate > 0 || (ph2Enabled && bpPh2) ? `
-AT BALLOON (Year ${balloonYr}${ph2Enabled && bpPh2 ? ` — Period 2 payments in effect` : noiGrowthRate > 0 ? ` — after ${P(noiGrowthRate)}/yr growth post-stabilization` : ''}):
-  Proforma NOI:             ${D(pfNOIatBalloon)}/yr  (${Dfmt(pfNOIatBalloon/12)}/mo)
+  Implied Value @ ${P(capRate)} cap:  ${D(pfNOIatStab/capRate)}  (vs. current ${D(impliedVal > 0 ? impliedVal : 0)})` : ''}` : (noiGrowthRate > 0 ? `
+  NOI Growth: ${P(noiGrowthRate)}/yr compounding through balloon` : '');
+
+  const balloonSection = noiGrowthRate > 0 || (ph2Enabled && bpPh2) ? `
+
+AT BALLOON (Year ${balloonYr}${ph2Enabled && bpPh2 ? ` — Period 2 payments in effect` : noiGrowthRate > 0 ? ` — after ${P(noiGrowthRate)}/yr growth` : ''}):
+  NOI at Balloon:           ${D(pfNOIatBalloon)}/yr  (${Dfmt(pfNOIatBalloon/12)}/mo)
   Total Debt Service:       ${Dfmt(bpDebtAtBalloon)}/mo${ph2Enabled && bpPh2 ? '  (Period 2)' : ''}
   Net Cash Flow:            ${bpPfNetCFatBalloon >= 0 ? '+' : ''}${Dfmt(bpPfNetCFatBalloon)}/mo
   NOI Growth vs. Day-1:     +${D(pfNOIatBalloon - noiAn)}/yr  (+${pctOf(pfNOIatBalloon - noiAn, noiAn)})
   DSCR (all debt):          ${bpPfDSCRatBalloon.toFixed(2)}x${capRate > 0 ? `
-  Implied Value @ ${P(capRate)} cap:  ${D(pfNOIatBalloon/capRate)}` : ''}
-` : ''}
+  Implied Value @ ${P(capRate)} cap:  ${D(pfNOIatBalloon/capRate)}` : ''}` : '';
+
+  const exitSection = hasProforma ? `
+
 EXIT VALUE & PROCEEDS:
   ${capRate > 0
     ? `Proforma Implied Value @ ${P(capRate)} cap: ${D(pfImplied)}  (${D(pfNOIatBalloon)}/yr ÷ ${P(capRate)})`
@@ -2586,7 +2593,19 @@ EXIT VALUE & PROCEEDS:
 
   PROFORMA REFI EXIT:
   Net Cash-Out (excl. CF):  ${pfRefiNet >= 0 ? '+' : ''}${D(pfRefiNet)} (${pctOf(Math.abs(pfRefiNet), pp)} of purchase price)
-  Net Cash-Out (incl. CF):  ${pfRefiWithCF >= 0 ? '+' : ''}${D(pfRefiWithCF)} (${pctOf(Math.abs(pfRefiWithCF), pp)} of purchase price)
+  Net Cash-Out (incl. CF):  ${pfRefiWithCF >= 0 ? '+' : ''}${D(pfRefiWithCF)} (${pctOf(Math.abs(pfRefiWithCF), pp)} of purchase price)` : '';
+
+  const pfBlock = hasCFStory ? `
+══════════════════════════════════════
+EXIT PROFIT PROJECTION — CASH FLOW STORY (Year ${balloonYr} Balloon)
+══════════════════════════════════════
+  DAY 1 (current NOI, Period 1 payments):
+  Current NOI:              ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)
+  Total Debt Service:       ${Dfmt(totalDebtMo)}/mo
+  Net Cash Flow:            ${noiMo - totalDebtMo >= 0 ? '+' : ''}${Dfmt(noiMo - totalDebtMo)}/mo  (${noiMo - totalDebtMo >= 0 ? 'cash flowing ✓' : 'negative — see growth path below'})
+  DSCR:                     ${totalDebtMo > 0 ? (noiAn / (totalDebtMo * 12)).toFixed(2) : '—'}x
+${stabSection}
+${ph2SnapshotBlock}${balloonSection}${exitSection}
 ` : '';
 
   const disclaimerNOILine = hasProforma
