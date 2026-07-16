@@ -2297,8 +2297,11 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
 
   // ── Seller Carry Header ──
   const ph2Active = ph2Enabled && loiPh2 && loiPh2Yrs > 0;
+  const ph1RateLabel = ph2Active && mode === 'io_deferred'
+    ? `${esc(P(scRate))} IO + ${esc(P(g('sc_deferred_rate') / 100))} Deferred`
+    : esc(P(scRate));
   const rateOrNone = ph2Active
-    ? `Period 1 Rate: ${esc(P(scRate))} | Period 2 Rate: ${esc(P(loiPh2Rate))}`
+    ? `Period 1 Rate: ${ph1RateLabel} | Period 2 Rate: ${esc(P(loiPh2Rate))}`
     : (zeroInterest ? 'Principal Only Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
   const ioRate  = g('sc_rate');
   const defRate = g('sc_deferred_rate');
