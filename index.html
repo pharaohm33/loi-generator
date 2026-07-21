@@ -1765,7 +1765,8 @@ function recalc() {
   set('s-equity', fm(asIsVal - pp) + ' (' + fp((asIsVal - pp) / (pp || 1), 1) + ')');
 
   const constraintLabel = {'ltv':'LTV','ltc':'LTC','arv':'ARV%','dscr':'DSCR Cap'}[bindingConstraint] || 'LTV';
-  document.getElementById('s-sr-loan').innerHTML = fm(maxLoan) + ` <span class="constraint-badge ${bindingConstraint}">${constraintLabel}</span>`;
+  const actualLTVpct = asIsVal > 0 ? (maxLoan / asIsVal * 100).toFixed(1) + '%' : '';
+  document.getElementById('s-sr-loan').innerHTML = fm(maxLoan) + ` (${actualLTVpct}) <span class="constraint-badge ${bindingConstraint}">${constraintLabel}</span>`;
   set('s-carry2',  fm(carry)   + ' (' + fp(carry / (pp || 1), 1) + ')');
   set('s-cac2',    fm(cac)     + ' (' + fp(cac   / (pp || 1), 1) + ')');
   set('s-basis', fm(basis));
