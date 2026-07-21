@@ -676,7 +676,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         </div>
         <div class="field loi">
           <label><span class="loi-dot"></span> Term (Years) <span class="loi-tag">→ LOI</span></label>
-          <input type="number" id="sc_term" placeholder="17" min="1" max="50">
+          <input type="number" id="sc_term" placeholder="17" min="0.5" max="50" step="0.5">
         </div>
       </div>
       <div class="row cols-1">
@@ -1900,7 +1900,8 @@ function recalc() {
   const exitRefiCostPct = (g('exit_refi_costs') || 2.5) / 100;
   const exitRefiFeesFlat = g('exit_refi_fees') || 0;
   const exitReserveMo  = g('exit_reserve_mo') || 0;
-  const balloonYr = scTerm;
+  const balloonYr    = scTerm;
+  const balloonIntYr = Math.ceil(scTerm); // handles decimal terms like 5.5 → balloon row at yr 6
 
   // Compute year-by-year senior balance (standard amortization)
   function srBalAt(months) {
@@ -1909,13 +1910,19 @@ function recalc() {
     return maxLoan * (Math.pow(1+r, n) - Math.pow(1+r, months)) / (Math.pow(1+r, n) - 1);
   }
 
-  // Seller owed at year Y — phase-aware
+  // Seller owed at year Y — phase-aware, capped at scTerm (past balloon = 0)
   function sellerOwedAt(yr) {
-    if (!ph2Enabled || yr <= ph1Years) {
-      return sellerOwedAtPhase(carry, scRate, Math.min(yr, ph1Years), mode, ph1Extra);
+    const effectiveYr = Math.min(yr, scTerm); // past balloon the note is paid off
+    if (!ph2Enabled || effectiveYr <= ph1Years) {
+      return sellerOwedAtPhase(carry, scRate, Math.min(effectiveYr, ph1Years), mode, ph1Extra);
     }
-    // In phase 2: start from ph1EndBal, count years since phase 1 ended
-    return sellerOwedAtPhase(ph1EndBal, ph2Rate, yr - ph1Years, mode2, { ...ph2Extra, monthly: scMonthly2 });
+    return sellerOwedAtPhase(ph1EndBal, ph2Rate, effectiveYr - ph1Years, mode2, { ...ph2Extra, monthly: scMonthly2 });
+  }
+
+  // SC monthly payment at year Y — 0 after balloon
+  function scPmtAtYear(yr) {
+    if (yr > scTerm) return 0;
+    return scMonthlyAtYear(yr);
   }
 
   // ── CASH FLOW PROJECTION TABLE ──
@@ -1944,11 +1951,11 @@ function recalc() {
   const maxCFYr = Math.max(balloonYr + 3, 10);
   for (let yr = 1; yr <= maxCFYr; yr++) {
     const noiYr      = staticCF ? day1NOI : baseNOIatYear(yr);
-    const scMoYr     = scMonthlyAtYear(yr);
+    const scMoYr     = scPmtAtYear(yr);
     const debtSvcYr  = staticCF ? day1DebtSvc : (srPmt + scMoYr) * 12;
     const cfYr       = staticCF ? day1CFyr : (noiYr - debtSvcYr);
     const cfMo       = cfYr / 12;
-    const isBalloon  = yr === balloonYr;
+    const isBalloon  = yr === balloonIntYr;
     const cfr = document.createElement('tr');
     if (isBalloon) cfr.className = 'balloon-row';
     const cls = v => v >= 0 ? 'val-pos' : 'val-neg';
@@ -1985,8 +1992,8 @@ function recalc() {
 
     // Base CF accumulation — compounding or static (Day-1 × yrs) based on toggle
     const baseNOIyr  = baseNOIatYear(yr);
-    const scMoAtYr   = scMonthlyAtYear(yr);
-    const day1AnnualCF = baseNOIatYear(1) - (srPmt + scMonthlyAtYear(1)) * 12;
+    const scMoAtYr   = scPmtAtYear(yr); // 0 after balloon (handles decimal terms)
+    const day1AnnualCF = baseNOIatYear(1) - (srPmt + scPmtAtYear(1)) * 12;
     if (staticCF) {
       baseCumCF = day1AnnualCF * yr;
     } else {
@@ -2016,11 +2023,11 @@ function recalc() {
     const refiSurplus  = refiProc - srBal - sellerOwe;
     const saleCF     = saleSurplus + cumCF;
     const refiCF     = refiSurplus + cumCF;
-    const isBalloon  = yr === balloonYr;
+    const isBalloon  = yr === balloonIntYr;
 
     // Proforma path: NOI ramps to proforma, then grows; phase-aware SC payment
     const pfNOIyr    = pfNOIatYear(yr);
-    pfCumCF         += pfNOIyr - (srPmt + scMonthlyAtYear(yr)) * 12;
+    pfCumCF         += pfNOIyr - (srPmt + scPmtAtYear(yr)) * 12;
     // Proforma exit value: implied by cap rate (NOI / capRate) rather than raw appreciation
     const capRate    = g('cap_rate') / 100;
     const pfImplied  = hasProforma && capRate > 0 ? pfNOIyr / capRate : propVal;
