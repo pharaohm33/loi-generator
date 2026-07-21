@@ -570,7 +570,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="prefix-wrap"><span>$</span><input type="number" id="purchase_price" placeholder="0" step="1000"></div>
         </div>
         <div class="field loi">
-          <label><span class="loi-dot"></span> Cash at Closing <span class="loi-tag">→ LOI</span></label>
+          <label><span class="loi-dot"></span> Seller Cash at Closing <span class="loi-tag">→ LOI</span></label>
           <div class="prefix-wrap"><span>$</span><input type="number" id="cash_at_closing" placeholder="0" step="1000"></div>
         </div>
       </div>
@@ -978,7 +978,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         <div class="basics-val" id="s-pp">—</div>
       </div>
       <div class="basics-cell loi">
-        <div class="basics-lbl">Cash at Closing</div>
+        <div class="basics-lbl">Seller Cash at Closing</div>
         <div class="basics-val" id="s-cac">—</div>
       </div>
       <div class="basics-cell loi">
@@ -1126,7 +1126,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       Seller Total Receipts <span class="loi-tag">★ LOI</span>
     </div>
     <div class="sum-body">
-      <div class="sum-row loi-row"><span class="lbl">Cash at Closing</span><span class="val" id="s-r-cac">—</span></div>
+      <div class="sum-row loi-row"><span class="lbl">Seller Cash at Closing</span><span class="val" id="s-r-cac">—</span></div>
       <div class="sum-row loi-row"><span class="lbl" id="s-r-lbl2">Monthly Pmts Total</span><span class="val" id="s-r-pmts">—</span></div>
       <div class="sum-row loi-row"><span class="lbl">Balloon Payment</span><span class="val" id="s-r-balloon">—</span></div>
     </div>
@@ -2560,7 +2560,7 @@ Property: ${esc(addr)}${units ? ' - ' + units + ' Units' : ''}
 Purchase Price: ${esc(D(pp))}
 
 ${H('SELLER RECEIVES:')}
-Cash at Closing: ${esc(D(cac))}
+Seller Cash at Closing: ${esc(D(cac))}
 ${sellerCarryHeader}
 
 ${H('SELLER CARRY NOTE:')}
