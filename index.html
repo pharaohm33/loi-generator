@@ -1134,6 +1134,28 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     <div class="sum-total"><span>Total Receipts</span><span id="s-r-total">—</span></div>
   </div>
 
+  <!-- CASH FLOW PROJECTION -->
+  <div class="sum-card">
+    <div class="sum-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Cash Flow Projection</span>
+      <span id="cf-proj-growth-label" style="font-size:11px;font-weight:600;color:#6b7280;letter-spacing:.04em"></span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="exit-table">
+        <thead>
+          <tr>
+            <th>Year</th>
+            <th>NOI</th>
+            <th>Debt Svc</th>
+            <th>CF/mo</th>
+            <th>CF/yr</th>
+          </tr>
+        </thead>
+        <tbody id="cf-proj-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- EXIT ANALYSIS -->
   <div class="sum-card">
     <div class="sum-title">Exit Analysis @ <span id="s-appr-pct">3</span>% Appreciation</div>
@@ -1881,6 +1903,46 @@ function recalc() {
     }
     // In phase 2: start from ph1EndBal, count years since phase 1 ended
     return sellerOwedAtPhase(ph1EndBal, ph2Rate, yr - ph1Years, mode2, { ...ph2Extra, monthly: scMonthly2 });
+  }
+
+  // ── CASH FLOW PROJECTION TABLE ──
+  const cfTbody = document.getElementById('cf-proj-tbody');
+  cfTbody.innerHTML = '';
+  const growthLabel = document.getElementById('cf-proj-growth-label');
+  growthLabel.textContent = noiGrowthRate > 0 ? noiGrowthRate * 100 + '%/yr NOI growth' : '';
+
+  // Day 1 row
+  const day1Row = document.createElement('tr');
+  day1Row.style.fontWeight = '600';
+  day1Row.innerHTML = `
+    <td>Day 1</td>
+    <td style="color:#9ca3af">—</td>
+    <td style="color:#9ca3af">—</td>
+    <td style="color:#9ca3af">—</td>
+    <td class="val-pos">+${fm(cashTobuyer)} cash</td>
+  `;
+  cfTbody.appendChild(day1Row);
+
+  const maxCFYr = Math.max(balloonYr + 3, 10);
+  for (let yr = 1; yr <= maxCFYr; yr++) {
+    const noiYr      = baseNOIatYear(yr);
+    const scMoYr     = scMonthlyAtYear(yr);
+    const debtSvcYr  = (srPmt + scMoYr) * 12;
+    const cfYr       = noiYr - debtSvcYr;
+    const cfMo       = cfYr / 12;
+    const isBalloon  = yr === balloonYr;
+    const cfr = document.createElement('tr');
+    if (isBalloon) cfr.className = 'balloon-row';
+    const cls = v => v >= 0 ? 'val-pos' : 'val-neg';
+    const sgn = v => v > 0 ? '+' : '';
+    cfr.innerHTML = `
+      <td>${isBalloon ? `Yr ${yr} ★` : `Yr ${yr}`}</td>
+      <td>${fm(noiYr)}</td>
+      <td>${fm(debtSvcYr)}</td>
+      <td class="${cls(cfMo)}">${sgn(cfMo)}${fmd(cfMo)}</td>
+      <td class="${cls(cfYr)}">${sgn(cfYr)}${fm(cfYr)}</td>
+    `;
+    cfTbody.appendChild(cfr);
   }
 
   const maxYr = Math.max(balloonYr + 3, 10);
