@@ -48,7 +48,8 @@ body {
 .constraint-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; margin-left: 6px; }
 .constraint-badge.ltv { background: #eff6ff; color: #1d4ed8; }
 .constraint-badge.ltc { background: #fef9c3; color: #854d0e; }
-.constraint-badge.arv { background: #f0fdf4; color: #166534; }
+.constraint-badge.arv  { background: #f0fdf4; color: #166534; }
+.constraint-badge.dscr { background: #fdf4ff; color: #7e22ce; }
 
 /* Share toast */
 .share-toast {
@@ -1215,6 +1216,8 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <th>Prop Value</th>
             <th>Seller Owed</th>
             <th>Cum CF</th>
+            <th>Breakeven Price</th>
+            <th>Exit Cap Rate</th>
             <th>Sale (no CF)</th>
             <th>Sale + CF</th>
             <th>Refi (no CF)</th>
@@ -1595,17 +1598,17 @@ function recalc() {
   const stabMonths      = g('stabilization_months');
   const hasProforma     = noiProforma > 0;
 
-  // Base NOI at year Y (current NOI growing at noi_growth%/yr)
+  // Base NOI at year Y: Year 1 = current NOI (no growth), growth compounds from Year 2 onward
   function baseNOIatYear(yr) {
-    return noiAn * Math.pow(1 + noiGrowthRate, yr);
+    return noiAn * Math.pow(1 + noiGrowthRate, Math.max(yr - 1, 0));
   }
-  // Proforma NOI at year Y: linear ramp to proforma, then grow at noi_growth%/yr
+  // Proforma NOI at year Y: linear ramp to proforma, then grow at noi_growth%/yr (same base-year convention)
   function pfNOIatYear(yr) {
     if (!hasProforma) return baseNOIatYear(yr);
     const stabYrs = stabMonths > 0 ? stabMonths / 12 : 0;
-    if (stabYrs <= 0 || yr <= 0) return noiProforma * Math.pow(1 + noiGrowthRate, yr);
+    if (stabYrs <= 0 || yr <= 0) return noiProforma * Math.pow(1 + noiGrowthRate, Math.max(yr - 1, 0));
     if (yr <= stabYrs) return noiAn + (noiProforma - noiAn) * (yr / stabYrs);
-    return noiProforma * Math.pow(1 + noiGrowthRate, yr - stabYrs);
+    return noiProforma * Math.pow(1 + noiGrowthRate, Math.max(yr - stabYrs - 1, 0));
   }
 
   const srRate = g('sr_rate') / 100;
@@ -1621,9 +1624,18 @@ function recalc() {
     if (!isFinite(maxLoan)) maxLoan = 0;
     bindingConstraint = maxLoan === byLTV ? 'ltv' : maxLoan === byLTC ? 'ltc' : 'arv';
   } else {
-    // DSCR: lend on as-is value LTV
-    maxLoan = asIsVal * srLTV;
-    bindingConstraint = 'ltv';
+    // DSCR: cap by LTV AND by DSCR minimum requirement
+    const byLTV  = srLTV > 0 ? asIsVal * srLTV : Infinity;
+    const dscrReq = g('sr_dscr') || 0;
+    let byDSCR = Infinity;
+    if (dscrReq > 0 && srRate > 0 && g('sr_amort') > 0) {
+      // Max loan where NOI / (monthly_pmt * 12) >= dscrReq
+      // monthly_pmt = L * r/12 / (1-(1+r/12)^-n)  →  L = (NOI/12/dscrReq) * (1-(1+r/12)^-n) / (r/12)
+      const mo = srRate / 12, n = g('sr_amort') * 12;
+      byDSCR = (noiAn / 12 / dscrReq) * (1 - Math.pow(1 + mo, -n)) / mo;
+    }
+    maxLoan = Math.min(byLTV, byDSCR);
+    bindingConstraint = maxLoan === byDSCR && byDSCR < byLTV ? 'dscr' : 'ltv';
   }
   if (!isFinite(maxLoan) || isNaN(maxLoan)) maxLoan = 0;
   const srPmt = pmtPI(srRate, g('sr_amort'), maxLoan);
@@ -1718,7 +1730,7 @@ function recalc() {
   set('s-arv', arvRaw > 0 ? fm(arv) + ' (ARV)' : fm(asIsVal) + ' (as-is)');
   set('s-equity', fm(asIsVal - pp) + ' (' + fp((asIsVal - pp) / (pp || 1), 1) + ')');
 
-  const constraintLabel = {'ltv':'LTV','ltc':'LTC','arv':'ARV%'}[bindingConstraint];
+  const constraintLabel = {'ltv':'LTV','ltc':'LTC','arv':'ARV%','dscr':'DSCR Cap'}[bindingConstraint] || 'LTV';
   document.getElementById('s-sr-loan').innerHTML = fm(maxLoan) + ` <span class="constraint-badge ${bindingConstraint}">${constraintLabel}</span>`;
   set('s-carry2',  fm(carry)   + ' (' + fp(carry / (pp || 1), 1) + ')');
   set('s-cac2',    fm(cac)     + ' (' + fp(cac   / (pp || 1), 1) + ')');
@@ -1975,11 +1987,15 @@ function recalc() {
       ? `<td class="${cls(pfSaleWithCF)}" style="background:#f0fdf4">${sgn(pfSaleWithCF)}${fm(pfSaleWithCF)}</td>`
       : '';
 
+    const breakevenPrice = saleClosingPct < 1 ? (srBal + sellerOwe) / (1 - saleClosingPct) : 0;
+    const exitCapRate = propVal > 0 ? baseNOIatYear(yr) / propVal : 0;
     tr.innerHTML = `
       <td>${yrLabel}</td>
       <td>${fm(propVal)}</td>
       <td>${fm(sellerOwe)}</td>
       <td class="${cls(cumCF)}">${sgn(cumCF)}${fm(cumCF)}</td>
+      <td style="color:#6b7280">${fm(breakevenPrice)}</td>
+      <td style="color:#6b7280">${(exitCapRate*100).toFixed(2)}%</td>
       <td class="${cls(saleSurplus)}">${sgn(saleSurplus)}${fm(saleSurplus)}</td>
       <td class="${cls(saleCF)}">${sgn(saleCF)}${fm(saleCF)}</td>
       <td class="${cls(refiSurplus)}">${sgn(refiSurplus)}${fm(refiSurplus)}</td>
@@ -2624,8 +2640,16 @@ function generateBuyerPresentation() {
     if (!isFinite(maxLoan)) maxLoan = 0;
     bindingConstraint = maxLoan === byLTV ? 'LTV (As-Is)' : maxLoan === byLTC ? 'LTC' : 'ARV %';
   } else {
-    maxLoan = asIsVal * srLTV;
-    bindingConstraint = 'LTV (As-Is)';
+    const byLTV2 = srLTV > 0 ? asIsVal * srLTV : Infinity;
+    const dscrReq2 = g('sr_dscr') || 0;
+    let byDSCR2 = Infinity;
+    if (dscrReq2 > 0 && srRate > 0 && g('sr_amort') > 0) {
+      const mo2 = srRate / 12, n2 = g('sr_amort') * 12;
+      byDSCR2 = (noiAn / 12 / dscrReq2) * (1 - Math.pow(1 + mo2, -n2)) / mo2;
+    }
+    maxLoan = Math.min(byLTV2, byDSCR2);
+    if (!isFinite(maxLoan)) maxLoan = 0;
+    bindingConstraint = (byDSCR2 < byLTV2) ? 'DSCR Cap' : 'LTV (As-Is)';
   }
   const srPmt = pmtPI(srRate, g('sr_amort'), maxLoan);
   const actualLTV = asIsVal > 0 ? maxLoan / asIsVal : 0;
