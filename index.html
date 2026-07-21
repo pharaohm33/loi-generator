@@ -3080,6 +3080,7 @@ const FIELDS = [
   'ph1_years','ph2_rate','ph2_monthly_principal','ph2_sc_amort_yrs','ph2_defer_months','ph2_deferred_rate',
   'esc1_pct','esc2_pct','acq_pct','broker_pct','emd',
   'taf_pct','buyer_cash','park_escrow','rehab_oop',
+  'exit_type','exit_sale_costs','exit_refi_ltv','exit_refi_rate','exit_dscr_req','exit_amort','exit_refi_costs','exit_refi_fees','exit_reserve_mo',
   'ac_name','ac_phone','ac_email1','ac_email2','buyer_company'
 ];
 
@@ -3118,6 +3119,7 @@ function loadFromURL() {
   if (p.has('loan_type')) setLoanType(p.get('loan_type'));
   if (p.has('ph2_enabled') && p.get('ph2_enabled') === '1') { if (!ph2Enabled) togglePh2(); }
   if (p.has('mode2')) setMode2(p.get('mode2'));
+  if (p.has('exit_type')) onExitTypeChange();
 }
 
 document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', recalc));
