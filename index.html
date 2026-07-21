@@ -857,6 +857,63 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     </div>
   </div>
 
+  <!-- EXIT STRATEGY -->
+  <div class="card">
+    <div class="card-title">G) Exit Strategy</div>
+    <div class="card-body">
+      <div class="row cols-3">
+        <div class="field">
+          <label>Exit Type</label>
+          <select id="exit_type" onchange="onExitTypeChange()">
+            <option value="sale" selected>Sale</option>
+            <option value="refi">Refinance</option>
+          </select>
+        </div>
+        <div class="field" id="exit-sale-costs-field">
+          <label>Sale Costs %</label>
+          <div class="suffix-wrap"><input type="number" id="exit_sale_costs" placeholder="6" step="0.25"><span>%</span></div>
+        </div>
+        <div class="field" id="exit-refi-ltv-field" style="display:none;">
+          <label>Exit Refi LTV %</label>
+          <div class="suffix-wrap"><input type="number" id="exit_refi_ltv" placeholder="75" step="1"><span>%</span></div>
+        </div>
+      </div>
+      <div id="exit-refi-fields" style="display:none;">
+        <div class="row cols-3">
+          <div class="field">
+            <label>Exit Refi Rate %</label>
+            <div class="suffix-wrap"><input type="number" id="exit_refi_rate" placeholder="7.5" step="0.125"><span>%</span></div>
+          </div>
+          <div class="field">
+            <label>Exit DSCR Req</label>
+            <input type="number" id="exit_dscr_req" placeholder="1.25" step="0.05">
+          </div>
+          <div class="field">
+            <label>Exit Amort (Years)</label>
+            <input type="number" id="exit_amort" placeholder="30" step="1">
+          </div>
+        </div>
+        <details style="margin-top:6px;">
+          <summary style="font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;letter-spacing:.04em;padding:2px 0;">∨ Exit Costs Detail</summary>
+          <div class="row cols-3" style="margin-top:8px;">
+            <div class="field">
+              <label>Exit Refi Costs %</label>
+              <div class="suffix-wrap"><input type="number" id="exit_refi_costs" placeholder="2.5" step="0.25"><span>%</span></div>
+            </div>
+            <div class="field">
+              <label>Exit Refi Fees $</label>
+              <div class="prefix-wrap"><span>$</span><input type="number" id="exit_refi_fees" placeholder="15000"></div>
+            </div>
+            <div class="field">
+              <label>Exit Reserve Mo</label>
+              <input type="number" id="exit_reserve_mo" placeholder="6" step="1">
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
   <!-- ACQUISITION CORRESPONDENT -->
   <div class="card">
     <div class="card-title">Acquisition Correspondent</div>
@@ -1384,17 +1441,35 @@ function adminTemplate() {
     sr_amort:    30,
     sr_term:     360,
     sr_points:   2,
-    broker_pct:  0,
+    broker_pct:       0,
+    exit_type:        'sale',
+    exit_sale_costs:  6,
+    exit_refi_ltv:    75,
+    exit_refi_rate:   7.5,
+    exit_dscr_req:    1.25,
+    exit_amort:       30,
+    exit_refi_costs:  2.5,
+    exit_refi_fees:   15000,
+    exit_reserve_mo:  6,
   };
   Object.entries(vals).forEach(([id, val]) => {
     const el = document.getElementById(id);
     if (el) el.value = val;
   });
+  onExitTypeChange();
   recalc();
   // Flash the button
   const btn = document.querySelector('.btn-admin');
   btn.textContent = '✓ Template Applied!';
   setTimeout(() => btn.textContent = '★ Admin Template', 1800);
+}
+
+function onExitTypeChange() {
+  const isSale = (document.getElementById('exit_type').value || 'sale') === 'sale';
+  document.getElementById('exit-sale-costs-field').style.display  = isSale ? '' : 'none';
+  document.getElementById('exit-refi-ltv-field').style.display    = isSale ? 'none' : '';
+  document.getElementById('exit-refi-fields').style.display       = isSale ? 'none' : '';
+  recalc();
 }
 
 const g = id => parseFloat(document.getElementById(id).value) || 0;
@@ -1768,8 +1843,16 @@ function recalc() {
   set('s-appr-pct', g('appreciation'));
 
   // ── PAYDOWN GRID ──
-  const refiLTV = srLTV;
-  const saleClosingPct = 0.08; // ~8% realtor + closing
+  const exitType = (document.getElementById('exit_type') || {}).value || 'sale';
+  const isSaleExit = exitType === 'sale';
+  const saleClosingPct = (g('exit_sale_costs') || 6) / 100;
+  const refiLTV = isSaleExit ? (g('sr_ltv') / 100 || 0.75) : ((g('exit_refi_ltv') || 75) / 100);
+  const exitRefiRate   = (g('exit_refi_rate') || 7.5) / 100;
+  const exitDSCR       = g('exit_dscr_req') || 1.25;
+  const exitAmortYrs   = g('exit_amort') || 30;
+  const exitRefiCostPct = (g('exit_refi_costs') || 2.5) / 100;
+  const exitRefiFeesFlat = g('exit_refi_fees') || 0;
+  const exitReserveMo  = g('exit_reserve_mo') || 0;
   const balloonYr = scTerm;
 
   // Compute year-by-year senior balance (standard amortization)
@@ -1814,9 +1897,25 @@ function recalc() {
     baseCumCF       += baseNOIyr - (srPmt + scMoAtYr) * 12;
     const cumCF      = baseCumCF;
 
-    const salePct    = propVal * (1 - saleClosingPct);
+    const salePct      = propVal * (1 - saleClosingPct);
     const saleSurplus  = salePct - srBal - sellerOwe;
-    const refiProc   = propVal * refiLTV;
+
+    // Refi proceeds: when exit type is refi, constrain by DSCR and deduct refi costs
+    function refiProceeds(val, noi) {
+      const ltvProc = val * refiLTV;
+      if (!isSaleExit && exitRefiRate > 0 && exitAmortYrs > 0) {
+        const mo = exitRefiRate / 12;
+        const n  = exitAmortYrs * 12;
+        const pmt = ltvProc * mo / (1 - Math.pow(1 + mo, -n));
+        const dscrMaxLoan = noi / exitDSCR / 12 / mo * (1 - Math.pow(1 + mo, -n));
+        const maxProc = Math.min(ltvProc, dscrMaxLoan);
+        const costs = maxProc * exitRefiCostPct + exitRefiFeesFlat + exitReserveMo * (noi / 12);
+        return maxProc - costs;
+      }
+      return ltvProc;
+    }
+
+    const refiProc     = refiProceeds(propVal, baseNOIyr);
     const refiSurplus  = refiProc - srBal - sellerOwe;
     const saleCF     = saleSurplus + cumCF;
     const refiCF     = refiSurplus + cumCF;
@@ -1829,7 +1928,7 @@ function recalc() {
     const capRate    = g('cap_rate') / 100;
     const pfImplied  = hasProforma && capRate > 0 ? pfNOIyr / capRate : propVal;
     const pfSale     = pfImplied * (1 - saleClosingPct) - srBal - sellerOwe;
-    const pfRefi     = pfImplied * refiLTV - srBal - sellerOwe;
+    const pfRefi     = refiProceeds(pfImplied, pfNOIyr) - srBal - sellerOwe;
     const pfSaleWithCF = pfSale + pfCumCF;
     const pfRefiWithCF = pfRefi + pfCumCF;
 
