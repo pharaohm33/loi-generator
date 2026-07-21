@@ -431,6 +431,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   <h1>Suede Buffalo LLC — Seller Carryback Calculator</h1>
   <p>Acquisition &amp; LOI Generator</p>
   <button class="btn-admin" onclick="adminTemplate()">★ Admin Template</button>
+  <button class="btn-admin" id="btn-static-cf" onclick="toggleStaticCF()" style="background:#e0e7ff;color:#3730a3;border-color:#c7d2fe;" title="When ON: CF projection uses Day-1 CF × years (no NOI growth). When OFF: CF compounds at your NOI growth % each year.">📊 Static CF: OFF</button>
   <button class="btn-share" onclick="shareCalc()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
@@ -1301,6 +1302,17 @@ input:focus, select:focus { border-color: #111; background: #fff; }
 let mode = 'principal_only';
 let mode2 = 'interest_only';
 let loanType = 'dscr';
+let staticCF = false;
+
+function toggleStaticCF() {
+  staticCF = !staticCF;
+  const btn = document.getElementById('btn-static-cf');
+  btn.textContent = staticCF ? '📊 Static CF: ON' : '📊 Static CF: OFF';
+  btn.style.background  = staticCF ? '#3730a3' : '#e0e7ff';
+  btn.style.color       = staticCF ? '#fff'     : '#3730a3';
+  btn.style.borderColor = staticCF ? '#3730a3'  : '#c7d2fe';
+  recalc();
+}
 let ph2Enabled = false;
 let _exitCache = {}; // populated by recalc, consumed by generateBuyerPresentation
 
@@ -1909,8 +1921,6 @@ function recalc() {
   const cfTbody = document.getElementById('cf-proj-tbody');
   cfTbody.innerHTML = '';
   const growthLabel = document.getElementById('cf-proj-growth-label');
-  growthLabel.textContent = noiGrowthRate > 0 ? noiGrowthRate * 100 + '%/yr NOI growth' : '';
-
   // Day 1 row
   const day1Row = document.createElement('tr');
   day1Row.style.fontWeight = '600';
@@ -1923,12 +1933,19 @@ function recalc() {
   `;
   cfTbody.appendChild(day1Row);
 
+  const day1NOI = baseNOIatYear(1);
+  const day1DebtSvc = (srPmt + scMonthlyAtYear(1)) * 12;
+  const day1CFyr = day1NOI - day1DebtSvc;
+  growthLabel.textContent = staticCF
+    ? 'Static CF (Day-1 × yrs)'
+    : (noiGrowthRate > 0 ? noiGrowthRate * 100 + '%/yr NOI growth' : '');
+
   const maxCFYr = Math.max(balloonYr + 3, 10);
   for (let yr = 1; yr <= maxCFYr; yr++) {
-    const noiYr      = baseNOIatYear(yr);
+    const noiYr      = staticCF ? day1NOI : baseNOIatYear(yr);
     const scMoYr     = scMonthlyAtYear(yr);
-    const debtSvcYr  = (srPmt + scMoYr) * 12;
-    const cfYr       = noiYr - debtSvcYr;
+    const debtSvcYr  = staticCF ? day1DebtSvc : (srPmt + scMoYr) * 12;
+    const cfYr       = staticCF ? day1CFyr : (noiYr - debtSvcYr);
     const cfMo       = cfYr / 12;
     const isBalloon  = yr === balloonYr;
     const cfr = document.createElement('tr');
@@ -1965,10 +1982,15 @@ function recalc() {
     const srBal      = srBalAt(yr * 12);
     const sellerOwe  = sellerOwedAt(yr);
 
-    // Base CF: current NOI growing at noi_growth%/yr; SC payment switches at phase boundary
+    // Base CF accumulation — compounding or static (Day-1 × yrs) based on toggle
     const baseNOIyr  = baseNOIatYear(yr);
     const scMoAtYr   = scMonthlyAtYear(yr);
-    baseCumCF       += baseNOIyr - (srPmt + scMoAtYr) * 12;
+    const day1AnnualCF = baseNOIatYear(1) - (srPmt + scMonthlyAtYear(1)) * 12;
+    if (staticCF) {
+      baseCumCF = day1AnnualCF * yr;
+    } else {
+      baseCumCF += baseNOIyr - (srPmt + scMoAtYr) * 12;
+    }
     const cumCF      = baseCumCF;
 
     const salePct      = propVal * (1 - saleClosingPct);
