@@ -2400,20 +2400,31 @@ At the end of year ${scTerm}, buyer will pay the remaining principal balance thr
 Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
 
   } else if (mode === 'deferred_exit') {
-    pmtBlock =
-`Deferred-To-Exit (no monthly payments):
-Months 1–${months}: $0/month
-All interest accrues at ${esc(P(scRate))} simple interest on full principal balance
-Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))} (principal + all accrued interest)
+    if (zeroInterest) {
+      pmtBlock =
+`Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))}
 Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
-    narr =
+      narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
-No monthly payments are made during the ${scTerm}-year term. Interest accrues at ${esc(P(scRate))} simple interest annually on the full outstanding principal balance of ${esc(D(carry))}.
+At the end of year ${scTerm}, buyer will pay the remaining principal balance through a balloon payment of approximately ${esc(D(balloon))}.
+
+Total seller receipts are ${esc(D(totalReceipts))}.`;
+    } else {
+      pmtBlock =
+`No monthly payments — all principal + interest deferred to balloon
+Interest accrues at ${esc(P(scRate))} simple interest on the full ${esc(D(carry))} balance
+Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))} (principal + accrued interest)
+Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+      narr =
+`The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
+
+No monthly payments are made during the ${scTerm}-year term. Interest accrues at ${esc(P(scRate))} simple interest annually on the full outstanding principal balance of ${esc(D(carry))}, totaling approximately ${esc(D(finIncome))} in deferred interest.
 
 At the end of year ${scTerm}, buyer will pay all principal plus all accrued interest through a single balloon payment of approximately ${esc(D(balloon))}.
 
-Total seller receipts are ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
+Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
+    }
 
   } else if (mode === 'deferred_then_pay') {
     pmtBlock =
