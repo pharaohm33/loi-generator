@@ -1253,10 +1253,48 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     </div>
   </div>
 
+  <!-- SUBJECT TO FIELDS (collapsed card) -->
+  <div class="card" id="sub-to-card" style="border:2px solid #7c3aed;">
+    <div class="card-title" style="color:#7c3aed;">Subject To — Existing Mortgage Info <span style="font-size:12px;font-weight:400;color:#888;">(leave blank = TBD)</span></div>
+    <div class="row cols-2">
+      <div class="field loi">
+        <label><span class="loi-dot"></span> Existing Mortgage Balance</label>
+        <div class="prefix-wrap"><span>$</span><input type="number" id="sub_mortgage_balance" placeholder="TBD" step="1000"></div>
+      </div>
+      <div class="field loi">
+        <label><span class="loi-dot"></span> Existing Interest Rate (%)</label>
+        <input type="number" id="sub_mortgage_rate" placeholder="TBD" step="0.125" min="0" max="30">
+      </div>
+    </div>
+    <div class="row cols-2">
+      <div class="field loi">
+        <label><span class="loi-dot"></span> Monthly Payment (P&amp;I)</label>
+        <div class="prefix-wrap"><span>$</span><input type="number" id="sub_mortgage_pmt" placeholder="TBD" step="100"></div>
+      </div>
+      <div class="field loi">
+        <label><span class="loi-dot"></span> Loan Servicer Name</label>
+        <input type="text" id="sub_servicer" placeholder="TBD">
+      </div>
+    </div>
+  </div>
+
   <!-- GENERATE BUTTONS -->
   <div style="display:flex; gap:10px;">
-    <button class="btn-generate" onclick="generateLOI()" style="flex:1">Create LOI →</button>
+    <button class="btn-generate" onclick="showLOIModal()" style="flex:1">Create LOI →</button>
     <button class="btn-generate" onclick="generateBuyerPresentation()" style="flex:1; background:#1d4ed8;">Buyer Presentation →</button>
+  </div>
+
+  <!-- LOI TYPE MODAL -->
+  <div id="loi-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:14px;padding:32px 28px;max-width:420px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,0.25);text-align:center;">
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Select LOI Type</div>
+      <div style="font-size:14px;color:#666;margin-bottom:24px;">Choose the type of Letter of Intent to generate.</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <button onclick="closeLOIModal();generateLOI();" style="padding:14px 20px;background:#111;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">Seller Carryback LOI</button>
+        <button onclick="closeLOIModal();generateSubjectToLOI();" style="padding:14px 20px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">Subject To LOI</button>
+        <button onclick="closeLOIModal();" style="padding:10px 20px;background:#f3f4f6;color:#555;border:none;border-radius:8px;font-size:14px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
   </div>
 
   <!-- LOI OUTPUT -->
@@ -2703,6 +2741,118 @@ ${bottomBlock}`;
   setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
 }
 
+function showLOIModal() {
+  const overlay = document.getElementById('loi-modal-overlay');
+  overlay.style.display = 'flex';
+}
+function closeLOIModal() {
+  document.getElementById('loi-modal-overlay').style.display = 'none';
+}
+// Close modal on overlay click
+document.addEventListener('click', function(e) {
+  const overlay = document.getElementById('loi-modal-overlay');
+  if (e.target === overlay) closeLOIModal();
+});
+
+function generateSubjectToLOI() {
+  const D = v => '$' + Math.round(v).toLocaleString();
+  const esc = t => (t || '').toString().trim();
+
+  const addr     = s('address') || '[Property Address]';
+  const units    = Math.round(g('units')) || 0;
+  const pp       = g('purchase_price');
+  const cac      = g('cash_at_closing');
+  const acName   = s('ac_name') || '[Buyer Name]';
+  const acPhone  = s('ac_phone') || '';
+  const acEmail1 = s('ac_email1') || '';
+  const acEmail2 = s('ac_email2') || '';
+  const bCo      = s('buyer_company') || '';
+
+  const rawBal  = g('sub_mortgage_balance');
+  const rawRate = g('sub_mortgage_rate');
+  const rawPmt  = g('sub_mortgage_pmt');
+  const rawSvc  = s('sub_servicer');
+
+  const mortgageBal  = rawBal  > 0 ? D(rawBal)                          : 'TBD';
+  const mortgageRate = rawRate > 0 ? rawRate.toFixed(3) + '%'            : 'TBD';
+  const mortgagePmt  = rawPmt  > 0 ? D(rawPmt) + '/month'               : 'TBD';
+  const servicer     = rawSvc        ? esc(rawSvc)                       : 'TBD';
+
+  const todayStr = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+
+  const H = t => `\n${'═'.repeat(60)}\n${t}\n${'═'.repeat(60)}`;
+
+  const unitLine = units > 0 ? ` (${units}-unit)` : '';
+  const ppLine   = pp > 0 ? `Total Agreed Purchase Price: ${D(pp)}` : '';
+  const cacLine  = cac > 0 ? `Cash to Seller at Closing: ${D(cac)}` : '';
+
+  const contactBlock = [acPhone, acEmail1, acEmail2].filter(Boolean).join(' | ');
+
+  const loiHtml = `
+NON-EXCLUSIVE LETTER OF INTENT — SUBJECT TO EXISTING FINANCING
+${todayStr}
+
+PROPERTY: ${esc(addr)}${unitLine}
+BUYER: ${esc(acName)}${bCo ? ' / ' + esc(bCo) : ''}
+${contactBlock ? 'CONTACT: ' + contactBlock : ''}
+${H('SUBJECT TO PURCHASE — SUMMARY OF TERMS')}
+${ppLine}
+${cacLine}
+EXISTING MORTGAGE BALANCE (at closing): ${mortgageBal}
+EXISTING INTEREST RATE: ${mortgageRate}
+EXISTING MONTHLY PAYMENT (P&I): ${mortgagePmt}
+LOAN SERVICER: ${servicer}
+${H('METHOD OF ACQUISITION:')}
+Buyer proposes to acquire the above-referenced property by taking title SUBJECT TO the existing mortgage currently encumbering the property. The existing financing shall remain in place in the name of the seller. Buyer shall assume responsibility for making all future mortgage payments on the seller's behalf, without formally assuming the loan.
+
+Buyer will coordinate with an established, licensed third-party loan servicing company to act as an independent mediator and payment facilitator between buyer and seller. The loan servicer will collect payments from buyer and disburse them directly to the existing lender ahead of the monthly due date each month, providing seller with confirmation of each payment.
+${H('EXISTING MORTGAGE DETAILS:')}
+Outstanding Balance at Closing: ${mortgageBal}
+Interest Rate: ${mortgageRate}
+Current Monthly Payment (P&I): ${mortgagePmt}
+Loan Servicer (3rd Party): ${servicer}
+
+All terms above are based on information provided by seller. Buyer will verify final loan details during due diligence. If any information is currently unknown, it will be confirmed and updated in the final Purchase and Sale Agreement.
+${H('LOAN SERVICER — SELLER PROTECTION:')}
+To protect seller's credit and ensure timely payment of the existing mortgage:
+
+1. A licensed, independent loan servicing company will be engaged to collect buyer's monthly payment and forward it to the lender ahead of the payment due date each month.
+
+2. Seller will receive written confirmation (email or portal access) from the servicer each month confirming payment was sent to the lender.
+
+3. Buyer agrees to fund payments to the servicer a minimum of 5 business days before the lender's due date, ensuring no late payments occur.
+
+4. In the event of any payment disruption, the servicer is authorized to notify seller immediately so seller may take corrective action to protect their credit.
+${H('SELLER PROTECTION — CREDIT AND EQUITY:')}
+Seller's mortgage obligation and credit are protected through the following mechanisms:
+
+• Third-party servicer provides payment transparency and on-time disbursement to lender.
+• Buyer will execute a memorandum of agreement recorded against the title, documenting the subject-to arrangement and buyer's obligations.
+• Buyer agrees seller retains an equitable interest in the property as security until the existing mortgage is paid off, refinanced, or the property is sold.
+• All property taxes and insurance will be maintained current by buyer. Evidence of insurance naming seller as additional insured will be provided at closing and renewed annually.
+• Seller may request servicer payment statements at any time.
+${H('DUE DILIGENCE & CLOSING:')}
+Closing: Within 45–60 days of signed Purchase and Sale Agreement.
+Due diligence period: Buyer requests a reasonable inspection and review period.
+Buyer contingency: Subject to final verification of existing loan terms, payoff statement, and title review.
+${H('GENERAL TERMS:')}
+This letter is non-binding and represents a good-faith summary of proposed terms. Neither party is obligated to proceed until a final Purchase and Sale Agreement is executed by both parties.
+
+Buyer reserves the right to modify or withdraw this LOI prior to execution of a binding agreement.
+
+Respectfully submitted,
+
+${esc(acName)}${bCo ? '\n' + esc(bCo) : ''}
+${contactBlock}
+`;
+
+  const loiEl = document.getElementById('loi-text');
+  loiEl.innerHTML = loiHtml.replace(/\n/g, '<br>');
+  const sec = document.getElementById('loi-section');
+  sec.classList.add('visible');
+  setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
 function generateBuyerPresentation() {
   const D = v => '$' + Math.round(v).toLocaleString();
   const Dfmt = v => '$' + (+v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -3099,7 +3249,8 @@ const FIELDS = [
   'esc1_pct','esc2_pct','acq_pct','broker_pct','emd',
   'taf_pct','buyer_cash','park_escrow','rehab_oop',
   'exit_type','exit_sale_costs','exit_refi_ltv','exit_refi_rate','exit_dscr_req','exit_amort','exit_refi_costs','exit_refi_fees','exit_reserve_mo',
-  'ac_name','ac_phone','ac_email1','ac_email2','buyer_company'
+  'ac_name','ac_phone','ac_email1','ac_email2','buyer_company',
+  'sub_mortgage_balance','sub_mortgage_rate','sub_mortgage_pmt','sub_servicer'
 ];
 
 function shareCalc() {
