@@ -2327,7 +2327,7 @@ function getAgentFeeLine(pp) {
   const D = v => '$' + Math.round(v).toLocaleString();
   if (feeType === 'pct') {
     const feeDollar = pp > 0 ? ` (${D(pp * feeVal / 100)})` : '';
-    return `Buyer agrees to pay the seller's agent/realtor a fee of ${feeVal}%${feeDollar} of the purchase price. This fee is paid by the buyer and is in addition to and separate from the cash paid to seller at closing — it does not reduce seller proceeds in any way.`;
+    return `Buyer agrees to pay the seller's agent/realtor a fee of ${feeVal}%${feeDollar} of the listed price. This fee is paid by the buyer and is in addition to and separate from the cash paid to seller at closing — it does not reduce seller proceeds in any way.`;
   } else {
     return `Buyer agrees to pay the seller's agent/realtor a fee of ${D(feeVal)}. This fee is paid by the buyer and is in addition to and separate from the cash paid to seller at closing — it does not reduce seller proceeds in any way.`;
   }
@@ -2813,10 +2813,10 @@ function generateSubjectToLOI() {
   const rawPmt  = g('sub_mortgage_pmt');
   const rawSvc  = s('sub_servicer');
 
-  const mortgageBal  = rawBal  > 0 ? D(rawBal)                : 'TBD';
-  const mortgageRate = rawRate > 0 ? rawRate.toFixed(3) + '%' : 'TBD';
-  const mortgagePmt  = rawPmt  > 0 ? D(rawPmt) + '/month'     : 'TBD';
-  const servicer     = rawSvc       ? esc(rawSvc)              : 'TBD';
+  const mortgageBal  = rawBal  > 0 ? D(rawBal) + ' to be confirmed' : 'TBD';
+  const mortgageRate = rawRate > 0 ? rawRate.toFixed(3) + '%'        : 'TBD';
+  const mortgagePmt  = rawPmt  > 0 ? D(rawPmt) + '/month'            : 'TBD';
+  const servicer     = rawSvc       ? esc(rawSvc)                     : 'TBD';
 
   // Auto-fill cash to seller: use Subject To override if set, else fall back to main calc field
   const subCacRaw = g('sub_cash_to_seller') > 0 ? g('sub_cash_to_seller') : g('cash_at_closing');
@@ -2854,8 +2854,7 @@ Contact:
 
 ${H('Buyer:')}
 ${esc(buyerCo)}`
-    : `────────────────────────────────────────────────
-
+    : `
 ${H('Non-Circumvent')}
 
 The Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.
@@ -2893,14 +2892,14 @@ Contact:
 ${todayStr}
 
 PROPERTY: ${esc(addr)}${unitLine}
-BUYER: ${esc(acName)}${buyerCo ? ' / ' + esc(buyerCo) : ''}
+BUYER: ${buyerCo ? esc(buyerCo) : esc(acName)} and/or assigns
 
 ${H('SUBJECT TO PURCHASE — SUMMARY OF TERMS')}
 
 ${ppLine}${cacLine}${agentLine}EXISTING MORTGAGE BALANCE (at closing): ${mortgageBal}
 EXISTING INTEREST RATE: ${mortgageRate}
 EXISTING MONTHLY PAYMENT (P&I): ${mortgagePmt}
-LOAN SERVICER: ${servicer}
+EXISTING LOAN SERVICER: ${servicer}
 
 ${H('METHOD OF PURCHASE:')}
 Buyer proposes to acquire the above-referenced property by taking title SUBJECT TO the existing mortgage currently encumbering the property. The existing financing shall remain in place in the name of the seller. Buyer shall assume responsibility for making all future mortgage payments on the seller's behalf, without formally assuming the loan.
@@ -2939,6 +2938,7 @@ ${H('DUE DILIGENCE & CLOSING:')}
 Closing: Within 30 days of signed Purchase and Sale Agreement.
 Due diligence period: Buyer requests a reasonable inspection and review period.
 Buyer contingency: Subject to final verification of existing loan terms, payoff statement, and title review.
+Buyer to pay all closing costs.
 
 ${H('GENERAL TERMS:')}
 This letter is non-binding and represents a good-faith summary of proposed terms. Neither party is obligated to proceed until a final Purchase and Sale Agreement is executed by both parties.
