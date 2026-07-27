@@ -951,7 +951,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       </div>
       <div class="row cols-2" style="margin-top:6px;">
         <div class="field loi">
-          <label><span class="loi-dot"></span> Agent Fee (paid by buyer) <span class="loi-tag">→ LOI</span></label>
+          <label><span class="loi-dot"></span> Seller's Agent Fee (paid by buyer) <span class="loi-tag">→ LOI</span></label>
           <div style="display:flex;gap:6px;align-items:center;">
             <button id="btn-fee-type-pct" onclick="setAgentFeeType('pct')" style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">%</button>
             <button id="btn-fee-type-flat" onclick="setAgentFeeType('flat')" style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">$</button>
@@ -2329,9 +2329,9 @@ function getAgentFeeLine(pp) {
   const D = v => '$' + Math.round(v).toLocaleString();
   if (feeType === 'pct') {
     const feeDollar = pp > 0 ? ` (${D(pp * feeVal / 100)})` : '';
-    return `Buyer agrees to pay an acquisition fee of ${feeVal}%${feeDollar} of the purchase price to the Acquisition Correspondent, in addition to and separate from the cash paid to seller at closing. This fee is paid by the buyer and does not reduce seller proceeds.`;
+    return `Buyer agrees to pay the seller's agent/realtor a fee of ${feeVal}%${feeDollar} of the purchase price. This fee is paid by the buyer and is in addition to and separate from the cash paid to seller at closing — it does not reduce seller proceeds in any way.`;
   } else {
-    return `Buyer agrees to pay an acquisition fee of ${D(feeVal)} to the Acquisition Correspondent, in addition to and separate from the cash paid to seller at closing. This fee is paid by the buyer and does not reduce seller proceeds.`;
+    return `Buyer agrees to pay the seller's agent/realtor a fee of ${D(feeVal)}. This fee is paid by the buyer and is in addition to and separate from the cash paid to seller at closing — it does not reduce seller proceeds in any way.`;
   }
 }
 
