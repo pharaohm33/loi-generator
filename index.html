@@ -949,6 +949,20 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <input type="text" id="buyer_company" placeholder="Leave blank for Non-Exclusive LOI">
         </div>
       </div>
+      <div class="row cols-2" style="margin-top:6px;">
+        <div class="field loi">
+          <label><span class="loi-dot"></span> Agent Fee (paid by buyer) <span class="loi-tag">→ LOI</span></label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button id="btn-fee-type-pct" onclick="setAgentFeeType('pct')" style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">%</button>
+            <button id="btn-fee-type-flat" onclick="setAgentFeeType('flat')" style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">$</button>
+            <input type="number" id="loi_agent_fee" placeholder="Leave blank to omit" step="0.25" min="0" style="flex:1;">
+            <input type="hidden" id="loi_agent_fee_type" value="pct">
+          </div>
+        </div>
+        <div class="field" style="align-self:flex-end;">
+          <label style="font-size:11px;color:#888;">Leave blank to omit from LOI. % = of purchase price, $ = flat amount.</label>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1258,6 +1272,11 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     <div class="card-title" style="color:#7c3aed;">Subject To — Existing Mortgage Info <span style="font-size:12px;font-weight:400;color:#888;">(leave blank = TBD)</span></div>
     <div class="row cols-2">
       <div class="field loi">
+        <label><span class="loi-dot"></span> Cash to Seller at Closing <span class="loi-tag">→ LOI</span></label>
+        <div class="prefix-wrap"><span>$</span><input type="number" id="sub_cash_to_seller" placeholder="auto from calculator" step="1000" oninput="recalc()"></div>
+        <div style="font-size:10px;color:#888;margin-top:2px;">Auto-filled from "Seller Cash at Closing" above. Override here if different.</div>
+      </div>
+      <div class="field loi">
         <label><span class="loi-dot"></span> Existing Mortgage Balance</label>
         <div class="prefix-wrap"><span>$</span><input type="number" id="sub_mortgage_balance" placeholder="TBD" step="1000"></div>
       </div>
@@ -1341,6 +1360,14 @@ let mode = 'principal_only';
 let mode2 = 'interest_only';
 let loanType = 'dscr';
 let staticCF = false;
+
+function setAgentFeeType(type) {
+  document.getElementById('loi_agent_fee_type').value = type;
+  document.getElementById('btn-fee-type-pct').style.background  = type === 'pct'  ? '#111' : '#f9fafb';
+  document.getElementById('btn-fee-type-pct').style.color        = type === 'pct'  ? '#fff' : '#555';
+  document.getElementById('btn-fee-type-flat').style.background  = type === 'flat' ? '#111' : '#f9fafb';
+  document.getElementById('btn-fee-type-flat').style.color       = type === 'flat' ? '#fff' : '#555';
+}
 
 function toggleStaticCF() {
   staticCF = !staticCF;
@@ -2295,6 +2322,19 @@ function recalc() {
   refiEl.style.color = refiWithCF >= 0 ? '#15803d' : '#dc2626';
 }
 
+function getAgentFeeLine(pp) {
+  const feeVal  = g('loi_agent_fee');
+  if (!feeVal || feeVal <= 0) return '';
+  const feeType = document.getElementById('loi_agent_fee_type').value || 'pct';
+  const D = v => '$' + Math.round(v).toLocaleString();
+  if (feeType === 'pct') {
+    const feeDollar = pp > 0 ? ` (${D(pp * feeVal / 100)})` : '';
+    return `Buyer agrees to pay an acquisition fee of ${feeVal}%${feeDollar} of the purchase price to the Acquisition Correspondent, in addition to and separate from the cash paid to seller at closing. This fee is paid by the buyer and does not reduce seller proceeds.`;
+  } else {
+    return `Buyer agrees to pay an acquisition fee of ${D(feeVal)} to the Acquisition Correspondent, in addition to and separate from the cash paid to seller at closing. This fee is paid by the buyer and does not reduce seller proceeds.`;
+  }
+}
+
 function generateLOI() {
   const pp   = g('purchase_price'), cac = g('cash_at_closing');
   const carry = pp - cac;
@@ -2719,6 +2759,7 @@ Purchase Price: ${esc(D(pp))}
 ${H('SELLER RECEIVES:')}
 Seller Cash at Closing: ${esc(D(cac))}
 ${sellerCarryHeader}
+${getAgentFeeLine(pp) ? '\n' + getAgentFeeLine(pp) : ''}
 
 ${H('SELLER CARRY NOTE:')}
 ${pmtBlock}
@@ -2779,13 +2820,18 @@ function generateSubjectToLOI() {
   const mortgagePmt  = rawPmt  > 0 ? D(rawPmt) + '/month'     : 'TBD';
   const servicer     = rawSvc       ? esc(rawSvc)              : 'TBD';
 
+  // Auto-fill cash to seller: use Subject To override if set, else fall back to main calc field
+  const subCacRaw = g('sub_cash_to_seller') > 0 ? g('sub_cash_to_seller') : g('cash_at_closing');
+  const subCac    = subCacRaw > 0 ? subCacRaw : 0;
+
   const todayStr = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   const H = txt => `<strong>${esc(txt)}</strong>`;
 
   const title    = hasBuyer ? 'LOI' : 'Non-Exclusive LOI';
   const unitLine = units > 0 ? ` (${units}-unit)` : '';
-  const ppLine   = pp  > 0 ? `Total Agreed Purchase Price: ${D(pp)}\n` : '';
-  const cacLine  = cac > 0 ? `Cash to Seller at Closing: ${D(cac)}\n`  : '';
+  const ppLine   = pp     > 0 ? `Total Agreed Purchase Price: ${D(pp)}\n`      : '';
+  const cacLine  = subCac > 0 ? `Cash to Seller at Closing: ${D(subCac)}\n`   : '';
+  const agentLine = getAgentFeeLine(pp) ? getAgentFeeLine(pp) + '\n' : '';
 
   const subtoBottomBlock = hasBuyer
     ? `Seller Signature
@@ -2853,7 +2899,7 @@ BUYER: ${esc(acName)}${buyerCo ? ' / ' + esc(buyerCo) : ''}
 
 ${H('SUBJECT TO PURCHASE — SUMMARY OF TERMS')}
 
-${ppLine}${cacLine}EXISTING MORTGAGE BALANCE (at closing): ${mortgageBal}
+${ppLine}${cacLine}${agentLine}EXISTING MORTGAGE BALANCE (at closing): ${mortgageBal}
 EXISTING INTEREST RATE: ${mortgageRate}
 EXISTING MONTHLY PAYMENT (P&I): ${mortgagePmt}
 LOAN SERVICER: ${servicer}
@@ -3311,7 +3357,8 @@ const FIELDS = [
   'taf_pct','buyer_cash','park_escrow','rehab_oop',
   'exit_type','exit_sale_costs','exit_refi_ltv','exit_refi_rate','exit_dscr_req','exit_amort','exit_refi_costs','exit_refi_fees','exit_reserve_mo',
   'ac_name','ac_phone','ac_email1','ac_email2','buyer_company',
-  'sub_mortgage_balance','sub_mortgage_rate','sub_mortgage_pmt','sub_servicer'
+  'sub_mortgage_balance','sub_mortgage_rate','sub_mortgage_pmt','sub_servicer','sub_cash_to_seller',
+  'loi_agent_fee','loi_agent_fee_type'
 ];
 
 function shareCalc() {
@@ -3350,6 +3397,7 @@ function loadFromURL() {
   if (p.has('ph2_enabled') && p.get('ph2_enabled') === '1') { if (!ph2Enabled) togglePh2(); }
   if (p.has('mode2')) setMode2(p.get('mode2'));
   if (p.has('exit_type')) onExitTypeChange();
+  if (p.has('loi_agent_fee_type')) setAgentFeeType(p.get('loi_agent_fee_type'));
 }
 
 document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', recalc));
