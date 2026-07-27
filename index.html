@@ -2755,57 +2755,114 @@ document.addEventListener('click', function(e) {
 });
 
 function generateSubjectToLOI() {
-  const D = v => '$' + Math.round(v).toLocaleString();
+  const D   = v => '$' + Math.round(v).toLocaleString();
   const esc = t => (t || '').toString().trim();
 
   const addr     = s('address') || '[Property Address]';
   const units    = Math.round(g('units')) || 0;
   const pp       = g('purchase_price');
   const cac      = g('cash_at_closing');
-  const acName   = s('ac_name') || '[Buyer Name]';
-  const acPhone  = s('ac_phone') || '';
+  const acName   = s('ac_name')   || '[Buyer Name]';
+  const acPhone  = s('ac_phone')  || '';
   const acEmail1 = s('ac_email1') || '';
   const acEmail2 = s('ac_email2') || '';
-  const bCo      = s('buyer_company') || '';
+  const buyerCo  = s('buyer_company') || '';
+  const hasBuyer = buyerCo.trim().length > 0;
 
   const rawBal  = g('sub_mortgage_balance');
   const rawRate = g('sub_mortgage_rate');
   const rawPmt  = g('sub_mortgage_pmt');
   const rawSvc  = s('sub_servicer');
 
-  const mortgageBal  = rawBal  > 0 ? D(rawBal)                          : 'TBD';
-  const mortgageRate = rawRate > 0 ? rawRate.toFixed(3) + '%'            : 'TBD';
-  const mortgagePmt  = rawPmt  > 0 ? D(rawPmt) + '/month'               : 'TBD';
-  const servicer     = rawSvc        ? esc(rawSvc)                       : 'TBD';
+  const mortgageBal  = rawBal  > 0 ? D(rawBal)                : 'TBD';
+  const mortgageRate = rawRate > 0 ? rawRate.toFixed(3) + '%' : 'TBD';
+  const mortgagePmt  = rawPmt  > 0 ? D(rawPmt) + '/month'     : 'TBD';
+  const servicer     = rawSvc       ? esc(rawSvc)              : 'TBD';
 
   const todayStr = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const H = txt => `<strong>${esc(txt)}</strong>`;
 
-  const H = t => `\n${'═'.repeat(60)}\n${t}\n${'═'.repeat(60)}`;
-
+  const title    = hasBuyer ? 'LOI' : 'Non-Exclusive LOI';
   const unitLine = units > 0 ? ` (${units}-unit)` : '';
-  const ppLine   = pp > 0 ? `Total Agreed Purchase Price: ${D(pp)}` : '';
-  const cacLine  = cac > 0 ? `Cash to Seller at Closing: ${D(cac)}` : '';
+  const ppLine   = pp  > 0 ? `Total Agreed Purchase Price: ${D(pp)}\n` : '';
+  const cacLine  = cac > 0 ? `Cash to Seller at Closing: ${D(cac)}\n`  : '';
 
-  const contactBlock = [acPhone, acEmail1, acEmail2].filter(Boolean).join(' | ');
+  const subtoBottomBlock = hasBuyer
+    ? `Seller Signature
 
-  const loiHtml = `
-NON-EXCLUSIVE LETTER OF INTENT — SUBJECT TO EXISTING FINANCING
+________________________________________
+Seller Name (Print)
+
+________________________________________
+Date
+
+________________________________________
+
+
+${H('Acquisition Correspondent:')}
+${esc(acName)}
+Contact:
+        Email:
+            ${esc(acEmail1)}
+            ${esc(acEmail2)}
+        Phone:
+            ${esc(acPhone)}
+
+${H('Buyer:')}
+${esc(buyerCo)}`
+    : `────────────────────────────────────────────────
+
+${H('Non-Circumvent')}
+
+The Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.
+
+Circumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.
+
+The Acquisition Correspondent's fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing. If it becomes apparent that the Acquisition Correspondent is not on track to be paid before closing, it is the Acquisition Correspondent's duty to disclose this to Seller, and Seller's duty to respond to such communication in a timely manner.
+
+${H('Non-Exclusive Nature:')}
+Seller may entertain other offers until final purchase and sales agreement is in place with end buyer. At point of signing purchase and sales agreement, seller may not entertain other offers and honor the closing timeline set in purchase and sales agreement.
+
+
+Seller Signature
+
+________________________________________
+Seller Name (Print)
+
+________________________________________
+Date
+
+________________________________________
+
+
+${H('Acquisition Correspondent:')}
+${esc(acName)}
+Contact:
+        Email:
+            ${esc(acEmail1)}
+            ${esc(acEmail2)}
+        Phone:
+            ${esc(acPhone)}`;
+
+  const loiHtml =
+`${H(title + ' — SUBJECT TO EXISTING FINANCING')}
 ${todayStr}
 
 PROPERTY: ${esc(addr)}${unitLine}
-BUYER: ${esc(acName)}${bCo ? ' / ' + esc(bCo) : ''}
-${contactBlock ? 'CONTACT: ' + contactBlock : ''}
+BUYER: ${esc(acName)}${buyerCo ? ' / ' + esc(buyerCo) : ''}
+
 ${H('SUBJECT TO PURCHASE — SUMMARY OF TERMS')}
-${ppLine}
-${cacLine}
-EXISTING MORTGAGE BALANCE (at closing): ${mortgageBal}
+
+${ppLine}${cacLine}EXISTING MORTGAGE BALANCE (at closing): ${mortgageBal}
 EXISTING INTEREST RATE: ${mortgageRate}
 EXISTING MONTHLY PAYMENT (P&I): ${mortgagePmt}
 LOAN SERVICER: ${servicer}
-${H('METHOD OF ACQUISITION:')}
+
+${H('METHOD OF PURCHASE:')}
 Buyer proposes to acquire the above-referenced property by taking title SUBJECT TO the existing mortgage currently encumbering the property. The existing financing shall remain in place in the name of the seller. Buyer shall assume responsibility for making all future mortgage payments on the seller's behalf, without formally assuming the loan.
 
 Buyer will coordinate with an established, licensed third-party loan servicing company to act as an independent mediator and payment facilitator between buyer and seller. The loan servicer will collect payments from buyer and disburse them directly to the existing lender ahead of the monthly due date each month, providing seller with confirmation of each payment.
+
 ${H('EXISTING MORTGAGE DETAILS:')}
 Outstanding Balance at Closing: ${mortgageBal}
 Interest Rate: ${mortgageRate}
@@ -2813,6 +2870,7 @@ Current Monthly Payment (P&I): ${mortgagePmt}
 Loan Servicer (3rd Party): ${servicer}
 
 All terms above are based on information provided by seller. Buyer will verify final loan details during due diligence. If any information is currently unknown, it will be confirmed and updated in the final Purchase and Sale Agreement.
+
 ${H('LOAN SERVICER — SELLER PROTECTION:')}
 To protect seller's credit and ensure timely payment of the existing mortgage:
 
@@ -2822,7 +2880,8 @@ To protect seller's credit and ensure timely payment of the existing mortgage:
 
 3. Buyer agrees to fund payments to the servicer a minimum of 5 business days before the lender's due date, ensuring no late payments occur.
 
-4. In the event of any payment disruption, the servicer is authorized to notify seller immediately so seller may take corrective action to protect their credit.
+4. In the event of any payment disruption, the servicer is authorized to notify seller immediately so seller may take corrective action to protect their credit and the seller has the right to re-gain ownership of the property without the need for foreclosure by means of a separate document such as but not limited to a quitclaim deed, entity operating agreement, or other related document.
+
 ${H('SELLER PROTECTION — CREDIT AND EQUITY:')}
 Seller's mortgage obligation and credit are protected through the following mechanisms:
 
@@ -2831,10 +2890,12 @@ Seller's mortgage obligation and credit are protected through the following mech
 • Buyer agrees seller retains an equitable interest in the property as security until the existing mortgage is paid off, refinanced, or the property is sold.
 • All property taxes and insurance will be maintained current by buyer. Evidence of insurance naming seller as additional insured will be provided at closing and renewed annually.
 • Seller may request servicer payment statements at any time.
+
 ${H('DUE DILIGENCE & CLOSING:')}
-Closing: Within 45–60 days of signed Purchase and Sale Agreement.
+Closing: Within 30 days of signed Purchase and Sale Agreement.
 Due diligence period: Buyer requests a reasonable inspection and review period.
 Buyer contingency: Subject to final verification of existing loan terms, payoff statement, and title review.
+
 ${H('GENERAL TERMS:')}
 This letter is non-binding and represents a good-faith summary of proposed terms. Neither party is obligated to proceed until a final Purchase and Sale Agreement is executed by both parties.
 
@@ -2842,9 +2903,9 @@ Buyer reserves the right to modify or withdraw this LOI prior to execution of a 
 
 Respectfully submitted,
 
-${esc(acName)}${bCo ? '\n' + esc(bCo) : ''}
-${contactBlock}
-`;
+${esc(acName)}${buyerCo ? '\n' + esc(buyerCo) : ''}
+
+${subtoBottomBlock}`;
 
   const loiEl = document.getElementById('loi-text');
   loiEl.innerHTML = loiHtml.replace(/\n/g, '<br>');
