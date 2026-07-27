@@ -826,6 +826,18 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="prefix-wrap"><span>$</span><input type="number" id="emd" placeholder="0"></div>
         </div>
       </div>
+      <div class="row cols-2">
+        <div class="field loi">
+          <label><span class="loi-dot"></span> Seller's Agent Fee (paid by buyer) <span class="loi-tag">→ LOI</span></label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button id="btn-fee-type-pct" onclick="setAgentFeeType('pct')" style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">%</button>
+            <button id="btn-fee-type-flat" onclick="setAgentFeeType('flat')" style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">$</button>
+            <input type="number" id="loi_agent_fee" placeholder="Leave blank to omit" step="0.25" min="0" style="flex:1;">
+            <input type="hidden" id="loi_agent_fee_type" value="pct">
+          </div>
+          <div style="font-size:10px;color:#888;margin-top:2px;">Leave blank to omit from LOI. % = of purchase price, $ = flat amount.</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -947,20 +959,6 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <span style="font-size:10px;background:#dbeafe;color:#1e40af;padding:2px 7px;border-radius:4px;border:1px solid #bfdbfe;font-weight:700">fills LOI heading &amp; removes non-circumvent</span>
           </label>
           <input type="text" id="buyer_company" placeholder="Leave blank for Non-Exclusive LOI">
-        </div>
-      </div>
-      <div class="row cols-2" style="margin-top:6px;">
-        <div class="field loi">
-          <label><span class="loi-dot"></span> Seller's Agent Fee (paid by buyer) <span class="loi-tag">→ LOI</span></label>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <button id="btn-fee-type-pct" onclick="setAgentFeeType('pct')" style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">%</button>
-            <button id="btn-fee-type-flat" onclick="setAgentFeeType('flat')" style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">$</button>
-            <input type="number" id="loi_agent_fee" placeholder="Leave blank to omit" step="0.25" min="0" style="flex:1;">
-            <input type="hidden" id="loi_agent_fee_type" value="pct">
-          </div>
-        </div>
-        <div class="field" style="align-self:flex-end;">
-          <label style="font-size:11px;color:#888;">Leave blank to omit from LOI. % = of purchase price, $ = flat amount.</label>
         </div>
       </div>
     </div>
