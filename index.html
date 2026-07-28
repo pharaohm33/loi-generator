@@ -3001,14 +3001,14 @@ function generateHybridSubToLOI() {
   const agentLine = getAgentFeeLine(pp) ? getAgentFeeLine(pp) + '\n' : '';
 
   const zeroEquityRate = equityRate === 0;
-  const equityRateDesc = zeroEquityRate ? '0% — principal only' : `${equityRate}% simple interest`;
-  // Summary line: "Seller Equity Note (Balloon): $X — 0% principal only, due Year 5"
+  const equityRateDesc = zeroEquityRate ? 'Principal only' : `${equityRate}% simple interest`;
+  // Summary line: "Seller Equity Note (Balloon): $X — Principal only, due Year 5"
   const equityNoteSummary = equityNote > 0
     ? `Seller Equity Note (Balloon): ${D(equityNote)} — ${equityRateDesc}, due Year ${balloonYrs || 'TBD'}`
     : `Seller Equity Note (Balloon): TBD — due Year ${balloonYrs || 'TBD'}`;
   // Structure overview prose per branch
   const equityNoteOverviewLine = zeroEquityRate
-    ? `The remaining equity of ${equityNote > 0 ? D(equityNote) : 'TBD'} is structured as a 0% seller-held equity note. No interest accrues and no monthly payments are required — the full principal balance of ${equityNote > 0 ? D(equityNote) : 'TBD'} is due in a single balloon payment at the end of Year ${balloonYrs || 'TBD'}.`
+    ? `The remaining equity of ${equityNote > 0 ? D(equityNote) : 'TBD'} is structured as a principal-only seller-held equity note. No interest accrues and no monthly payments are required — the full principal balance of ${equityNote > 0 ? D(equityNote) : 'TBD'} is due in a single balloon payment at the end of Year ${balloonYrs || 'TBD'}.`
     : `The remaining equity of ${equityNote > 0 ? D(equityNote) : 'TBD'} is structured as a seller-held equity note at ${equityRate}% simple interest, with the full remaining balance due in a balloon payment at the end of Year ${balloonYrs || 'TBD'}. No monthly payments are required on the equity note — the balloon satisfies the obligation in full.`;
   const ppLine    = pp          > 0 ? `Total Agreed Purchase Price: ${D(pp)}\n`         : '';
   const downLine  = downPayment > 0 ? `Cash to Seller at Closing: ${D(downPayment)}\n`  : '';
@@ -3098,7 +3098,7 @@ All terms above are based on information provided by seller. Buyer will verify f
 
 ${H('SELLER EQUITY NOTE DETAILS:')}
 Principal Amount: ${equityNote > 0 ? D(equityNote) : 'TBD'}
-Interest Rate: ${equityRateDesc}
+Interest Rate: ${zeroEquityRate ? 'Principal only' : equityRateDesc}
 Monthly Payments: None — balloon payment only
 Balloon Due: Year ${balloonYrs || 'TBD'} from closing
 Balloon Amount: Approximately ${equityNote > 0 ? D(equityNote) : 'TBD'}${zeroEquityRate ? '' : ' plus any accrued interest'}
