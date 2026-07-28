@@ -1309,6 +1309,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div style="display:flex;flex-direction:column;gap:12px;">
         <button onclick="closeLOIModal();generateLOI();" style="padding:14px 20px;background:#111;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">Seller Carryback LOI</button>
         <button onclick="closeLOIModal();generateSubjectToLOI();" style="padding:14px 20px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">Subject To LOI</button>
+        <button onclick="closeLOIModal();generateHybridSubToLOI();" style="padding:14px 20px;background:#0f766e;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">Hybrid: SubTo + Equity Balloon</button>
         <button onclick="closeLOIModal();" style="padding:10px 20px;background:#f3f4f6;color:#555;border:none;border-radius:8px;font-size:14px;cursor:pointer;">Cancel</button>
       </div>
     </div>
@@ -2950,6 +2951,188 @@ Respectfully submitted,
 ${esc(acName)}${buyerCo ? '\n' + esc(buyerCo) : ''}
 
 ${subtoBottomBlock}`;
+
+  const loiEl = document.getElementById('loi-text');
+  loiEl.innerHTML = loiHtml.replace(/\n/g, '<br>');
+  const sec = document.getElementById('loi-section');
+  sec.classList.add('visible');
+  setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+function generateHybridSubToLOI() {
+  const D   = v => '$' + Math.round(v).toLocaleString();
+  const esc = t => (t || '').toString().trim();
+
+  const addr    = s('address') || '[Property Address]';
+  const units   = Math.round(g('units')) || 0;
+  const pp      = g('purchase_price');
+  const acName  = s('ac_name')   || '[Buyer Name]';
+  const acPhone = s('ac_phone')  || '';
+  const acE1    = s('ac_email1') || '';
+  const acE2    = s('ac_email2') || '';
+  const buyerCo = s('buyer_company') || '';
+  const hasBuyer = buyerCo.trim().length > 0;
+
+  const rawBal  = g('sub_mortgage_balance');
+  const rawRate = g('sub_mortgage_rate');
+  const rawPmt  = g('sub_mortgage_pmt');
+  const rawSvc  = s('sub_servicer');
+
+  const existingBal  = rawBal  > 0 ? rawBal  : 0;
+  const mortgageBal  = rawBal  > 0 ? D(rawBal) + ' to be confirmed' : 'TBD';
+  const mortgageRate = rawRate > 0 ? rawRate.toFixed(3) + '%'       : 'TBD';
+  const mortgagePmt  = rawPmt  > 0 ? D(rawPmt) + '/month'           : 'TBD';
+  const servicer     = rawSvc       ? esc(rawSvc)                    : 'TBD';
+
+  // Equity note = purchase price − existing mortgage − cash down
+  const subCacRaw   = g('sub_cash_to_seller') > 0 ? g('sub_cash_to_seller') : g('cash_at_closing');
+  const downPayment = subCacRaw > 0 ? subCacRaw : 0;
+  const equityNote  = Math.max(pp - existingBal - downPayment, 0);
+
+  // Balloon terms from the seller carry section
+  const balloonYrs  = g('sc_term') || 0;
+  const equityRate  = g('sc_rate') || 0;
+
+  const todayStr = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const H = txt => `<strong>${esc(txt)}</strong>`;
+
+  const title    = hasBuyer ? 'LOI' : 'Non-Exclusive LOI';
+  const unitLine = units > 0 ? ` (${units}-unit)` : '';
+  const agentLine = getAgentFeeLine(pp) ? getAgentFeeLine(pp) + '\n' : '';
+
+  const equityRateLine = equityRate > 0 ? ` at ${equityRate}% simple interest` : ' (0% — principal only)';
+  const equityNoteLine = equityNote > 0 ? `Seller Equity Note (Balloon): ${D(equityNote)}${equityRateLine}, due in full at Year ${balloonYrs}` : '';
+  const ppLine     = pp          > 0 ? `Total Purchase Price: ${D(pp)}\n`              : '';
+  const downLine   = downPayment > 0 ? `Cash to Seller at Closing: ${D(downPayment)}\n` : '';
+  const subtoLine  = existingBal > 0 ? `Existing Mortgage Assumed (SubTo): ${D(existingBal)}\n` : 'Existing Mortgage Assumed (SubTo): TBD\n';
+
+  const hybridBottomBlock = hasBuyer
+    ? `Seller Signature
+
+________________________________________
+Seller Name (Print)
+
+________________________________________
+Date
+
+________________________________________
+
+
+${H('Acquisition Correspondent:')}
+${esc(acName)}
+Contact:
+        Email:
+            ${esc(acE1)}
+            ${esc(acE2)}
+        Phone:
+            ${esc(acPhone)}
+
+${H('Buyer:')}
+${esc(buyerCo)}`
+    : `
+${H('Non-Circumvent')}
+
+The Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.
+
+Circumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.
+
+The Acquisition Correspondent's fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing. If it becomes apparent that the Acquisition Correspondent is not on track to be paid before closing, it is the Acquisition Correspondent's duty to disclose this to Seller, and Seller's duty to respond to such communication in a timely manner.
+
+${H('Non-Exclusive Nature:')}
+Seller may entertain other offers until final purchase and sales agreement is in place with end buyer. At point of signing purchase and sales agreement, seller may not entertain other offers and honor the closing timeline set in purchase and sales agreement.
+
+
+Seller Signature
+
+________________________________________
+Seller Name (Print)
+
+________________________________________
+Date
+
+________________________________________
+
+
+${H('Acquisition Correspondent:')}
+${esc(acName)}
+Contact:
+        Email:
+            ${esc(acE1)}
+            ${esc(acE2)}
+        Phone:
+            ${esc(acPhone)}`;
+
+  const loiHtml =
+`${H(title + ' — HYBRID: SUBJECT TO + EQUITY BALLOON')}
+${todayStr}
+
+PROPERTY: ${esc(addr)}${unitLine}
+BUYER: ${buyerCo ? esc(buyerCo) : esc(acName)} and/or assigns
+
+${H('HYBRID PURCHASE — SUMMARY OF TERMS')}
+
+${ppLine}${downLine}${subtoLine}${equityNoteLine ? equityNoteLine + '\n' : ''}${agentLine}
+${H('STRUCTURE OVERVIEW:')}
+This offer combines two components:
+
+1. ${H('Subject To Existing Financing')} — Buyer takes title subject to the existing mortgage currently encumbering the property (balance: ${mortgageBal}). The loan remains in the seller's name; buyer makes all future payments through a licensed third-party loan servicer ahead of each monthly due date.
+
+2. ${H('Seller Equity Note with Balloon')} — The remaining equity of ${equityNote > 0 ? D(equityNote) : 'TBD'} is structured as a seller-held note${equityRateLine}, with the full remaining balance due in a balloon payment at the end of Year ${balloonYrs || 'TBD'}. No monthly payments are required on the equity note — the balloon satisfies the obligation in full.
+
+${H('EXISTING MORTGAGE DETAILS (Subject To Component):')}
+Outstanding Balance at Closing: ${mortgageBal}
+Interest Rate: ${mortgageRate}
+Current Monthly Payment (P&I): ${mortgagePmt}
+Loan Servicer (3rd Party): ${servicer}
+
+All terms above are based on information provided by seller. Buyer will verify final loan details during due diligence. If any information is currently unknown, it will be confirmed and updated in the final Purchase and Sale Agreement.
+
+${H('SELLER EQUITY NOTE DETAILS (Balloon Component):')}
+Principal Amount: ${equityNote > 0 ? D(equityNote) : 'TBD'}
+Interest Rate: ${equityRate > 0 ? equityRate + '%' : '0% (principal only)'}
+Monthly Payments: None — balloon only
+Balloon Due: Year ${balloonYrs || 'TBD'} from closing
+Balloon Amount: Approximately ${equityNote > 0 ? D(equityNote) : 'TBD'} (full remaining principal${equityRate > 0 ? ' plus any accrued interest' : ''})
+
+The equity note will be documented as a separate promissory note and recorded as a lien against the property, junior to the existing first mortgage. Seller's equity interest is fully protected by this recorded lien.
+
+${H('LOAN SERVICER — SELLER PROTECTION (Subject To Component):')}
+To protect seller's credit and ensure timely payment of the existing mortgage:
+
+1. A licensed, independent loan servicing company will be engaged to collect buyer's monthly payment and forward it to the lender ahead of the payment due date each month.
+
+2. Seller will receive written confirmation (email or portal access) from the servicer each month confirming payment was sent to the lender.
+
+3. Buyer agrees to fund payments to the servicer a minimum of 5 business days before the lender's due date, ensuring no late payments occur.
+
+4. In the event of any payment disruption, the servicer is authorized to notify seller immediately so seller may take corrective action to protect their credit and the seller has the right to re-gain ownership of the property without the need for foreclosure by means of a separate document such as but not limited to a quitclaim deed, entity operating agreement, or other related document.
+
+${H('SELLER PROTECTION — CREDIT AND EQUITY:')}
+Seller's mortgage obligation and credit are protected through the following mechanisms:
+
+• Third-party servicer provides payment transparency and on-time disbursement to lender on the existing mortgage.
+• Seller's equity note is secured by a recorded lien (junior to the existing first mortgage) against the subject property.
+• Buyer will execute a memorandum of agreement recorded against the title, documenting the subject-to arrangement and buyer's obligations.
+• Buyer agrees seller retains an equitable interest in the property as security until both the existing mortgage and the equity note are paid off, refinanced, or the property is sold.
+• All property taxes and insurance will be maintained current by buyer. Evidence of insurance naming seller as additional insured will be provided at closing and renewed annually.
+• Seller may request servicer payment statements at any time.
+
+${H('DUE DILIGENCE & CLOSING:')}
+Closing: Within 30 days of signed Purchase and Sale Agreement.
+Due diligence period: Buyer requests a reasonable inspection and review period.
+Buyer contingency: Subject to final verification of existing loan terms, payoff statement, and title review.
+Buyer to pay all closing costs.
+
+${H('GENERAL TERMS:')}
+This letter is non-binding and represents a good-faith summary of proposed terms. Neither party is obligated to proceed until a final Purchase and Sale Agreement is executed by both parties.
+
+Buyer reserves the right to modify or withdraw this LOI prior to execution of a binding agreement.
+
+Respectfully submitted,
+
+${buyerCo ? esc(buyerCo) : esc(acName)}
+
+${hybridBottomBlock}`;
 
   const loiEl = document.getElementById('loi-text');
   loiEl.innerHTML = loiHtml.replace(/\n/g, '<br>');
