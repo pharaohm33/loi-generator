@@ -1077,7 +1077,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   <div class="sum-card">
     <div class="sum-title">E) Closing Costs Detail</div>
     <div class="sum-body">
-      <div class="sum-row"><span class="lbl">1st Escrow Fee (% of contract)</span><span class="val" id="s-esc1">—</span></div>
+      <div class="sum-row"><span class="lbl">1st Escrow Fee (% of Purchase Price)</span><span class="val" id="s-esc1">—</span></div>
       <div class="sum-row"><span class="lbl">2nd Escrow Fee (% of As-Is)</span><span class="val" id="s-esc2">—</span></div>
       <div class="sum-row" style="background:#f0fdf4">
         <span class="lbl" style="color:#166534;font-weight:600">Acq / Bird Dog Fee (% of Purchase Price)</span>
@@ -1787,7 +1787,7 @@ function recalc() {
   const netCF  = noiMo - totalDebtMo;
   const dscr   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
 
-  const esc1   = cac     * g('esc1_pct') / 100;  // 1st escrow: % of contract price
+  const esc1   = pp * g('esc1_pct') / 100;  // 1st escrow: % of purchase price
   const esc2   = asIsVal * g('esc2_pct') / 100;  // 2nd escrow: % of as-is/lender value
   const acqFee = pp * g('acq_pct') / 100;  // acq fee: % of total purchase price
   const pts    = maxLoan * g('sr_points') / 100;
@@ -3238,7 +3238,7 @@ function generateBuyerPresentation() {
   const dscrAllDebt = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
   const dscrSrOnly  = srPmt > 0 ? noiAn / (srPmt * 12) : 0;
 
-  const esc1 = cac * g('esc1_pct') / 100;
+  const esc1 = pp * g('esc1_pct') / 100;
   const esc2 = asIsVal * g('esc2_pct') / 100;
   const acqFee = pp * g('acq_pct') / 100;
   const pts = maxLoan * g('sr_points') / 100;
