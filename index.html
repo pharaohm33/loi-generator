@@ -1085,6 +1085,10 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       </div>
       <div class="sum-row"><span class="lbl">Loan Points</span><span class="val" id="s-pts">—</span></div>
       <div class="sum-row"><span class="lbl">Mortgage Broker Fee</span><span class="val" id="s-broker">—</span></div>
+      <div class="sum-row" id="s-agent-fee-row" style="display:none">
+        <span class="lbl">Seller's Agent Fee (paid by buyer)</span>
+        <span class="val" id="s-agent-fee">—</span>
+      </div>
       <div class="sum-row"><span class="lbl">TAF Principal</span><span class="val" id="s-taf2">—</span></div>
       <div class="sum-row"><span class="lbl">TAF Fee</span><span class="val" id="s-taffee">—</span></div>
     </div>
@@ -1789,7 +1793,10 @@ function recalc() {
   const pts    = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
-  const closing = esc1 + esc2 + acqFee + pts + broker + g('emd');
+  const agentFeeRaw = g('loi_agent_fee') || 0;
+  const agentFeeType = (document.getElementById('loi_agent_fee_type') || {}).value || 'pct';
+  const agentFee = agentFeeRaw > 0 ? (agentFeeType === 'pct' ? pp * agentFeeRaw / 100 : agentFeeRaw) : 0;
+  const closing = esc1 + esc2 + acqFee + pts + broker + g('emd') + agentFee;
   // TAF: (As-Is Value - Senior Loan) + Closing - Buyer Cash
   const tafPrin = Math.max(0, (asIsVal - maxLoan) + closing - g('buyer_cash') - rehabOOP);
   const tafFee  = tafPrin * g('taf_pct') / 100;
@@ -1899,6 +1906,9 @@ function recalc() {
   set('s-acq',    fm(acqFee));
   set('s-pts',    fm(pts));
   set('s-broker', fm(broker));
+  const agentFeeRow = document.getElementById('s-agent-fee-row');
+  if (agentFeeRow) agentFeeRow.style.display = agentFee > 0 ? '' : 'none';
+  if (agentFee > 0) set('s-agent-fee', fm(agentFee));
   set('s-taf2',   fm(tafPrin));
   set('s-taffee', fm(tafFee));
   set('s-total-closing', fm(closing + tafFee));
@@ -3234,7 +3244,10 @@ function generateBuyerPresentation() {
   const pts = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
-  const closing = esc1 + esc2 + acqFee + pts + broker + g('emd');
+  const loiAgentFeeRaw = g('loi_agent_fee') || 0;
+  const loiAgentFeeType = (document.getElementById('loi_agent_fee_type') || {}).value || 'pct';
+  const loiAgentFee = loiAgentFeeRaw > 0 ? (loiAgentFeeType === 'pct' ? pp * loiAgentFeeRaw / 100 : loiAgentFeeRaw) : 0;
+  const closing = esc1 + esc2 + acqFee + pts + broker + g('emd') + loiAgentFee;
   const tafPrin = Math.max(0, (asIsVal - maxLoan) + closing - g('buyer_cash') - rehabOOP);
   const tafFee = tafPrin * g('taf_pct') / 100;
 
