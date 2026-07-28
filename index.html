@@ -2903,7 +2903,7 @@ EXISTING MONTHLY PAYMENT (P&I): ${mortgagePmt}
 EXISTING LOAN SERVICER: ${servicer}
 
 ${H('METHOD OF PURCHASE:')}
-Buyer proposes to acquire the above-referenced property by taking title SUBJECT TO the existing mortgage currently encumbering the property. The existing financing shall remain in place in the name of the seller. Buyer shall assume responsibility for making all future mortgage payments on the seller's behalf, without formally assuming the loan.
+Buyer proposes to acquire the above-referenced property by taking title SUBJECT TO the existing mortgage currently encumbering the property. The existing financing shall remain in place in the name of the seller. Buyer shall take over responsibility for making all future mortgage payments on the seller's behalf — this is a subject-to transaction and does not constitute a formal loan assumption.
 
 Buyer will coordinate with an established, licensed third-party loan servicing company to act as an independent mediator and payment facilitator between buyer and seller. The loan servicer will collect payments from buyer and disburse them directly to the existing lender ahead of the monthly due date each month, providing seller with confirmation of each payment.
 
@@ -3012,7 +3012,7 @@ function generateHybridSubToLOI() {
     : `The remaining equity of ${equityNote > 0 ? D(equityNote) : 'TBD'} is structured as a seller-held equity note at ${equityRate}% simple interest, with the full remaining balance due in a balloon payment at the end of Year ${balloonYrs || 'TBD'}. No monthly payments are required on the equity note — the balloon satisfies the obligation in full.`;
   const ppLine    = pp          > 0 ? `Total Agreed Purchase Price: ${D(pp)}\n`         : '';
   const downLine  = downPayment > 0 ? `Cash to Seller at Closing: ${D(downPayment)}\n`  : '';
-  const subtoLine = existingBal > 0 ? `Existing Mortgage Assumed (Subject To): ${D(existingBal)}\n` : 'Existing Mortgage Assumed (Subject To): TBD\n';
+  const subtoLine = existingBal > 0 ? `Existing Mortgage (Subject To): ${D(existingBal)}\n` : 'Existing Mortgage (Subject To): TBD\n';
 
   const hybridBottomBlock = hasBuyer
     ? `Seller Signature
