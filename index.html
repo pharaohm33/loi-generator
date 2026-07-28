@@ -3000,11 +3000,19 @@ function generateHybridSubToLOI() {
   const unitLine = units > 0 ? ` (${units}-unit)` : '';
   const agentLine = getAgentFeeLine(pp) ? getAgentFeeLine(pp) + '\n' : '';
 
-  const equityRateLine = equityRate > 0 ? ` at ${equityRate}% simple interest` : ' (0% — principal only)';
-  const equityNoteLine = equityNote > 0 ? `Seller Equity Note (Balloon): ${D(equityNote)}${equityRateLine}, due in full at Year ${balloonYrs}` : '';
-  const ppLine     = pp          > 0 ? `Total Purchase Price: ${D(pp)}\n`              : '';
-  const downLine   = downPayment > 0 ? `Cash to Seller at Closing: ${D(downPayment)}\n` : '';
-  const subtoLine  = existingBal > 0 ? `Existing Mortgage Assumed (SubTo): ${D(existingBal)}\n` : 'Existing Mortgage Assumed (SubTo): TBD\n';
+  const zeroEquityRate = equityRate === 0;
+  const equityRateDesc = zeroEquityRate ? '0% — principal only' : `${equityRate}% simple interest`;
+  // Summary line: "Seller Equity Note (Balloon): $X — 0% principal only, due Year 5"
+  const equityNoteSummary = equityNote > 0
+    ? `Seller Equity Note (Balloon): ${D(equityNote)} — ${equityRateDesc}, due Year ${balloonYrs || 'TBD'}`
+    : `Seller Equity Note (Balloon): TBD — due Year ${balloonYrs || 'TBD'}`;
+  // Structure overview prose per branch
+  const equityNoteOverviewLine = zeroEquityRate
+    ? `The remaining equity of ${equityNote > 0 ? D(equityNote) : 'TBD'} is structured as a 0% seller-held equity note. No interest accrues and no monthly payments are required — the full principal balance of ${equityNote > 0 ? D(equityNote) : 'TBD'} is due in a single balloon payment at the end of Year ${balloonYrs || 'TBD'}.`
+    : `The remaining equity of ${equityNote > 0 ? D(equityNote) : 'TBD'} is structured as a seller-held equity note at ${equityRate}% simple interest, with the full remaining balance due in a balloon payment at the end of Year ${balloonYrs || 'TBD'}. No monthly payments are required on the equity note — the balloon satisfies the obligation in full.`;
+  const ppLine    = pp          > 0 ? `Total Agreed Purchase Price: ${D(pp)}\n`         : '';
+  const downLine  = downPayment > 0 ? `Cash to Seller at Closing: ${D(downPayment)}\n`  : '';
+  const subtoLine = existingBal > 0 ? `Existing Mortgage Assumed (Subject To): ${D(existingBal)}\n` : 'Existing Mortgage Assumed (Subject To): TBD\n';
 
   const hybridBottomBlock = hasBuyer
     ? `Seller Signature
@@ -3063,23 +3071,24 @@ Contact:
             ${esc(acPhone)}`;
 
   const loiHtml =
-`${H(title + ' — HYBRID: SUBJECT TO + EQUITY BALLOON')}
+`${H(title + ' — SUBJECT TO EXISTING FINANCING + SELLER EQUITY BALLOON')}
 ${todayStr}
 
 PROPERTY: ${esc(addr)}${unitLine}
 BUYER: ${buyerCo ? esc(buyerCo) : esc(acName)} and/or assigns
 
-${H('HYBRID PURCHASE — SUMMARY OF TERMS')}
+${H('SUBJECT TO PURCHASE — SUMMARY OF TERMS')}
 
-${ppLine}${downLine}${subtoLine}${equityNoteLine ? equityNoteLine + '\n' : ''}${agentLine}
+${ppLine}${downLine}${subtoLine}${equityNoteSummary}
+${agentLine ? '\n' + agentLine : ''}
 ${H('STRUCTURE OVERVIEW:')}
 This offer combines two components:
 
 1. ${H('Subject To Existing Financing')} — Buyer takes title subject to the existing mortgage currently encumbering the property (balance: ${mortgageBal}). The loan remains in the seller's name; buyer makes all future payments through a licensed third-party loan servicer ahead of each monthly due date.
 
-2. ${H('Seller Equity Note with Balloon')} — The remaining equity of ${equityNote > 0 ? D(equityNote) : 'TBD'} is structured as a seller-held note${equityRateLine}, with the full remaining balance due in a balloon payment at the end of Year ${balloonYrs || 'TBD'}. No monthly payments are required on the equity note — the balloon satisfies the obligation in full.
+2. ${H('Seller Equity Note with Balloon')} — ${equityNoteOverviewLine}
 
-${H('EXISTING MORTGAGE DETAILS (Subject To Component):')}
+${H('EXISTING MORTGAGE DETAILS:')}
 Outstanding Balance at Closing: ${mortgageBal}
 Interest Rate: ${mortgageRate}
 Current Monthly Payment (P&I): ${mortgagePmt}
@@ -3087,16 +3096,16 @@ Loan Servicer (3rd Party): ${servicer}
 
 All terms above are based on information provided by seller. Buyer will verify final loan details during due diligence. If any information is currently unknown, it will be confirmed and updated in the final Purchase and Sale Agreement.
 
-${H('SELLER EQUITY NOTE DETAILS (Balloon Component):')}
+${H('SELLER EQUITY NOTE DETAILS:')}
 Principal Amount: ${equityNote > 0 ? D(equityNote) : 'TBD'}
-Interest Rate: ${equityRate > 0 ? equityRate + '%' : '0% (principal only)'}
-Monthly Payments: None — balloon only
+Interest Rate: ${equityRateDesc}
+Monthly Payments: None — balloon payment only
 Balloon Due: Year ${balloonYrs || 'TBD'} from closing
-Balloon Amount: Approximately ${equityNote > 0 ? D(equityNote) : 'TBD'} (full remaining principal${equityRate > 0 ? ' plus any accrued interest' : ''})
+Balloon Amount: Approximately ${equityNote > 0 ? D(equityNote) : 'TBD'}${zeroEquityRate ? '' : ' plus any accrued interest'}
 
 The equity note will be documented as a separate promissory note and recorded as a lien against the property, junior to the existing first mortgage. Seller's equity interest is fully protected by this recorded lien.
 
-${H('LOAN SERVICER — SELLER PROTECTION (Subject To Component):')}
+${H('LOAN SERVICER — SELLER PROTECTION:')}
 To protect seller's credit and ensure timely payment of the existing mortgage:
 
 1. A licensed, independent loan servicing company will be engaged to collect buyer's monthly payment and forward it to the lender ahead of the payment due date each month.
