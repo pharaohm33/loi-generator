@@ -1249,6 +1249,10 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="v-year" id="badge-term-sale-val">—</div>
         </div>
         <div style="text-align:right;">
+          <div class="v-label">Sale Exit (CF pocketed, not saved)</div>
+          <div class="v-year" id="badge-term-sale-nocf-val">—</div>
+        </div>
+        <div style="text-align:right;">
           <div class="v-label">Refi Cash-Out at Balloon (with CF)</div>
           <div class="v-year" id="badge-term-refi-val">—</div>
         </div>
@@ -2334,6 +2338,11 @@ function recalc() {
   const refiEl = document.getElementById('badge-term-refi-val');
   saleEl.textContent = (saleWithCF >= 0 ? '+' : '') + fm(saleWithCF);
   saleEl.style.color = saleWithCF >= 0 ? '#15803d' : '#dc2626';
+  const saleNoCFEl = document.getElementById('badge-term-sale-nocf-val');
+  if (saleNoCFEl) {
+    saleNoCFEl.textContent = (balloonSaleSurplus >= 0 ? '+' : '') + fm(balloonSaleSurplus);
+    saleNoCFEl.style.color = balloonSaleSurplus >= 0 ? '#15803d' : '#dc2626';
+  }
   refiEl.textContent = (refiWithCF >= 0 ? '+' : '') + fm(refiWithCF);
   refiEl.style.color = refiWithCF >= 0 ? '#15803d' : '#dc2626';
 
