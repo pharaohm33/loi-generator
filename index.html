@@ -1252,6 +1252,11 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="v-label">Refi Cash-Out at Balloon (with CF)</div>
           <div class="v-year" id="badge-term-refi-val">—</div>
         </div>
+        <div id="badge-static-sale-row" style="text-align:right; border-left:3px solid #f59e0b; padding-left:10px;">
+          <div class="v-label" style="color:#92400e;">⚠ Static CF Exit (no NOI growth)</div>
+          <div class="v-year" id="badge-static-sale-val">—</div>
+          <div class="v-sub" style="color:#92400e;">Default risk if CF doesn't grow</div>
+        </div>
       </div>
     </div>
     <!-- Proforma exit banner — hidden until proforma NOI is entered -->
@@ -2331,6 +2336,17 @@ function recalc() {
   saleEl.style.color = saleWithCF >= 0 ? '#15803d' : '#dc2626';
   refiEl.textContent = (refiWithCF >= 0 ? '+' : '') + fm(refiWithCF);
   refiEl.style.color = refiWithCF >= 0 ? '#15803d' : '#dc2626';
+
+  // Static CF exit: always show what happens at balloon if NOI never grows (Day-1 CF × years)
+  const staticCumCFatBalloon = day1CFyr * balloonIntYr;
+  const staticSaleExit = balloonSaleSurplus + staticCumCFatBalloon;
+  const staticExitEl = document.getElementById('badge-static-sale-val');
+  if (staticExitEl) {
+    staticExitEl.textContent = (staticSaleExit >= 0 ? '+' : '') + fm(staticSaleExit);
+    staticExitEl.style.color = staticSaleExit >= 0 ? '#15803d' : '#dc2626';
+    const staticRow = document.getElementById('badge-static-sale-row');
+    if (staticRow) staticRow.style.display = balloonIntYr > 0 ? '' : 'none';
+  }
 }
 
 function getAgentFeeLine(pp) {
