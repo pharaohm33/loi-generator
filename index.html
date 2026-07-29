@@ -1562,6 +1562,7 @@ function adminTemplate() {
     if (el) el.value = val;
   });
   onExitTypeChange();
+  if (!staticCF) toggleStaticCF();
   recalc();
   // Flash the button
   const btn = document.querySelector('.btn-admin');
