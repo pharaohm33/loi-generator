@@ -1797,8 +1797,9 @@ function recalc() {
   const agentFeeType = (document.getElementById('loi_agent_fee_type') || {}).value || 'pct';
   const agentFee = agentFeeRaw > 0 ? (agentFeeType === 'pct' ? pp * agentFeeRaw / 100 : agentFeeRaw) : 0;
   const closing = esc1 + esc2 + acqFee + pts + broker + g('emd') + agentFee;
-  // TAF: (As-Is Value - Senior Loan) + Closing - Buyer Cash
-  const tafPrin = Math.max(0, (asIsVal - maxLoan) + closing - g('buyer_cash') - rehabOOP);
+  // TAF funds Closing 1 only; esc2 (2nd closing) is paid from seller carry waterfall at Closing 2
+  const closing1 = closing - esc2;
+  const tafPrin = Math.max(0, (asIsVal - maxLoan) + closing1 - g('buyer_cash') - rehabOOP);
   const tafFee  = tafPrin * g('taf_pct') / 100;
   const basis   = pp + closing + tafFee;
 
@@ -3248,7 +3249,8 @@ function generateBuyerPresentation() {
   const loiAgentFeeType = (document.getElementById('loi_agent_fee_type') || {}).value || 'pct';
   const loiAgentFee = loiAgentFeeRaw > 0 ? (loiAgentFeeType === 'pct' ? pp * loiAgentFeeRaw / 100 : loiAgentFeeRaw) : 0;
   const closing = esc1 + esc2 + acqFee + pts + broker + g('emd') + loiAgentFee;
-  const tafPrin = Math.max(0, (asIsVal - maxLoan) + closing - g('buyer_cash') - rehabOOP);
+  const closing1 = closing - esc2;
+  const tafPrin = Math.max(0, (asIsVal - maxLoan) + closing1 - g('buyer_cash') - rehabOOP);
   const tafFee = tafPrin * g('taf_pct') / 100;
 
   const totalInflows  = maxLoan + g('buyer_cash');
