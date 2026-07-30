@@ -973,6 +973,13 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="suffix-wrap"><input type="number" id="bridge_refi_costs" placeholder="2" step="0.25" oninput="recalc()"><span>%</span></div>
         </div>
       </div>
+      <div class="row cols-2">
+        <div class="field">
+          <label>Pay Seller from Refi Proceeds</label>
+          <div class="suffix-wrap"><input type="number" id="sc_refi_paydown" placeholder="0" step="1000" min="0" oninput="recalc()"><span>$</span></div>
+          <div style="font-size:10px;color:#6b7280;margin-top:2px;">Lump sum paid to reduce seller carry at stabilization refi. Reduces buyer's BRRRR cash-out; saves interest on carry for remainder of term.</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1253,7 +1260,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="sum-row"><span class="lbl">Bridge Loan Amount</span><span class="val" id="s-bridge-amount">—</span></div>
       <div class="sum-row"><span class="lbl">Bridge Monthly I/O Payment</span><span class="val" id="s-bridge-io">—</span></div>
       <div class="sum-row"><span class="lbl">Bridge Origination Fee</span><span class="val" id="s-bridge-orig">—</span></div>
-      <div class="sum-row"><span class="lbl">Additional Cash to Seller vs DSCR</span><span class="val" id="s-bridge-extra-seller">—</span></div>
+      <div class="sum-row" id="s-bridge-extra-seller-row"><span class="lbl" id="s-bridge-extra-seller-lbl">Additional Cash to Seller vs DSCR</span><span class="val" id="s-bridge-extra-seller">—</span></div>
       <div class="sum-row" style="border-top:1px solid #bfdbfe"><span class="lbl">CF / mo During Bridge (current NOI)</span><span class="val" id="s-bridge-cf-mo">—</span></div>
 
       <div style="font-size:10px;font-weight:700;color:#15803d;padding:10px 0 2px;letter-spacing:.05em">PERM REFI (at End of Stabilization Period)</div>
@@ -1265,6 +1272,9 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="sum-row"><span class="lbl">Bridge Payoff at Refi</span><span class="val" id="s-bridge-payoff">—</span></div>
       <div class="sum-row" id="s-bridge-gap-row"><span class="lbl" id="s-bridge-gap-lbl">Net After Bridge Payoff</span><span class="val" id="s-bridge-gap">—</span></div>
       <div class="sum-row"><span class="lbl">Refi Closing Costs</span><span class="val" id="s-bridge-refi-costs">—</span></div>
+      <div class="sum-row" id="s-bridge-paydown-row" style="display:none"><span class="lbl" style="color:#b45309;font-weight:600">→ Seller Carry Paydown from Refi</span><span class="val" id="s-bridge-paydown-amt" style="color:#b45309">—</span></div>
+      <div class="sum-row" id="s-bridge-paydown-net-row" style="display:none;background:#fffbeb"><span class="lbl" style="color:#b45309;font-weight:600">Buyer Net Cash from BRRRR</span><span class="val" id="s-bridge-paydown-net" style="color:#b45309">—</span></div>
+      <div class="sum-row" id="s-bridge-paydown-carry-row" style="display:none"><span class="lbl">Carry Balance After Paydown</span><span class="val" id="s-bridge-paydown-carry">—</span></div>
       <div class="sum-row" style="border-top:1px solid #bbf7d0"><span class="lbl">Perm Loan Monthly P&amp;I</span><span class="val" id="s-bridge-perm-pmt">—</span></div>
       <div class="sum-row"><span class="lbl">Seller Carry Pmt / mo (at Refi)</span><span class="val" id="s-bridge-sc-mo">—</span></div>
       <div class="sum-row"><span class="lbl">Stabilized NOI / mo</span><span class="val" id="s-bridge-stab-noi">—</span></div>
@@ -2170,12 +2180,15 @@ function recalc() {
     }
     const _permLoan    = Math.min(_maxByLTV, isFinite(_maxByDSCR) ? _maxByDSCR : _maxByLTV);
     const _permPmtMo   = pmtPI(_refiRate, _refiAmort, _permLoan);
-    const _refiCostAmt = _permLoan * (gb('bridge_refi_costs') / 100);
+    const _refiCostAmt   = _permLoan * (gb('bridge_refi_costs') / 100);
+    const _scRefiPaydown = Math.max(0, g('sc_refi_paydown') || 0);
     // Positive = cash buyer receives at refi; negative = cash buyer must inject to cover gap
-    const _refiNetCash = _permLoan - _brgAmount - _refiCostAmt;
+    // Seller paydown reduces buyer BRRRR cash-out and reduces carry balance from refi date forward
+    const _refiNetCash = _permLoan - _brgAmount - _refiCostAmt - _scRefiPaydown;
     brgParams = { brgAmount: _brgAmount, brgIOmo: _brgIOmo, refiYr: _refiYr,
                   permLoan: _permLoan, permPmtMo: _permPmtMo,
                   refiNetCash: _refiNetCash,
+                  scRefiPaydown: _scRefiPaydown,
                   refiRate: _refiRate, refiAmort: _refiAmort };
   }
 
@@ -2328,7 +2341,10 @@ function recalc() {
           : arv * Math.pow(1 + appr, yr - stabYrsExit))
       : arv * Math.pow(1 + appr, yr);
     const srBal      = effectiveSrBalAt(yr);
-    const sellerOwe  = sellerOwedAt(yr);
+    // Seller carry paydown at refi reduces balance from refiYr forward
+    const _scPdwn    = (brgParams && brgParams.scRefiPaydown > 0 && yr >= brgParams.refiYr)
+                       ? brgParams.scRefiPaydown : 0;
+    const sellerOwe  = Math.max(0, sellerOwedAt(yr) - _scPdwn);
 
     // Base CF accumulation — static NOI (no growth) but correct phase debt service, or full compounding
     const baseNOIyr  = baseNOIatYear(yr);
@@ -2406,6 +2422,7 @@ function recalc() {
         brgPermPmtMo: brgParams ? brgParams.permPmtMo : null,
         brgIOmo:      brgParams ? brgParams.brgIOmo    : null,
         brgRefiNetCash: brgParams ? brgParams.refiNetCash : null,
+        scRefiPaydown:  brgParams ? brgParams.scRefiPaydown : 0,
         balloonYr,
       };
     }
@@ -2688,9 +2705,11 @@ function recalc() {
       const rmo = refiRate / 12, rn = refiAmort * 12;
       refiMaxByDSCR = (refiNOIann / refiDSCRmin / 12) * (1 - Math.pow(1 + rmo, -rn)) / rmo;
     }
-    const permLoan    = Math.min(refiMaxByLTV, isFinite(refiMaxByDSCR) ? refiMaxByDSCR : refiMaxByLTV);
-    const refiCosts   = permLoan * refiCostPct;
-    const netAfterBrg = permLoan - brgPayoff - refiCosts; // positive = cash out, negative = cash needed
+    const permLoan      = Math.min(refiMaxByLTV, isFinite(refiMaxByDSCR) ? refiMaxByDSCR : refiMaxByLTV);
+    const refiCosts     = permLoan * refiCostPct;
+    const scRefiPaydown = Math.max(0, g('sc_refi_paydown') || 0);
+    const netAfterBrg   = permLoan - brgPayoff - refiCosts; // gross cash out before seller paydown
+    const netToBuyer    = netAfterBrg - scRefiPaydown;      // buyer's net BRRRR cash after paydown
 
     // Perm loan monthly P&I
     const permPmt     = pmtPI(refiRate, refiAmort, permLoan);
@@ -2721,8 +2740,15 @@ function recalc() {
     set2('s-bridge-amount',       fm(brgAmount));
     set2('s-bridge-io',           fmd2(brgIOmo) + '/mo');
     set2('s-bridge-orig',         fm(brgOrigFee));
-    set2('s-bridge-extra-seller', (extraToSeller >= 0 ? '+' : '') + fm(extraToSeller));
-    document.getElementById('s-bridge-extra-seller').style.color = extraToSeller >= 0 ? '#15803d' : '#dc2626';
+    // For HM: bridge IS the senior loan, so "extra vs DSCR" is always $0 and misleading — hide it
+    const extraSellerRow = document.getElementById('s-bridge-extra-seller-row');
+    if (loanType === 'hard_money') {
+      if (extraSellerRow) extraSellerRow.style.display = 'none';
+    } else {
+      if (extraSellerRow) extraSellerRow.style.display = '';
+      set2('s-bridge-extra-seller', (extraToSeller >= 0 ? '+' : '') + fm(extraToSeller));
+      document.getElementById('s-bridge-extra-seller').style.color = extraToSeller >= 0 ? '#15803d' : '#dc2626';
+    }
     set2('s-bridge-cf-mo',        (brgCFmo >= 0 ? '+' : '') + fmd2(brgCFmo) + '/mo');
     clr('s-bridge-cf-mo', brgCFmo);
 
@@ -2744,6 +2770,22 @@ function recalc() {
       gapLbl.textContent = netAfterBrg >= 0 ? 'Cash Out After Bridge Payoff' : 'Cash Needed to Close Refi';
       gapEl.textContent  = (netAfterBrg >= 0 ? '+' : '') + fm(netAfterBrg);
       gapEl.style.color  = netAfterBrg >= 0 ? '#15803d' : '#dc2626';
+    }
+
+    // Seller carry paydown rows
+    const pdwnRow     = document.getElementById('s-bridge-paydown-row');
+    const pdwnNetRow  = document.getElementById('s-bridge-paydown-net-row');
+    const pdwnCarryRow= document.getElementById('s-bridge-paydown-carry-row');
+    if (scRefiPaydown > 0) {
+      const scBalAtRefi = sellerOwedAtPhase(carry, scRate, Math.min(refiYr, ph1Years), mode, ph1Extra);
+      const carryAfterPdwn = Math.max(0, scBalAtRefi - scRefiPaydown);
+      if (pdwnRow)      { pdwnRow.style.display = '';  set2('s-bridge-paydown-amt',   '−' + fm(scRefiPaydown)); }
+      if (pdwnNetRow)   { pdwnNetRow.style.display = ''; set2('s-bridge-paydown-net', (netToBuyer >= 0 ? '+' : '') + fm(netToBuyer)); document.getElementById('s-bridge-paydown-net').style.color = netToBuyer >= 0 ? '#15803d' : '#dc2626'; }
+      if (pdwnCarryRow) { pdwnCarryRow.style.display = ''; set2('s-bridge-paydown-carry', fm(carryAfterPdwn)); }
+    } else {
+      if (pdwnRow)      pdwnRow.style.display = 'none';
+      if (pdwnNetRow)   pdwnNetRow.style.display = 'none';
+      if (pdwnCarryRow) pdwnCarryRow.style.display = 'none';
     }
 
     set2('s-bridge-perm-pmt',     fmd2(permPmt) + '/mo');
@@ -3230,6 +3272,21 @@ Contact:
         Phone:
             ${esc(acPh)}`;
 
+  // Seller carry paydown at BRRRR refi
+  const loiScRefiPaydown = bridgeEnabled ? (g('sc_refi_paydown') || 0) : 0;
+  const loiRefiMo = bridgeEnabled ? (g('stabilization_months') || gb('bridge_term_mo') || 18) : 0;
+  const loiRefiYr = loiRefiMo / 12;
+  const loiScBalAtRefi = loiScRefiPaydown > 0
+    ? sellerOwedAtPhase(carry, scRate, Math.min(loiRefiYr, loiPh1Yrs), mode, loiPh1Extra)
+    : 0;
+  const loiCarryAfterPdwn = loiScRefiPaydown > 0 ? Math.max(0, loiScBalAtRefi - loiScRefiPaydown) : 0;
+  const loiPaydownClause = loiScRefiPaydown > 0
+    ? `\n\n${H('SELLER CARRY PAYDOWN AT STABILIZATION REFI:')}
+At the time of the DSCR refinance (Month ${Math.round(loiRefiMo)} — end of stabilization period), Buyer agrees to apply ${esc(D(loiScRefiPaydown))} from the refinance proceeds as a lump-sum principal reduction on the Seller Carryback Note. This payment reduces the outstanding carry balance from approximately ${esc(D(Math.round(loiScBalAtRefi)))} to approximately ${esc(D(Math.round(loiCarryAfterPdwn)))} at the time of paydown.
+
+This is a voluntary partial prepayment at Buyer's election, applied at no prepayment penalty. The monthly payment schedule continues per the original note terms on the reduced balance. The final balloon payment at Year ${scTerm} will reflect the reduced outstanding principal.`
+    : '';
+
   const loiHtml =
 `${H(title)}
 ${H('Deal Terms - Seller Summary')}
@@ -3245,7 +3302,7 @@ ${getAgentFeeLine(pp) ? '\n' + getAgentFeeLine(pp) : ''}
 ${H('SELLER CARRY NOTE:')}
 ${pmtBlock}
 
-${narr}
+${narr}${loiPaydownClause}
 
 ${H('SELLER PROTECTION BY SENIOR EQUITY INTEREST:')}
 Your position is documented as a Senior Equity Interest, giving you first-priority claim to all cash flow and proceeds from operations, refinance, or sale — ahead of all buyer equity. If the buyer defaults on the note, the operating agreement allows you to take over the buyer’s interest in the property without foreclosure.
@@ -4005,9 +4062,11 @@ ${bridgeEnabled ? (() => {
   const bpMaxByDSCR   = (bpRmo > 0 && bpRn > 0 && bpRefiDSCR > 0)
     ? (bpRefiNOI / bpRefiDSCR / 12) * (1 - Math.pow(1 + bpRmo, -bpRn)) / bpRmo : Infinity;
   const bpPermLoan    = Math.min(bpMaxByLTV, isFinite(bpMaxByDSCR) ? bpMaxByDSCR : bpMaxByLTV);
-  const bpRefiCosts   = bpPermLoan * bpRefiCostPct;
-  const bpNetAtRefi   = bpPermLoan - bpBrgAmt - bpRefiCosts;
-  const bpPermPmt     = pmtPI(bpRefiRate, bpRefiAmort, bpPermLoan);
+  const bpRefiCosts      = bpPermLoan * bpRefiCostPct;
+  const bpScRefiPaydown  = g('sc_refi_paydown') || 0;
+  const bpGrossAtRefi    = bpPermLoan - bpBrgAmt - bpRefiCosts; // before seller paydown
+  const bpNetAtRefi      = bpGrossAtRefi - bpScRefiPaydown;     // buyer net after optional paydown
+  const bpPermPmt        = pmtPI(bpRefiRate, bpRefiAmort, bpPermLoan);
   const bpRefiScMo    = scMonthly; // Phase 1 carry payment (refi typically within Phase 1)
   const bpStabCF      = bpRefiNOI / 12 - bpPermPmt - bpRefiScMo;
   const bpStabDSCR    = (bpPermPmt + bpRefiScMo) > 0 ? bpRefiNOI / ((bpPermPmt + bpRefiScMo) * 12) : 0;
@@ -4053,10 +4112,13 @@ PHASE 2 — ${bpIsHM ? 'DSCR REFI' : 'PERM REFI'} (Month ${bpRefiMo} — End of 
   Refi Closing Costs (${gb('bridge_refi_costs')}%):    −${D(bpRefiCosts)}
   ${bpIsHM ? 'Hard Money' : 'Bridge'} Payoff:          −${D(bpBrgAmt)} (${bpIsHM ? 'hard money' : 'bridge'} fully retired at refi)
 ${'─'.repeat(44)}
-  ${bpNetAtRefi >= 0
-    ? `Net Cash Out at Refi:      +${D(bpNetAtRefi)} (returned to buyer)`
-    : `Cash Buyer Must Inject:    ${D(Math.abs(bpNetAtRefi))} (refi proceeds don't cover full ${bpIsHM ? 'HM' : 'bridge'} payoff + costs)`}
-  Seller Carry Note:          ${D(carry)} carry continues — seller still in equity position
+  Gross Cash Out at Refi:     ${bpGrossAtRefi >= 0 ? '+' : ''}${D(bpGrossAtRefi)}
+${bpScRefiPaydown > 0
+  ? `  Seller Carry Paydown:      −${D(bpScRefiPaydown)} (applied to seller carry principal)
+${'─'.repeat(44)}
+  Buyer Net Cash from BRRRR:  ${bpNetAtRefi >= 0 ? '+' : ''}${D(bpNetAtRefi)}`
+  : `  Buyer Net Cash from BRRRR: ${bpNetAtRefi >= 0 ? '+' : ''}${D(bpNetAtRefi)}`}
+  Seller Carry Note:          ${D(carry)} carry continues — seller still in equity position${bpScRefiPaydown > 0 ? `\n  Carry Balance After Paydown: ${D(Math.max(0, carry - bpScRefiPaydown))} (reduced principal going forward)` : ''}
 
 PHASE 3 — STABILIZED OPERATIONS (Post-Refi through Year ${scTerm} Balloon)
   ${bpRefiLabel} P&I:     ${Dfmt(bpPermPmt)}/mo  (${P(bpRefiRate)}, ${bpRefiAmort}-yr amort)
@@ -4066,7 +4128,7 @@ PHASE 3 — STABILIZED OPERATIONS (Post-Refi through Year ${scTerm} Balloon)
   DSCR (${bpRefiLabel} + carry):  ${bpStabDSCR.toFixed(2)}x
 
 PHASE 4 — BALLOON (Year ${scTerm})
-  At the end of Year ${scTerm}, the seller carry note balance is paid in full — this is the seller's final payoff.
+  At the end of Year ${scTerm}, the seller carry note balance is paid in full — this is the seller's final payoff.${bpScRefiPaydown > 0 ? `\n  Note: Seller carry balance was reduced by ${D(bpScRefiPaydown)} at the Month ${bpRefiMo} refi — final balloon reflects this lower balance.` : ''}
   The ${bpRefiLabel} balance at balloon is separately paid off, refinanced, or the property is sold.
   Buyer reserves the sole right to prepay the seller carry at any time prior to maturity with no prepayment penalty.
 `;
@@ -4130,6 +4192,8 @@ const FIELDS = [
   'ph1_years','ph2_rate','ph2_monthly_principal','ph2_sc_amort_yrs','ph2_defer_months','ph2_deferred_rate',
   'esc1_pct','esc2_pct','acq_pct','broker_pct','emd',
   'taf_pct','buyer_cash','park_escrow','rehab_oop',
+  'bridge_ltv','bridge_rate','bridge_term_mo','bridge_orig_pct',
+  'bridge_refi_ltv','bridge_refi_rate','bridge_refi_amort','bridge_refi_dscr','bridge_refi_costs','sc_refi_paydown',
   'exit_type','exit_sale_costs','exit_refi_ltv','exit_refi_rate','exit_dscr_req','exit_amort','exit_refi_costs','exit_refi_fees','exit_reserve_mo',
   'ac_name','ac_phone','ac_email1','ac_email2','buyer_company',
   'sub_mortgage_balance','sub_mortgage_rate','sub_mortgage_pmt','sub_servicer','sub_cash_to_seller',
@@ -4145,6 +4209,7 @@ function shareCalc() {
   p.set('mode', mode);
   p.set('loan_type', loanType);
   if (ph2Enabled) { p.set('ph2_enabled', '1'); p.set('mode2', mode2); }
+  if (bridgeEnabled) p.set('ph2_bridge', '1');
   const url = location.origin + location.pathname + '?' + p.toString();
   navigator.clipboard.writeText(url).then(() => {
     history.replaceState(null, '', '?' + p.toString());
@@ -4171,6 +4236,7 @@ function loadFromURL() {
   if (p.has('loan_type')) setLoanType(p.get('loan_type'));
   if (p.has('ph2_enabled') && p.get('ph2_enabled') === '1') { if (!ph2Enabled) togglePh2(); }
   if (p.has('mode2')) setMode2(p.get('mode2'));
+  if (p.has('ph2_bridge') && p.get('ph2_bridge') === '1') { if (!bridgeEnabled) toggleBridge(); }
   if (p.has('exit_type')) onExitTypeChange();
   if (p.has('loi_agent_fee_type')) setAgentFeeType(p.get('loi_agent_fee_type'));
 }
