@@ -1961,6 +1961,9 @@ function recalc() {
     return scMonthly2;
   }
 
+  // brgParams declared here so it's in scope for all references below; assigned later if bridgeEnabled
+  let brgParams = null;
+
   // For Day-1 display: HM loans are I/O; use I/O payment unless bridge overrides below
   const hmIOmoEarly = loanType === 'hard_money' ? maxLoan * (g('sr_rate') / 100) / 12 : srPmt;
   const totalDebtMo = hmIOmoEarly + scMonthly;  // Phase 1 debt service for Day-1 CF display
@@ -2176,7 +2179,6 @@ function recalc() {
   const balloonIntYr = Math.ceil(scTerm); // handles decimal terms like 5.5 → balloon row at yr 6
 
   // Pre-compute bridge-to-perm params so exit loop can use effective senior balance
-  let brgParams = null;
   if (bridgeEnabled) {
     const _brgLTV      = gb('bridge_ltv') / 100;
     const _brgRate     = gb('bridge_rate') / 100;
