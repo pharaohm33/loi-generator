@@ -1123,22 +1123,22 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   <div class="sum-card">
     <div class="sum-title">B) Capital Stack</div>
     <div class="sum-body">
-      <div class="sum-row"><span class="lbl">DSCR 1st</span><span class="val" id="s-sr-loan">—</span></div>
+      <div class="sum-row"><span class="lbl" id="s-sr-loan-lbl">DSCR 1st</span><span class="val" id="s-sr-loan">—</span></div>
       <div class="sum-row loi-row"><span class="lbl">Seller Carry</span><span class="val" id="s-carry2">—</span></div>
       <div class="sum-row loi-row"><span class="lbl">Seller Cash / DP</span><span class="val" id="s-cac2">—</span></div>
       <div class="sum-row"><span class="lbl">Total Project Basis</span><span class="val" id="s-basis">—</span></div>
     </div>
   </div>
 
-  <!-- C) DSCR LOAN -->
+  <!-- C) SENIOR LOAN (DSCR or Hard Money) -->
   <div class="sum-card">
-    <div class="sum-title">C) DSCR Loan</div>
+    <div class="sum-title" id="s-loan-card-title">C) DSCR Loan</div>
     <div class="sum-body">
-      <div class="sum-row"><span class="lbl">Max Loan (% of As-Is Value)</span><span class="val" id="s-max-loan">—</span></div>
-      <div class="sum-row"><span class="lbl">Rate / Amort</span><span class="val" id="s-sr-detail">—</span></div>
+      <div class="sum-row"><span class="lbl" id="s-max-loan-lbl">Max Loan (% of As-Is Value)</span><span class="val" id="s-max-loan">—</span></div>
+      <div class="sum-row"><span class="lbl" id="s-sr-detail-lbl">Rate / Amort</span><span class="val" id="s-sr-detail">—</span></div>
       <div class="sum-row" id="s-rehab-timeline-row" style="display:none"><span class="lbl">Rehab Timeline</span><span class="val" id="s-rehab-months">—</span></div>
-      <div class="sum-row"><span class="lbl">Monthly P&amp;I</span><span class="val" id="s-sr-pmt">—</span></div>
-      <div class="sum-row"><span class="lbl">DSCR (all debt)</span><span class="val" id="s-dscr">—</span></div>
+      <div class="sum-row"><span class="lbl" id="s-sr-pmt-lbl">Monthly P&amp;I</span><span class="val" id="s-sr-pmt">—</span></div>
+      <div class="sum-row"><span class="lbl" id="s-dscr-lbl">DSCR (all debt)</span><span class="val" id="s-dscr">—</span></div>
     </div>
   </div>
 
@@ -1200,7 +1200,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     <div class="sum-title">Cash Flow</div>
     <div class="sum-body">
       <div class="sum-row"><span class="lbl">NOI / mo (current)</span><span class="val" id="s-noi-mo">—</span></div>
-      <div class="sum-row"><span class="lbl">DSCR Pmt / mo</span><span class="val" id="s-sr-mo">—</span></div>
+      <div class="sum-row"><span class="lbl" id="s-sr-mo-lbl">DSCR Pmt / mo</span><span class="val" id="s-sr-mo">—</span></div>
       <div class="sum-row"><span class="lbl">Carry Pmt / mo (Period 1)</span><span class="val" id="s-carry-mo">—</span></div>
       <div class="sum-row" id="s-carry-ph2-row" style="display:none"><span class="lbl">Carry Pmt / mo (Period 2)</span><span class="val" id="s-carry-mo-ph2">—</span></div>
       <div class="sum-row" style="border-top: 1px solid #e5e5e3"><span class="lbl" style="font-weight:600">Net CF / mo (current)</span><span class="val" id="s-net-cf" style="font-size:15px">—</span></div>
@@ -1961,7 +1961,9 @@ function recalc() {
     return scMonthly2;
   }
 
-  const totalDebtMo = srPmt + scMonthly;  // Phase 1 debt service for Day-1 CF display
+  // For Day-1 display: HM loans are I/O; use I/O payment unless bridge overrides below
+  const hmIOmoEarly = loanType === 'hard_money' ? maxLoan * (g('sr_rate') / 100) / 12 : srPmt;
+  const totalDebtMo = hmIOmoEarly + scMonthly;  // Phase 1 debt service for Day-1 CF display
   const netCF  = noiMo - totalDebtMo;
   const dscr   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
 
@@ -2016,14 +2018,31 @@ function recalc() {
 
   const constraintLabel = {'ltv':'LTV','ltc':'LTC','arv':'ARV%','dscr':'DSCR Cap'}[bindingConstraint] || 'LTV';
   const actualLTVpct = asIsVal > 0 ? (maxLoan / asIsVal * 100).toFixed(1) + '%' : '';
+  const isHM = loanType === 'hard_money';
+  // For HM the monthly payment is interest-only; srPmt (P&I) is only used for balance tracking
+  const hmIOmo = isHM ? maxLoan * srRate / 12 : 0;
+  const displaySrPmt = isHM ? hmIOmo : srPmt;  // what to show in panels and CF
+
+  // Update loan-type-sensitive labels
+  const loanCardTitle = document.getElementById('s-loan-card-title');
+  if (loanCardTitle) loanCardTitle.textContent = isHM ? 'C) Hard Money Loan' : 'C) DSCR Loan';
+  const setLbl = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  setLbl('s-sr-loan-lbl', isHM ? 'HM 1st'       : 'DSCR 1st');
+  setLbl('s-sr-pmt-lbl',  isHM ? 'Monthly I/O'  : 'Monthly P&I');
+  setLbl('s-sr-detail-lbl', isHM ? 'Rate / I/O Term' : 'Rate / Amort');
+  setLbl('s-dscr-lbl',    isHM ? 'ICR (all debt)' : 'DSCR (all debt)');
+  setLbl('s-sr-mo-lbl',   isHM ? 'HM I/O / mo'  : 'DSCR Pmt / mo');
+
   document.getElementById('s-sr-loan').innerHTML = fm(maxLoan) + ` (${actualLTVpct}) <span class="constraint-badge ${bindingConstraint}">${constraintLabel}</span>`;
   set('s-carry2',  fm(carry)   + ' (' + fp(carry / (pp || 1), 1) + ')');
   set('s-cac2',    fm(cac)     + ' (' + fp(cac   / (pp || 1), 1) + ')');
   set('s-basis', fm(basis));
 
   set('s-max-loan', fm(maxLoan));
-  set('s-sr-detail', fp(srRate) + ' / ' + g('sr_amort') + ' yrs');
-  set('s-sr-pmt', fmd(srPmt) + '/mo');
+  set('s-sr-detail', isHM
+    ? fp(srRate) + ' / I/O (' + (g('sr_term') || '—') + ' yr term)'
+    : fp(srRate) + ' / ' + g('sr_amort') + ' yrs');
+  set('s-sr-pmt', fmd(displaySrPmt) + '/mo' + (isHM ? ' (I/O)' : ''));
   set('s-dscr', dscr.toFixed(2) + 'x');
   const rehabMoRow = document.getElementById('s-rehab-timeline-row');
   if (loanType === 'hard_money' && g('hm_rehab_months') > 0) {
@@ -2071,7 +2090,7 @@ function recalc() {
   }
 
   set('s-noi-mo', fmd(noiMo) + '/mo');
-  set('s-sr-mo',  fmd(srPmt) + '/mo');
+  set('s-sr-mo',  fmd(displaySrPmt) + '/mo' + (isHM && !brgParams ? ' (I/O)' : ''));
   set('s-carry-mo', fmd(scMonthly) + '/mo' + (ph2Enabled ? ` (Yrs 1–${ph1Years})` : ''));
   // Phase 2 carry row
   const ph2CarryRow = document.getElementById('s-carry-ph2-row');
@@ -2193,7 +2212,8 @@ function recalc() {
   }
 
   // Bridge-aware Day-1 display values — bridge I/O during holding period, not full amort P&I
-  const dispDayOneSrPmt = brgParams ? brgParams.brgIOmo : srPmt;
+  // HM without bridge: also I/O (hmIOmoEarly). DSCR without bridge: amortizing P&I (srPmt).
+  const dispDayOneSrPmt = brgParams ? brgParams.brgIOmo : hmIOmoEarly;
   const dispDayOneDebt  = dispDayOneSrPmt + scMonthly;
   const dispDayOneNetCF = noiMo - dispDayOneDebt;
   const dispDayOneDSCR  = dispDayOneDebt > 0 ? noiAn / (dispDayOneDebt * 12) : 0;
@@ -3742,6 +3762,7 @@ function generateBuyerPresentation() {
   }
   const srPmt = pmtPI(srRate, g('sr_amort'), maxLoan);
   const actualLTV = asIsVal > 0 ? maxLoan / asIsVal : 0;
+  const hmIOmoLocal = loanType === 'hard_money' ? maxLoan * srRate / 12 : srPmt;
 
   const scRate = g('sc_rate') / 100;
   const scTerm = g('sc_term');
@@ -3903,7 +3924,7 @@ EXIT VALUE & PROCEEDS:
   ${capRate > 0
     ? `Proforma Implied Value @ ${P(capRate)} cap: ${D(pfImplied)}  (${D(pfNOIatBalloon)}/yr ÷ ${P(capRate)})`
     : `Proforma Exit Value (appreciation-based): ${D(pfImplied)}`}
-  Senior Loan Balance:      ${D(exitSrBal)}${bridgeEnabled ? ' (DSCR perm loan, amortized from refi date)' : ''} (${pctOf(exitSrBal, pfImplied)} of exit value)
+  Senior Loan Balance:      ${D(exitSrBal)}${bridgeEnabled ? ' (DSCR perm loan, amortized from refi date)' : loanType === 'hard_money' ? ' (HM loan — I/O, no amortization)' : ''} (${pctOf(exitSrBal, pfImplied)} of exit value)
   Seller Carry Owed:        ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, pfImplied)} of exit value)
   Cumulative CF (proforma NOI path — ramps to target then grows ${P(noiGrowthRate)}/yr): ${pfCumCF >= 0 ? '+' : ''}${D(pfCumCF)}${bridgeEnabled && _exitCache.brgRefiNetCash != null ? `
     ↳ Includes ${_exitCache.brgRefiNetCash >= 0 ? '+' : ''}${D(_exitCache.brgRefiNetCash)} DSCR refi cash-out at Month ${stabMonths || (g('bridge_term_mo') || 18)} (BRRRR capital recovery — offset by higher perm loan at exit)` : ''}
@@ -3956,13 +3977,15 @@ FINANCING STRUCTURE
 Loan Type: ${loanType === 'hard_money' ? 'Hard Money' : 'DSCR'}
 Senior Loan Amount: ${D(maxLoan)} — ${P(actualLTV)} LTV of As-Is Value (binding constraint: ${bindingConstraint})
 Interest Rate: ${P(srRate)}
-Amortization: ${g('sr_amort')} years
+${loanType === 'hard_money' && !bridgeEnabled ? 'Payment Type: Interest-Only (I/O)' : `Amortization: ${g('sr_amort')} years`}
 ${bridgeEnabled
   ? `Senior Monthly Payment: ${Dfmt(bpDayOneSrPmt)}/mo (bridge I/O during holding period)
   → After DSCR Refi (Month ${stabMonths || (g('bridge_term_mo') || 18)}): ${Dfmt(bpPermPmtMo)}/mo (DSCR P&I)`
-  : `Senior Monthly Payment: ${Dfmt(srPmt)}/mo`}
-DSCR (Senior Only): ${(bpDayOneSrPmt > 0 ? noiAn / (bpDayOneSrPmt * 12) : dscrSrOnly).toFixed(2)}x
-DSCR (All Debt incl. Seller Carry): ${(bpDayOneDebt > 0 ? noiAn / (bpDayOneDebt * 12) : dscrAllDebt).toFixed(2)}x
+  : loanType === 'hard_money'
+    ? `Senior Monthly Payment: ${Dfmt(hmIOmoLocal)}/mo (I/O — HM loan, no amortization during hold)`
+    : `Senior Monthly Payment: ${Dfmt(srPmt)}/mo`}
+${loanType === 'hard_money' && !bridgeEnabled ? 'ICR' : 'DSCR'} (Senior Only): ${(bpDayOneSrPmt > 0 ? noiAn / (bpDayOneSrPmt * 12) : dscrSrOnly).toFixed(2)}x
+${loanType === 'hard_money' && !bridgeEnabled ? 'ICR' : 'DSCR'} (All Debt incl. Seller Carry): ${(bpDayOneDebt > 0 ? noiAn / (bpDayOneDebt * 12) : dscrAllDebt).toFixed(2)}x
 
 Seller Carry Terms:
   Total Term: ${scTerm} years${ph2Enabled && bpPh2 ? ` (${bpPh1Yrs}-yr Period 1 + ${bpPh2Yrs}-yr Period 2)` : ''}
