@@ -3419,9 +3419,9 @@ EXIT VALUE & PROCEEDS:
     : `Proforma Exit Value (appreciation-based): ${D(pfImplied)}`}
   Senior Loan Balance:      ${D(exitSrBal)} (${pctOf(exitSrBal, pfImplied)} of exit value)
   Seller Carry Owed:        ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, pfImplied)} of exit value)
-  Cumulative CF (proforma): ${pfCumCF >= 0 ? '+' : ''}${D(pfCumCF)}
+  Cumulative CF (proforma NOI path — ramps to target then grows ${P(noiGrowthRate)}/yr): ${pfCumCF >= 0 ? '+' : ''}${D(pfCumCF)}
 
-  PROFORMA SALE EXIT (cap-rate implied value — no appreciation):
+  PROFORMA SALE EXIT (cap-rate implied value — no appreciation, proforma NOI path):
   Net Profit (excl. CF):    ${pfSaleNet >= 0 ? '+' : ''}${D(pfSaleNet)} (${pctOf(Math.abs(pfSaleNet), pp)} of purchase price)
   Net Profit (incl. CF):    ${pfSaleWithCF >= 0 ? '+' : ''}${D(pfSaleWithCF)} (${pctOf(Math.abs(pfSaleWithCF), pp)} of purchase price)
 
@@ -3531,21 +3531,22 @@ ${'─'.repeat(40)}
 ${buyerNet >= 0 ? 'CASH BACK TO BUYER' : 'CASH NEEDED FROM BUYER'}: ${buyerNet >= 0 ? '+' : ''}${D(buyerNet)} (${pctOf(Math.abs(buyerNet), pp)} of purchase price)
 ${buyerNet >= 0 ? (parkEscrow ? '(Held in escrow against the deal, not taken home)' : '(Returned to buyer at closing)') : '(Buyer must bring this amount to close)'}
 ══════════════════════════════════════
-EXIT PROFIT PROJECTION (Year ${balloonYr} — Balloon Due, Current NOI Path)
+EXIT PROFIT PROJECTION (Year ${balloonYr} Balloon — Current NOI Path)
+  [NOI: Day-1 ${noiGrowthRate > 0 ? `+ ${P(noiGrowthRate)}/yr growth` : 'held flat, no growth'}${hasProforma ? ' — proforma target NOT used here' : ''}. Phase payments apply on schedule. Appreciation-based exit value.]
 ══════════════════════════════════════
 Day-1 NOI: ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)${noiGrowthRate > 0 ? `  →  growing at ${P(noiGrowthRate)}/yr` : '  (held flat)'}
 ${noiGrowthRate > 0 ? `NOI at Balloon (Year ${balloonYr}): ${D(bpNOIatYear(balloonYr))}/yr\n` : ''}Projected Property Value: ${D(exitPropVal)} (${P(appr)}/yr appreciation — ${pctOf(exitPropVal - arv, arv)} total gain since acquisition)
 Senior Loan Balance Remaining: ${D(exitSrBal)} (${pctOf(exitSrBal, exitPropVal)} of exit value)
 Seller Carry Balance Owed: ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, exitPropVal)} of exit value)
-Cumulative Net Cash Flow${noiGrowthRate > 0 ? ` (NOI-growth adjusted)` : ''}: ${cumCF >= 0 ? '+' : ''}${D(cumCF)}
+Cumulative Net Cash Flow (current NOI${noiGrowthRate > 0 ? ` + ${P(noiGrowthRate)}/yr` : ', flat'}${hasProforma ? ', proforma NOT used' : ''}): ${cumCF >= 0 ? '+' : ''}${D(cumCF)}
 
-  SALE EXIT (appreciation-based value):
-  Net Profit (excl. held CF): ${saleNet >= 0 ? '+' : ''}${D(saleNet)} (${pctOf(Math.abs(saleNet), pp)} of purchase price)
-  Net Profit (incl. held CF): ${saleNetWithCF >= 0 ? '+' : ''}${D(saleNetWithCF)} (${pctOf(Math.abs(saleNetWithCF), pp)} of purchase price)
+  SALE EXIT (appreciation-based exit value):
+  Net Profit — CF pocketed (buyer spent CF):  ${saleNet >= 0 ? '+' : ''}${D(saleNet)} (${pctOf(Math.abs(saleNet), pp)} of purchase price)
+  Net Profit — CF saved (buyer held CF):      ${saleNetWithCF >= 0 ? '+' : ''}${D(saleNetWithCF)} (${pctOf(Math.abs(saleNetWithCF), pp)} of purchase price)
 
-  REFINANCE EXIT:
-  Net Cash-Out (excl. held CF): ${refiNet >= 0 ? '+' : ''}${D(refiNet)} (${pctOf(Math.abs(refiNet), pp)} of purchase price)
-  Net Cash-Out (incl. held CF): ${refiNetWithCF >= 0 ? '+' : ''}${D(refiNetWithCF)} (${pctOf(Math.abs(refiNetWithCF), pp)} of purchase price)
+  REFINANCE EXIT (appreciation-based exit value):
+  Net Cash-Out — CF pocketed: ${refiNet >= 0 ? '+' : ''}${D(refiNet)} (${pctOf(Math.abs(refiNet), pp)} of purchase price)
+  Net Cash-Out — CF saved:    ${refiNetWithCF >= 0 ? '+' : ''}${D(refiNetWithCF)} (${pctOf(Math.abs(refiNetWithCF), pp)} of purchase price)
 ${pfBlock}
 
 ══════════════════════════════════════
