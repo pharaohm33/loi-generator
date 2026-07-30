@@ -3292,13 +3292,13 @@ function generateBuyerPresentation() {
   const stabYrs          = stabMonths > 0 ? stabMonths / 12 : 0;
 
   function bpNOIatYear(yr) {
-    return noiAn * Math.pow(1 + noiGrowthRate, yr);
+    return noiAn * Math.pow(1 + noiGrowthRate, Math.max(yr - 1, 0));
   }
   function bpPfNOIatYear(yr) {
     if (!hasProforma) return bpNOIatYear(yr);
-    if (stabYrs <= 0) return noiProforma * Math.pow(1 + noiGrowthRate, yr);
+    if (stabYrs <= 0 || yr <= 0) return noiProforma * Math.pow(1 + noiGrowthRate, Math.max(yr - 1, 0));
     if (yr <= stabYrs) return noiAn + (noiProforma - noiAn) * (yr / stabYrs);
-    return noiProforma * Math.pow(1 + noiGrowthRate, yr - stabYrs);
+    return noiProforma * Math.pow(1 + noiGrowthRate, Math.max(yr - stabYrs - 1, 0));
   }
 
   // Exit at balloon year
