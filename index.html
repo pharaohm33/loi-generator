@@ -2538,7 +2538,7 @@ Total seller receipts are ${esc(D(totalReceipts))}.`;
     } else if (zeroInterest) {
       // Zero interest with monthly principal payments
       pmtBlock =
-`Monthly Principal-Only Payments (0% Interest):
+`Monthly Principal-Only Payments:
 Months 1–${months}: ${esc(D(scMonthly))}/month
 Total Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (remaining principal balance)
@@ -2688,7 +2688,7 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
       const rPct = P(rate);
       if (modeStr === 'principal_only') {
         if (rate === 0 && monthly <= 0) return `no monthly payments — full principal balance due at the end of this period`;
-        if (rate === 0) return `monthly principal-only payments of ${esc(Dfmt(monthly))}/month (0% interest — each payment directly reduces the outstanding balance)`;
+        if (rate === 0) return `monthly principal-only payments of ${esc(Dfmt(monthly))}/month — each payment directly reduces the outstanding balance`;
         return `monthly principal-reduction payments of ${esc(Dfmt(monthly))}/month at ${esc(rPct)} simple interest (interest accrues on the declining balance and is due at balloon)`;
       }
       if (modeStr === 'interest_only') {
