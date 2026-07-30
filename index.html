@@ -2157,6 +2157,7 @@ function recalc() {
     const _refiAmort   = gb('bridge_refi_amort') || 30;
     const _refiDSCRmin = gb('bridge_refi_dscr') || 1.25;
     const _brgAmount   = loanType === 'hard_money' ? maxLoan : arv * _brgLTV;
+    const _brgIOmo     = _brgAmount * _brgRate / 12;
     const _stabVal     = arv;
     const _refiNOI     = hasProforma ? (g('noi_proforma') || noiAn) : noiAn;
     const _refiYr      = (g('stabilization_months') || _brgTermMo) / 12;
@@ -2166,8 +2167,10 @@ function recalc() {
       const _rmo = _refiRate / 12, _rn = _refiAmort * 12;
       _maxByDSCR = (_refiNOI / _refiDSCRmin / 12) * (1 - Math.pow(1 + _rmo, -_rn)) / _rmo;
     }
-    const _permLoan = Math.min(_maxByLTV, isFinite(_maxByDSCR) ? _maxByDSCR : _maxByLTV);
-    brgParams = { brgAmount: _brgAmount, refiYr: _refiYr, permLoan: _permLoan,
+    const _permLoan    = Math.min(_maxByLTV, isFinite(_maxByDSCR) ? _maxByDSCR : _maxByLTV);
+    const _permPmtMo   = pmtPI(_refiRate, _refiAmort, _permLoan);
+    brgParams = { brgAmount: _brgAmount, brgIOmo: _brgIOmo, refiYr: _refiYr,
+                  permLoan: _permLoan, permPmtMo: _permPmtMo,
                   refiRate: _refiRate, refiAmort: _refiAmort };
   }
 
@@ -2189,6 +2192,12 @@ function recalc() {
     if (refiRate === 0 || refiAmort === 0) return Math.max(permLoan - moSinceRefi * pmtPI(refiRate, refiAmort, permLoan), 0);
     const r = refiRate / 12, n = refiAmort * 12;
     return permLoan * (Math.pow(1+r, n) - Math.pow(1+r, moSinceRefi)) / (Math.pow(1+r, n) - 1);
+  }
+
+  // Returns monthly senior debt service at a given year — bridge I/O during bridge period, perm P&I after refi
+  function effectiveSrPmtMoAt(yr) {
+    if (!brgParams) return srPmt;
+    return yr <= brgParams.refiYr ? brgParams.brgIOmo : brgParams.permPmtMo;
   }
 
   // Compute year-by-year senior balance (standard amortization)
@@ -2230,7 +2239,7 @@ function recalc() {
   cfTbody.appendChild(day1Row);
 
   const day1NOI = baseNOIatYear(1);
-  const day1DebtSvc = (srPmt + scMonthlyAtYear(1)) * 12;
+  const day1DebtSvc = (effectiveSrPmtMoAt(1) + scMonthlyAtYear(1)) * 12;
   const day1CFyr = day1NOI - day1DebtSvc;
   growthLabel.textContent = staticCF
     ? 'Static CF (Day-1 × yrs)'
@@ -2247,7 +2256,7 @@ function recalc() {
   for (let yr = 1; yr <= maxCFYr; yr++) {
     const noiYr      = staticCF ? day1NOI : baseNOIatYear(yr);
     const scMoYr     = scPmtAtYear(yr);
-    const debtSvcYr  = staticCF ? day1DebtSvc : (srPmt + scMoYr) * 12;
+    const debtSvcYr  = staticCF ? day1DebtSvc : (effectiveSrPmtMoAt(yr) + scMoYr) * 12;
     const cfYr       = staticCF ? day1CFyr : (noiYr - debtSvcYr);
     const cfMo       = cfYr / 12;
     const isBalloon  = yr === balloonIntYr;
@@ -2299,12 +2308,12 @@ function recalc() {
     const baseNOIyr  = baseNOIatYear(yr);
     const scMoAtYr   = scPmtAtYear(yr); // 0 after balloon (handles decimal terms)
     // Always track static-NOI + phase-aware debt service (used by static exit banner)
-    staticCumCFAccum += baseNOIatYear(1) - (srPmt + scMoAtYr) * 12;
+    staticCumCFAccum += baseNOIatYear(1) - (effectiveSrPmtMoAt(yr) + scMoAtYr) * 12;
     if (staticCF) {
       // NOI flat at Day-1, but phase payments still apply on schedule
       baseCumCF = staticCumCFAccum;
     } else {
-      baseCumCF += baseNOIyr - (srPmt + scMoAtYr) * 12;
+      baseCumCF += baseNOIyr - (effectiveSrPmtMoAt(yr) + scMoAtYr) * 12;
     }
     const cumCF      = baseCumCF;
 
@@ -2334,7 +2343,7 @@ function recalc() {
 
     // Proforma path: NOI ramps to proforma, then grows; phase-aware SC payment
     const pfNOIyr    = pfNOIatYear(yr);
-    pfCumCF         += pfNOIyr - (srPmt + scPmtAtYear(yr)) * 12;
+    pfCumCF         += pfNOIyr - (effectiveSrPmtMoAt(yr) + scPmtAtYear(yr)) * 12;
     // Proforma exit value: implied by cap rate (NOI / capRate) rather than raw appreciation
     const capRate    = g('cap_rate') / 100;
     const pfImplied  = hasProforma && capRate > 0 ? pfNOIyr / capRate : propVal;
@@ -2460,7 +2469,7 @@ function recalc() {
     const stabSnapEl = document.getElementById('s-pf-stab-header') && document.getElementById('s-pf-stab-header').closest
       ? document.getElementById('s-pf-stab-header').parentElement : null;
     if (hasProforma) {
-      const debtMoAtStab = srPmt + scMonthlyAtYear(stabYr);
+      const debtMoAtStab = effectiveSrPmtMoAt(stabYr) + scMonthlyAtYear(stabYr);
       const pfNetCFstabAdj = pfNOIstab / 12 - debtMoAtStab;
       const pfDSCRstabAdj  = debtMoAtStab > 0 ? pfNOIstab / (debtMoAtStab * 12) : 0;
       const stabPhaseNote = ph2Enabled && ph2Result
@@ -2494,7 +2503,7 @@ function recalc() {
     if (ph2Enabled && ph2Result && ph2Years > 0) {
       ph2Section.style.display = '';
       const ph2StartNOI  = pfNOIatYear(ph1Years);   // proforma NOI at the year phase 2 begins
-      const ph2StartDebt = srPmt + scMonthly2;
+      const ph2StartDebt = effectiveSrPmtMoAt(ph1Years + 1) + scMonthly2;
       const ph2StartCF   = ph2StartNOI / 12 - ph2StartDebt;
       const ph2StartDSCR = ph2StartDebt > 0 ? ph2StartNOI / (ph2StartDebt * 12) : 0;
       const ph2Header = document.getElementById('s-pf-ph2-header');
@@ -2510,7 +2519,7 @@ function recalc() {
     }
 
     // ── SNAPSHOT 4: At Balloon ──
-    const debtMoAtBalloon = srPmt + scMonthlyAtYear(balloonYr);
+    const debtMoAtBalloon = effectiveSrPmtMoAt(balloonYr) + scMonthlyAtYear(balloonYr);
     const pfNetCFball     = pfNOIballoon / 12 - debtMoAtBalloon;
     const pfDSCRball      = debtMoAtBalloon > 0 ? pfNOIballoon / (debtMoAtBalloon * 12) : 0;
     const showBalloonSection = noiGrowthRate > 0 || (ph2Enabled && ph2Result);
