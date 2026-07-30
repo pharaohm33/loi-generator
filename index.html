@@ -2149,6 +2149,27 @@ function recalc() {
     cbNote.style.color  = '#9f1239';
   }
 
+  // When bridge/BRRRR is active, append a note about the refi cash event so the
+  // closing-day picture isn't mistaken for the buyer's complete cash position.
+  if (bridgeEnabled && brgParams) {
+    const refiMo  = Math.round(brgParams.refiYr * 12);
+    const refiNet = brgParams.refiNetCash;
+    const pdwn    = brgParams.scRefiPaydown || 0;
+    let brrrNote;
+    if (refiNet > 0) {
+      const destNote = pdwn > 0
+        ? `${fm(pdwn)} applied to seller carry; remaining ${fm(refiNet)} is buyer capital recovery`
+        : `${fm(refiNet)} is BRRRR capital recovery — returned to buyer at refi, not closing`;
+      brrrNote = `BRRRR refi at Month ${refiMo}: perm loan generates +${fm(refiNet + pdwn)} after bridge payoff & costs. ${destNote}. Typically reinvested in next deal or held as reserves — not pocketed profit.`;
+    } else if (refiNet < 0) {
+      brrrNote = `⚠ BRRRR refi at Month ${refiMo}: perm loan is ${fm(-refiNet)} short of bridge payoff — buyer must inject additional funds at refi.`;
+    } else {
+      brrrNote = `BRRRR refi at Month ${refiMo}: bridge fully retired by perm loan with no net cash in or out.`;
+    }
+    cbNote.textContent += '  ·  ' + brrrNote;
+    cbNote.style.color = refiNet < 0 ? '#9f1239' : '#374151';
+  }
+
   set('s-r-cac', fm(cac));
   document.getElementById('s-r-lbl2').textContent = {
     principal_only:    'Monthly Principal Total',
@@ -4139,10 +4160,15 @@ PHASE 2 — ${bpIsHM ? 'DSCR REFI' : 'PERM REFI'} (Month ${bpRefiMo} — End of 
 ${'─'.repeat(44)}
   Gross Cash Out at Refi:     ${bpGrossAtRefi >= 0 ? '+' : ''}${D(bpGrossAtRefi)}
 ${bpScRefiPaydown > 0
-  ? `  Seller Carry Paydown:      −${D(bpScRefiPaydown)} (applied to seller carry principal)
+  ? `  Seller Carry Paydown:      −${D(bpScRefiPaydown)} (applied to seller carry principal — reduces future interest)
 ${'─'.repeat(44)}
   Buyer Net Cash from BRRRR:  ${bpNetAtRefi >= 0 ? '+' : ''}${D(bpNetAtRefi)}`
   : `  Buyer Net Cash from BRRRR: ${bpNetAtRefi >= 0 ? '+' : ''}${D(bpNetAtRefi)}`}
+  ↳ ${bpNetAtRefi > 0
+    ? `BRRRR capital recovery — initial equity returned via perm loan proceeds, not operating profit. Buyer typically redeploys these funds into the next acquisition or holds as reserves. This amount is included in the cumulative return figures above.`
+    : bpNetAtRefi < 0
+      ? `Perm loan falls short of bridge payoff by ${D(-bpNetAtRefi)} — buyer must inject additional cash at refi to retire the bridge.`
+      : `Bridge fully retired by perm loan — no net cash in or out at refi.`}
   Seller Carry Note:          ${D(carry)} carry continues — seller still in equity position${bpScRefiPaydown > 0 ? `\n  Carry Balance After Paydown: ${D(Math.max(0, carry - bpScRefiPaydown))} (reduced principal going forward)` : ''}
 
 PHASE 3 — STABILIZED OPERATIONS (Post-Refi through Year ${scTerm} Balloon)
