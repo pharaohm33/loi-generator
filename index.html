@@ -1743,6 +1743,8 @@ function onExitTypeChange() {
 }
 
 const g = id => parseFloat(document.getElementById(id).value) || 0;
+// Bridge fields use placeholder as default so calc works without user typing values
+const gb = id => { const el = document.getElementById(id); return parseFloat(el.value) || parseFloat(el.placeholder) || 0; };
 const s = id => document.getElementById(id).value.trim();
 const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
 
@@ -2560,15 +2562,15 @@ function recalc() {
 
   // ── BRIDGE-TO-PERM CALC ──
   if (bridgeEnabled) {
-    const brgLTV      = g('bridge_ltv') / 100;
-    const brgRate     = g('bridge_rate') / 100;
-    const brgTermMo   = g('bridge_term_mo') || 18;
-    const brgOrigPct  = g('bridge_orig_pct') / 100;
-    const refiLTV     = g('bridge_refi_ltv') / 100;
-    const refiRate    = g('bridge_refi_rate') / 100;
-    const refiAmort   = g('bridge_refi_amort') || 30;
-    const refiDSCRmin = g('bridge_refi_dscr') || 1.25;
-    const refiCostPct = g('bridge_refi_costs') / 100;
+    const brgLTV      = gb('bridge_ltv') / 100;
+    const brgRate     = gb('bridge_rate') / 100;
+    const brgTermMo   = gb('bridge_term_mo') || 18;
+    const brgOrigPct  = gb('bridge_orig_pct') / 100;
+    const refiLTV     = gb('bridge_refi_ltv') / 100;
+    const refiRate    = gb('bridge_refi_rate') / 100;
+    const refiAmort   = gb('bridge_refi_amort') || 30;
+    const refiDSCRmin = gb('bridge_refi_dscr') || 1.25;
+    const refiCostPct = gb('bridge_refi_costs') / 100;
 
     // Bridge loan — if Hard Money selected, use the already-computed maxLoan; otherwise ARV × LTV
     const brgAmount   = loanType === 'hard_money' ? maxLoan : arv * brgLTV;
@@ -3888,25 +3890,25 @@ BRIDGE-TO-PERM FINANCING PLAN
 ══════════════════════════════════════
 STEP 1 — BRIDGE LOAN (at Acquisition)
 ${loanType === 'hard_money' ? '  [Sourced from Hard Money loan — same terms as Section C above]' : ''}
-  Bridge Loan Amount:         ${D(loanType === 'hard_money' ? maxLoan : arv * (g('bridge_ltv')/100))}
-  Bridge Rate (Interest-Only):${(g('bridge_rate')).toFixed(2)}%
-  Bridge Monthly I/O Payment: ${(() => { const ba = loanType === 'hard_money' ? maxLoan : arv*(g('bridge_ltv')/100); return '$'+((ba*(g('bridge_rate')/100)/12)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); })()}/mo
-  Bridge Origination Fee:     ${(() => { const ba = loanType === 'hard_money' ? maxLoan : arv*(g('bridge_ltv')/100); return D(ba*(g('bridge_orig_pct')/100)); })()}
-  Bridge Term:                ${g('bridge_term_mo')} months
+  Bridge Loan Amount:         ${D(loanType === 'hard_money' ? maxLoan : arv * (gb('bridge_ltv')/100))}
+  Bridge Rate (Interest-Only):${(gb('bridge_rate')).toFixed(2)}%
+  Bridge Monthly I/O Payment: ${(() => { const ba = loanType === 'hard_money' ? maxLoan : arv*(gb('bridge_ltv')/100); return '$'+((ba*(gb('bridge_rate')/100)/12)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); })()}/mo
+  Bridge Origination Fee:     ${(() => { const ba = loanType === 'hard_money' ? maxLoan : arv*(gb('bridge_ltv')/100); return D(ba*(gb('bridge_orig_pct')/100)); })()}
+  Bridge Term:                ${gb('bridge_term_mo')} months
   Seller Carry Note:          ${D(carry)} (remains in place — seller stays in equity position)
   Cash to Seller at Closing:  ${D(cac)}
 
-STEP 2 — PERM REFI (at Stabilization — Month ${stabMonths || g('bridge_term_mo')})
+STEP 2 — PERM REFI (at Stabilization — Month ${stabMonths || gb('bridge_term_mo')})
   Stabilized Value (ARV):     ${D(arv)}
   Proforma NOI at Refi:       ${D(hasProforma ? noiProforma : noiAn)}/yr  (${D((hasProforma ? noiProforma : noiAn)/12)}/mo)
-  Max Perm Loan by LTV (${g('bridge_refi_ltv')}%): ${D(arv * g('bridge_refi_ltv')/100)}
-  Max Perm Loan by DSCR (${g('bridge_refi_dscr')}x): ${(() => { const r=g('bridge_refi_rate')/100/12, n=g('bridge_refi_amort')*12, noi=hasProforma?noiProforma:noiAn, dscr=g('bridge_refi_dscr'); if(!r||!n||!dscr) return '—'; return D((noi/dscr/12)*(1-Math.pow(1+r,-n))/r); })()}
-  Refi Closing Costs (${g('bridge_refi_costs')}%):  ${(() => { const loan=Math.min(arv*g('bridge_refi_ltv')/100, (() => { const r=g('bridge_refi_rate')/100/12,n=g('bridge_refi_amort')*12,noi=hasProforma?noiProforma:noiAn,dscr=g('bridge_refi_dscr'); if(!r||!n||!dscr) return Infinity; const v=(noi/dscr/12)*(1-Math.pow(1+r,-n))/r; return isFinite(v)?v:Infinity; })()); return D(loan*g('bridge_refi_costs')/100); })()}
-  Bridge Payoff at Refi:      ${D(loanType === 'hard_money' ? maxLoan : arv*(g('bridge_ltv')/100))} (bridge fully retired — no bridge debt remains)
+  Max Perm Loan by LTV (${gb('bridge_refi_ltv')}%): ${D(arv * gb('bridge_refi_ltv')/100)}
+  Max Perm Loan by DSCR (${gb('bridge_refi_dscr')}x): ${(() => { const r=gb('bridge_refi_rate')/100/12, n=gb('bridge_refi_amort')*12, noi=hasProforma?noiProforma:noiAn, dscr=gb('bridge_refi_dscr'); if(!r||!n||!dscr) return '—'; return D((noi/dscr/12)*(1-Math.pow(1+r,-n))/r); })()}
+  Refi Closing Costs (${gb('bridge_refi_costs')}%):  ${(() => { const loan=Math.min(arv*gb('bridge_refi_ltv')/100, (() => { const r=gb('bridge_refi_rate')/100/12,n=gb('bridge_refi_amort')*12,noi=hasProforma?noiProforma:noiAn,dscr=gb('bridge_refi_dscr'); if(!r||!n||!dscr) return Infinity; const v=(noi/dscr/12)*(1-Math.pow(1+r,-n))/r; return isFinite(v)?v:Infinity; })()); return D(loan*gb('bridge_refi_costs')/100); })()}
+  Bridge Payoff at Refi:      ${D(loanType === 'hard_money' ? maxLoan : arv*(gb('bridge_ltv')/100))} (bridge fully retired — no bridge debt remains)
   Seller Carry Continues:     ${D(carry)} carry note stays — seller paid at Year ${scTerm} balloon
 
 STEP 3 — AFTER REFI (Stabilized Operations)
-  Perm Loan Monthly P&I:      ${(() => { const loan=Math.min(arv*g('bridge_refi_ltv')/100,(() => { const r=g('bridge_refi_rate')/100/12,n=g('bridge_refi_amort')*12,noi=hasProforma?noiProforma:noiAn,dscr=g('bridge_refi_dscr'); if(!r||!n||!dscr) return Infinity; const v=(noi/dscr/12)*(1-Math.pow(1+r,-n))/r; return isFinite(v)?v:Infinity; })()); const r=g('bridge_refi_rate')/100,am=g('bridge_refi_amort'); return '$'+pmtPI(r,am,loan).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); })()}/mo
+  Perm Loan Monthly P&I:      ${(() => { const loan=Math.min(arv*gb('bridge_refi_ltv')/100,(() => { const r=gb('bridge_refi_rate')/100/12,n=gb('bridge_refi_amort')*12,noi=hasProforma?noiProforma:noiAn,dscr=gb('bridge_refi_dscr'); if(!r||!n||!dscr) return Infinity; const v=(noi/dscr/12)*(1-Math.pow(1+r,-n))/r; return isFinite(v)?v:Infinity; })()); const r=gb('bridge_refi_rate')/100,am=gb('bridge_refi_amort'); return '$'+pmtPI(r,am,loan).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); })()}/mo
   Seller Carry Pmt / mo:      ${D(scMonthly)}/mo  (${ph2Enabled ? 'Period 1 rate' : 'fixed for term'})
   Stabilized NOI / mo:        ${D((hasProforma ? noiProforma : noiAn)/12)}/mo
   Net CF / mo at Stabilization: (see Bridge-to-Perm panel in calculator)
