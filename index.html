@@ -1245,19 +1245,19 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="v-year" id="badge-term-cf-val">—</div>
         </div>
         <div style="text-align:right;">
-          <div class="v-label">Sale Exit Value at Balloon (with CF)</div>
+          <div class="v-label">Sale Exit at Balloon + CF saved <span style="font-weight:400;opacity:.7">(appreciation)</span></div>
           <div class="v-year" id="badge-term-sale-val">—</div>
         </div>
         <div style="text-align:right;">
-          <div class="v-label">Sale Exit (CF pocketed, not saved)</div>
+          <div class="v-label">Sale Exit — CF pocketed <span style="font-weight:400;opacity:.7">(appreciation)</span></div>
           <div class="v-year" id="badge-term-sale-nocf-val">—</div>
         </div>
         <div style="text-align:right;">
-          <div class="v-label">Refi Cash-Out at Balloon (with CF)</div>
+          <div class="v-label">Refi Cash-Out at Balloon + CF <span style="font-weight:400;opacity:.7">(appreciation)</span></div>
           <div class="v-year" id="badge-term-refi-val">—</div>
         </div>
         <div id="badge-static-sale-row" style="text-align:right; border-left:3px solid #f59e0b; padding-left:10px;">
-          <div class="v-label" style="color:#92400e;">⚠ Static CF Exit (no NOI growth)</div>
+          <div class="v-label" style="color:#92400e;">⚠ Static CF Exit — no NOI growth <span style="font-weight:400;opacity:.7">(appreciation)</span></div>
           <div class="v-year" id="badge-static-sale-val">—</div>
           <div class="v-sub" style="color:#92400e;">Default risk if CF doesn't grow</div>
         </div>
@@ -3400,7 +3400,7 @@ EXIT VALUE & PROCEEDS:
   Seller Carry Owed:        ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, pfImplied)} of exit value)
   Cumulative CF (proforma): ${pfCumCF >= 0 ? '+' : ''}${D(pfCumCF)}
 
-  PROFORMA SALE EXIT:
+  PROFORMA SALE EXIT (cap-rate implied value — no appreciation):
   Net Profit (excl. CF):    ${pfSaleNet >= 0 ? '+' : ''}${D(pfSaleNet)} (${pctOf(Math.abs(pfSaleNet), pp)} of purchase price)
   Net Profit (incl. CF):    ${pfSaleWithCF >= 0 ? '+' : ''}${D(pfSaleWithCF)} (${pctOf(Math.abs(pfSaleWithCF), pp)} of purchase price)
 
@@ -3518,7 +3518,7 @@ Senior Loan Balance Remaining: ${D(exitSrBal)} (${pctOf(exitSrBal, exitPropVal)}
 Seller Carry Balance Owed: ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, exitPropVal)} of exit value)
 Cumulative Net Cash Flow${noiGrowthRate > 0 ? ` (NOI-growth adjusted)` : ''}: ${cumCF >= 0 ? '+' : ''}${D(cumCF)}
 
-  SALE EXIT:
+  SALE EXIT (appreciation-based value):
   Net Profit (excl. held CF): ${saleNet >= 0 ? '+' : ''}${D(saleNet)} (${pctOf(Math.abs(saleNet), pp)} of purchase price)
   Net Profit (incl. held CF): ${saleNetWithCF >= 0 ? '+' : ''}${D(saleNetWithCF)} (${pctOf(Math.abs(saleNetWithCF), pp)} of purchase price)
 
