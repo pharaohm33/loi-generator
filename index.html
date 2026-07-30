@@ -1243,6 +1243,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         <div>
           <div class="v-label">Total CF Earned Over Full Term</div>
           <div class="v-year" id="badge-term-cf-val">—</div>
+          <div class="v-sub" id="badge-term-cf-sub">current NOI + growth, phase payments apply</div>
         </div>
         <div style="text-align:right;">
           <div class="v-label">Sale Exit at Balloon + CF saved <span style="font-weight:400;opacity:.7">(appreciation)</span></div>
@@ -1257,9 +1258,9 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="v-year" id="badge-term-refi-val">—</div>
         </div>
         <div id="badge-static-sale-row" style="text-align:right; border-left:3px solid #f59e0b; padding-left:10px;">
-          <div class="v-label" style="color:#92400e;">⚠ Static CF Exit — no NOI growth <span style="font-weight:400;opacity:.7">(appreciation)</span></div>
+          <div class="v-label" style="color:#92400e;">⚠ Static CF Exit — NOI flat at Day-1 <span style="font-weight:400;opacity:.7">(appreciation)</span></div>
           <div class="v-year" id="badge-static-sale-val">—</div>
-          <div class="v-sub" style="color:#92400e;">Default risk if CF doesn't grow</div>
+          <div class="v-sub" style="color:#92400e;">No NOI growth at all — phase payments still apply</div>
         </div>
       </div>
     </div>
@@ -2342,6 +2343,12 @@ function recalc() {
   const termCFPos  = balloonCumCF >= 0;
   termBanner.className = `viability-badge ${termCFPos ? 'badge-green' : 'badge-red'}`;
   set('badge-term-cf-val',   (balloonCumCF >= 0 ? '+' : '') + fm(balloonCumCF));
+  const cfSubEl = document.getElementById('badge-term-cf-sub');
+  if (cfSubEl) {
+    const growthPart = noiGrowthRate > 0 ? `current NOI + ${(noiGrowthRate*100).toFixed(0)}%/yr growth` : 'current NOI, no growth';
+    const proformaPart = hasProforma ? ' — proforma target NOT used' : '';
+    cfSubEl.textContent = growthPart + proformaPart + '; phase payments apply';
+  }
   const saleWithCF = balloonSaleSurplus + balloonCumCF;
   const refiWithCF = balloonRefiSurplus + balloonCumCF;
   const saleEl = document.getElementById('badge-term-sale-val');
