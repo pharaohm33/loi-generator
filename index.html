@@ -2145,6 +2145,52 @@ function recalc() {
   const balloonYr    = scTerm;
   const balloonIntYr = Math.ceil(scTerm); // handles decimal terms like 5.5 → balloon row at yr 6
 
+  // Pre-compute bridge-to-perm params so exit loop can use effective senior balance
+  let brgParams = null;
+  if (bridgeEnabled) {
+    const _brgLTV      = gb('bridge_ltv') / 100;
+    const _brgRate     = gb('bridge_rate') / 100;
+    const _brgTermMo   = gb('bridge_term_mo') || 18;
+    const _brgOrigPct  = gb('bridge_orig_pct') / 100;
+    const _refiLTV     = gb('bridge_refi_ltv') / 100;
+    const _refiRate    = gb('bridge_refi_rate') / 100;
+    const _refiAmort   = gb('bridge_refi_amort') || 30;
+    const _refiDSCRmin = gb('bridge_refi_dscr') || 1.25;
+    const _brgAmount   = loanType === 'hard_money' ? maxLoan : arv * _brgLTV;
+    const _stabVal     = arv;
+    const _refiNOI     = hasProforma ? (g('noi_proforma') || noiAn) : noiAn;
+    const _refiYr      = (g('stabilization_months') || _brgTermMo) / 12;
+    const _maxByLTV    = _stabVal * _refiLTV;
+    let   _maxByDSCR   = Infinity;
+    if (_refiRate > 0 && _refiAmort > 0 && _refiDSCRmin > 0) {
+      const _rmo = _refiRate / 12, _rn = _refiAmort * 12;
+      _maxByDSCR = (_refiNOI / _refiDSCRmin / 12) * (1 - Math.pow(1 + _rmo, -_rn)) / _rmo;
+    }
+    const _permLoan = Math.min(_maxByLTV, isFinite(_maxByDSCR) ? _maxByDSCR : _maxByLTV);
+    brgParams = { brgAmount: _brgAmount, refiYr: _refiYr, permLoan: _permLoan,
+                  refiRate: _refiRate, refiAmort: _refiAmort };
+  }
+
+  // Effective senior loan balance at a given year — accounts for bridge-to-perm if enabled
+  function effectiveSrBalAt(yr) {
+    if (!brgParams) {
+      // Standard amortization
+      if (srRate === 0 || g('sr_amort') === 0) return Math.max(maxLoan - srPmt * yr * 12, 0);
+      const r = srRate / 12, n = g('sr_amort') * 12, mo = yr * 12;
+      return maxLoan * (Math.pow(1+r, n) - Math.pow(1+r, mo)) / (Math.pow(1+r, n) - 1);
+    }
+    const { brgAmount, refiYr, permLoan, refiRate, refiAmort } = brgParams;
+    if (yr <= refiYr) {
+      // Bridge is interest-only — principal unchanged
+      return brgAmount;
+    }
+    // Perm loan amortizing from refi date
+    const moSinceRefi = Math.round((yr - refiYr) * 12);
+    if (refiRate === 0 || refiAmort === 0) return Math.max(permLoan - moSinceRefi * pmtPI(refiRate, refiAmort, permLoan), 0);
+    const r = refiRate / 12, n = refiAmort * 12;
+    return permLoan * (Math.pow(1+r, n) - Math.pow(1+r, moSinceRefi)) / (Math.pow(1+r, n) - 1);
+  }
+
   // Compute year-by-year senior balance (standard amortization)
   function srBalAt(months) {
     if (srRate === 0 || g('sr_amort') === 0) return Math.max(maxLoan - srPmt * months, 0);
@@ -2246,7 +2292,7 @@ function recalc() {
           ? asIsVal + (arv - asIsVal) * (yr / stabYrsExit)
           : arv * Math.pow(1 + appr, yr - stabYrsExit))
       : arv * Math.pow(1 + appr, yr);
-    const srBal      = srBalAt(yr * 12);
+    const srBal      = effectiveSrBalAt(yr);
     const sellerOwe  = sellerOwedAt(yr);
 
     // Base CF accumulation — static NOI (no growth) but correct phase debt service, or full compounding
