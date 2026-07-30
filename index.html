@@ -4039,8 +4039,8 @@ ${(() => {
     return [
       '  Without BRRRR refi cash:    ' + sign(bcNo) + ' (' + pctOf(Math.abs(bcNo), pp) + ' of purchase price)',
       '  + BRRRR refi cash @ Month ' + brrrrMoBP + ': +' + D(brrrrCashBP) + ' (capital recovery — perm loan proceeds returned to buyer)',
-      sep,
       '  TOTAL WITH BRRRR REFI CASH: ' + sign(bcWith) + ' (' + pctOf(Math.abs(bcWith), pp) + ' of purchase price)',
+      sep,
     ].join('\n');
   }
   return '  Net Profit: ' + (bcWith >= 0 ? '+' : '') + D(bcWith) + ' (' + pctOf(Math.abs(bcWith), pp) + ' of purchase price)';
