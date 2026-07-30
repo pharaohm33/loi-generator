@@ -1307,6 +1307,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <th>Sale + CF</th>
             <th>Refi (no CF)</th>
             <th>Refi + CF</th>
+            <th id="pf-cumcf-col-header" style="display:none;background:#dcfce7;color:#15803d">Cum PF CF</th>
             <th id="pf-col-header" style="display:none;background:#dcfce7;color:#15803d">PF Sale+CF</th>
           </tr>
         </thead>
@@ -2081,6 +2082,8 @@ function recalc() {
   // Show/hide proforma column header
   const pfColHeader = document.getElementById('pf-col-header');
   pfColHeader.style.display = hasProforma ? '' : 'none';
+  const pfCumCFColHeader = document.getElementById('pf-cumcf-col-header');
+  if (pfCumCFColHeader) pfCumCFColHeader.style.display = hasProforma ? '' : 'none';
 
   let baseCumCF = 0, pfCumCF = 0, staticCumCFAccum = 0;
 
@@ -2183,6 +2186,9 @@ function recalc() {
     const cls = v => v > 0 ? 'val-pos' : v < 0 ? 'val-neg' : 'val-zero';
     const sgn = v => v > 0 ? '+' : '';
 
+    const pfCumCFCell = hasProforma
+      ? `<td class="${cls(pfCumCF)}" style="background:#f0fdf4">${sgn(pfCumCF)}${fm(pfCumCF)}</td>`
+      : '';
     const pfCell = hasProforma
       ? `<td class="${cls(pfSaleWithCF)}" style="background:#f0fdf4">${sgn(pfSaleWithCF)}${fm(pfSaleWithCF)}</td>`
       : '';
@@ -2200,6 +2206,7 @@ function recalc() {
       <td class="${cls(saleCF)}">${sgn(saleCF)}${fm(saleCF)}</td>
       <td class="${cls(refiSurplus)}">${sgn(refiSurplus)}${fm(refiSurplus)}</td>
       <td class="${cls(refiCF)}">${sgn(refiCF)}${fm(refiCF)}</td>
+      ${pfCumCFCell}
       ${pfCell}
     `;
     tbody.appendChild(tr);
