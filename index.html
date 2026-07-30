@@ -4029,17 +4029,21 @@ EXIT VALUE & PROCEEDS:
   ★ BEST CASE — SELL AT BALLOON (Appreciation + Proforma CF Saved):
   [Property appreciates at ${P(appr)}/yr AND rents hit proforma target]
 ${(() => {
-  const brrrrCashBP  = (bridgeEnabled && _exitCache.brgRefiNetCash != null) ? _exitCache.brgRefiNetCash : 0;
-  const bcWith       = saleNet + pfCumCF;          // pfCumCF already includes BRRRR cash
-  const bcNo         = bcWith - brrrrCashBP;
-  const brrrrMoBP    = stabMonths || (g('bridge_term_mo') || 18);
+  const brrrrCashBP = (bridgeEnabled && _exitCache.brgRefiNetCash != null) ? _exitCache.brgRefiNetCash : 0;
+  const bcWith      = saleNet + pfCumCF;
+  const bcNo        = bcWith - brrrrCashBP;
+  const brrrrMoBP   = stabMonths || (g('bridge_term_mo') || 18);
+  const sep         = '  ' + '─'.repeat(44);
   if (bridgeEnabled && brrrrCashBP !== 0) {
-    return `  Without BRRRR refi cash:    ${(bcNo  >= 0 ? '+' : '')}${D(bcNo)} (${pctOf(Math.abs(bcNo), pp)} of purchase price)
-  + BRRRR refi cash @ Month ${brrrrMoBP}: +${D(brrrrCashBP)} (capital recovery — perm loan proceeds returned to buyer)
-  ${'─'.repeat(44)}
-  TOTAL WITH BRRRR REFI CASH: ${(bcWith >= 0 ? '+' : '')}${D(bcWith)} (${pctOf(Math.abs(bcWith), pp)} of purchase price)`;
+    const sign = (n) => (n >= 0 ? '+' : '') + D(n);
+    return [
+      '  Without BRRRR refi cash:    ' + sign(bcNo) + ' (' + pctOf(Math.abs(bcNo), pp) + ' of purchase price)',
+      '  + BRRRR refi cash @ Month ' + brrrrMoBP + ': +' + D(brrrrCashBP) + ' (capital recovery — perm loan proceeds returned to buyer)',
+      sep,
+      '  TOTAL WITH BRRRR REFI CASH: ' + sign(bcWith) + ' (' + pctOf(Math.abs(bcWith), pp) + ' of purchase price)',
+    ].join('\n');
   }
-  return `  Net Profit: ${(bcWith >= 0 ? '+' : '')}${D(bcWith)} (${pctOf(Math.abs(bcWith), pp)} of purchase price)`;
+  return '  Net Profit: ' + (bcWith >= 0 ? '+' : '') + D(bcWith) + ' (' + pctOf(Math.abs(bcWith), pp) + ' of purchase price)';
 })()}
 
   ★ Or: Cash-Out Refi at Balloon (keep the property):
