@@ -421,6 +421,19 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   .summary-panel { position: static; }
   .loi-output { display: block !important; }
   .loi-text { padding: 0; }
+  /* Exit table: remove scroll clipping so full table prints */
+  .exit-wrap {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .exit-table {
+    font-size: 8px;
+    width: 100%;
+  }
+  .exit-table th, .exit-table td {
+    padding: 2px 4px;
+    white-space: nowrap;
+  }
 }
 </style>
 </head>
@@ -1301,13 +1314,13 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <th>Prop Value</th>
             <th>Seller Owed</th>
             <th id="exit-cumcf-header">Cum CF</th>
+            <th id="pf-cumcf-col-header" style="display:none;background:#dcfce7;color:#15803d">Cum PF CF</th>
             <th>Breakeven Price</th>
             <th>Exit Cap Rate</th>
             <th>Sale (no CF)</th>
             <th>Sale + CF</th>
             <th>Refi (no CF)</th>
             <th>Refi + CF</th>
-            <th id="pf-cumcf-col-header" style="display:none;background:#dcfce7;color:#15803d">Cum PF CF</th>
             <th id="pf-col-header" style="display:none;background:#dcfce7;color:#15803d">PF Sale+CF</th>
           </tr>
         </thead>
@@ -2200,13 +2213,13 @@ function recalc() {
       <td>${fm(propVal)}</td>
       <td>${fm(sellerOwe)}</td>
       <td class="${cls(cumCF)}">${sgn(cumCF)}${fm(cumCF)}</td>
+      ${pfCumCFCell}
       <td style="color:#6b7280">${fm(breakevenPrice)}</td>
       <td style="color:#6b7280">${(exitCapRate*100).toFixed(2)}%</td>
       <td class="${cls(saleSurplus)}">${sgn(saleSurplus)}${fm(saleSurplus)}</td>
       <td class="${cls(saleCF)}">${sgn(saleCF)}${fm(saleCF)}</td>
       <td class="${cls(refiSurplus)}">${sgn(refiSurplus)}${fm(refiSurplus)}</td>
       <td class="${cls(refiCF)}">${sgn(refiCF)}${fm(refiCF)}</td>
-      ${pfCumCFCell}
       ${pfCell}
     `;
     tbody.appendChild(tr);
@@ -3464,7 +3477,7 @@ EXIT VALUE & PROCEEDS:
 
   ★ BEST CASE — APPRECIATION + PROFORMA CF SAVED:
   [Property appreciates at ${P(appr)}/yr AND rents hit proforma target]
-  Net Profit: ${(balloonSaleSurplus + pfCumCF) >= 0 ? '+' : ''}${D(balloonSaleSurplus + pfCumCF)} (${pctOf(Math.abs(balloonSaleSurplus + pfCumCF), pp)} of purchase price)` : '';
+  Net Profit: ${(saleNet + pfCumCF) >= 0 ? '+' : ''}${D(saleNet + pfCumCF)} (${pctOf(Math.abs(saleNet + pfCumCF), pp)} of purchase price)` : '';
 
   const pfBlock = hasCFStory ? `
 ══════════════════════════════════════
