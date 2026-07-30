@@ -1383,9 +1383,13 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="v-sub" style="color:#92400e;">No NOI growth at all — phase payments still apply</div>
         </div>
         <div id="badge-best-case-row" style="text-align:right; border-left:3px solid #15803d; padding-left:10px; display:none;">
-          <div class="v-label" style="color:#15803d;">★ Best Case — Appreciation + Proforma CF saved</div>
+          <div class="v-label" style="color:#15803d;">★ Best Case (SELL) — Appreciation + Proforma CF</div>
           <div class="v-year" id="badge-best-case-val">—</div>
-          <div class="v-sub" style="color:#15803d;">Property appreciates AND rents hit proforma target</div>
+          <div class="v-sub" style="color:#15803d;">Property appreciates AND rents hit proforma — sell at balloon, pay all debt</div>
+          <div class="v-label" style="color:#0369a1;margin-top:8px;">Or: Cash-Out Refi at Balloon — keep property</div>
+          <div style="font-size:12px;color:#0369a1;margin:2px 0 1px;">+ Cash-Out Refi Proceeds: <span id="badge-best-case-refi-proceeds">—</span></div>
+          <div class="v-year" id="badge-best-case-refi-val" style="color:#0369a1">—</div>
+          <div class="v-sub" id="badge-best-case-refi-sub" style="color:#0369a1">refi equity + proforma CF — property retained</div>
         </div>
       </div>
     </div>
@@ -2731,6 +2735,17 @@ function recalc() {
     const bestCaseSale = balloonSaleSurplus + balloonPfCumCF;
     bestCaseEl.textContent = (bestCaseSale >= 0 ? '+' : '') + fm(bestCaseSale);
     bestCaseEl.style.color = bestCaseSale >= 0 ? '#15803d' : '#dc2626';
+
+    // Cash-out refi alternative: same appreciation basis + proforma CF, but refi instead of sell
+    // balloonRefiSurplus = refi proceeds net of all debt (keep property); same appreciation path as sale
+    const bestCaseRefi = balloonRefiSurplus + balloonPfCumCF;
+    const refiProcEl   = document.getElementById('badge-best-case-refi-proceeds');
+    const refiTotalEl  = document.getElementById('badge-best-case-refi-val');
+    const refiSubEl    = document.getElementById('badge-best-case-refi-sub');
+    if (refiProcEl)  refiProcEl.textContent  = (balloonRefiSurplus >= 0 ? '+' : '') + fm(balloonRefiSurplus);
+    if (refiTotalEl) { refiTotalEl.textContent = (bestCaseRefi >= 0 ? '+' : '') + fm(bestCaseRefi) + ' total'; refiTotalEl.style.color = bestCaseRefi >= 0 ? '#0369a1' : '#dc2626'; }
+    if (refiSubEl)   refiSubEl.textContent = `${(balloonRefiSurplus >= 0 ? '+' : '')}${fm(balloonRefiSurplus)} refi equity + ${(balloonPfCumCF >= 0 ? '+' : '')}${fm(balloonPfCumCF)} proforma CF — property retained`;
+
     bestCaseRow.style.display = '';
   } else if (bestCaseRow) {
     bestCaseRow.style.display = 'none';
