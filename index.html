@@ -1262,6 +1262,11 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="v-year" id="badge-static-sale-val">—</div>
           <div class="v-sub" style="color:#92400e;">No NOI growth at all — phase payments still apply</div>
         </div>
+        <div id="badge-best-case-row" style="text-align:right; border-left:3px solid #15803d; padding-left:10px; display:none;">
+          <div class="v-label" style="color:#15803d;">★ Best Case — Appreciation + Proforma CF saved</div>
+          <div class="v-year" id="badge-best-case-val">—</div>
+          <div class="v-sub" style="color:#15803d;">Property appreciates AND rents hit proforma target</div>
+        </div>
       </div>
     </div>
     <!-- Proforma exit banner — hidden until proforma NOI is entered -->
@@ -2064,7 +2069,7 @@ function recalc() {
   tbody.innerHTML = '';
 
   let balloonSaleSurplus = 0, balloonRefiSurplus = 0, balloonCumCF = 0, balloonStaticCumCF = 0;
-  let balloonPfSaleWithCF = 0, balloonPfRefiWithCF = 0, balloonPfNOI = 0;
+  let balloonPfSaleWithCF = 0, balloonPfRefiWithCF = 0, balloonPfNOI = 0, balloonPfCumCF = 0;
 
   // Show/hide proforma column header
   const pfColHeader = document.getElementById('pf-col-header');
@@ -2133,7 +2138,7 @@ function recalc() {
 
     if (isBalloon) {
       balloonSaleSurplus  = saleSurplus; balloonRefiSurplus = refiSurplus; balloonCumCF = cumCF;
-      balloonStaticCumCF  = staticCumCFAccum;
+      balloonStaticCumCF  = staticCumCFAccum; balloonPfCumCF = pfCumCF;
       balloonPfNOI        = pfNOIyr;
       balloonPfSaleWithCF = pfSaleWithCF;
       balloonPfRefiWithCF = pfRefiWithCF;
@@ -2365,7 +2370,7 @@ function recalc() {
   refiEl.textContent = (refiWithCF >= 0 ? '+' : '') + fm(refiWithCF);
   refiEl.style.color = refiWithCF >= 0 ? '#15803d' : '#dc2626';
 
-  // Static CF exit: always show what happens at balloon if NOI never grows (Day-1 CF × years)
+  // Static CF exit: always show what happens at balloon if NOI never grows
   const staticCumCFatBalloon = balloonStaticCumCF;
   const staticSaleExit = balloonSaleSurplus + staticCumCFatBalloon;
   const staticExitEl = document.getElementById('badge-static-sale-val');
@@ -2374,6 +2379,18 @@ function recalc() {
     staticExitEl.style.color = staticSaleExit >= 0 ? '#15803d' : '#dc2626';
     const staticRow = document.getElementById('badge-static-sale-row');
     if (staticRow) staticRow.style.display = balloonIntYr > 0 ? '' : 'none';
+  }
+
+  // Best Case: appreciation-based exit value + proforma cumulative CF (only shown when proforma NOI is set)
+  const bestCaseRow = document.getElementById('badge-best-case-row');
+  const bestCaseEl  = document.getElementById('badge-best-case-val');
+  if (bestCaseRow && bestCaseEl && hasProforma && balloonIntYr > 0) {
+    const bestCaseSale = balloonSaleSurplus + balloonPfCumCF;
+    bestCaseEl.textContent = (bestCaseSale >= 0 ? '+' : '') + fm(bestCaseSale);
+    bestCaseEl.style.color = bestCaseSale >= 0 ? '#15803d' : '#dc2626';
+    bestCaseRow.style.display = '';
+  } else if (bestCaseRow) {
+    bestCaseRow.style.display = 'none';
   }
 }
 
@@ -3429,7 +3446,11 @@ EXIT VALUE & PROCEEDS:
 
   PROFORMA REFI EXIT:
   Net Cash-Out (excl. CF):  ${pfRefiNet >= 0 ? '+' : ''}${D(pfRefiNet)} (${pctOf(Math.abs(pfRefiNet), pp)} of purchase price)
-  Net Cash-Out (incl. CF):  ${pfRefiWithCF >= 0 ? '+' : ''}${D(pfRefiWithCF)} (${pctOf(Math.abs(pfRefiWithCF), pp)} of purchase price)` : '';
+  Net Cash-Out (incl. CF):  ${pfRefiWithCF >= 0 ? '+' : ''}${D(pfRefiWithCF)} (${pctOf(Math.abs(pfRefiWithCF), pp)} of purchase price)
+
+  ★ BEST CASE — APPRECIATION + PROFORMA CF SAVED:
+  [Property appreciates at ${P(appr)}/yr AND rents hit proforma target]
+  Net Profit: ${(balloonSaleSurplus + pfCumCF) >= 0 ? '+' : ''}${D(balloonSaleSurplus + pfCumCF)} (${pctOf(Math.abs(balloonSaleSurplus + pfCumCF), pp)} of purchase price)` : '';
 
   const pfBlock = hasCFStory ? `
 ══════════════════════════════════════
