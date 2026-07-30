@@ -1384,23 +1384,15 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         </div>
         <div id="badge-best-case-row" style="text-align:right; border-left:3px solid #15803d; padding-left:10px; display:none;">
           <div class="v-label" style="color:#15803d;">★ Best Case (SELL) — Appreciation + Proforma CF</div>
-          <!-- BRRRR side-by-side comparison (shown only when bridge is active) -->
-          <div id="badge-brrrr-compare" style="display:none;margin:4px 0 2px;display:none;">
-            <div style="display:flex;gap:18px;justify-content:flex-end;align-items:flex-start;flex-wrap:wrap;">
-              <div style="text-align:right;">
-                <div style="font-size:10px;font-weight:600;color:#6b7280;letter-spacing:.04em;margin-bottom:1px;">WITHOUT BRRRR REFI CASH</div>
-                <div class="v-year" id="badge-best-case-no-brrrr" style="color:#6b7280">—</div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:10px;font-weight:600;color:#15803d;letter-spacing:.04em;margin-bottom:1px;">WITH BRRRR REFI CASH</div>
-                <div class="v-year" id="badge-best-case-val" style="color:#15803d">—</div>
-                <div style="font-size:11px;color:#166534;margin-top:1px;" id="badge-brrrr-delta">—</div>
-              </div>
-            </div>
+          <!-- BRRRR breakdown (shown only when bridge is active) -->
+          <div id="badge-brrrr-compare" style="display:none;">
+            <div style="font-size:11px;color:#6b7280;margin:3px 0 1px;">Without BRRRR refi cash: <span id="badge-best-case-no-brrrr" style="font-weight:700;color:#6b7280">—</span></div>
+            <div style="font-size:11px;color:#166534;margin-bottom:2px;" id="badge-brrrr-delta">—</div>
+            <div style="font-size:10px;color:#166534;letter-spacing:.04em;font-weight:700;margin-bottom:1px;">TOTAL WITH BRRRR REFI CASH</div>
           </div>
-          <!-- Fallback single value when bridge not active -->
-          <div class="v-year" id="badge-best-case-val-single" style="color:#15803d">—</div>
-          <div class="v-sub" style="color:#15803d;">Property appreciates AND rents hit proforma — sell at balloon, pay all debt</div>
+          <!-- Main value (WITH BRRRR when bridge active; plain when not) -->
+          <div class="v-year" id="badge-best-case-val" style="color:#15803d">—</div>
+          <div class="v-sub" id="badge-best-case-sub" style="color:#15803d;">Property appreciates AND rents hit proforma — sell at balloon, pay all debt</div>
           <div class="v-label" style="color:#0369a1;margin-top:8px;">Or: Cash-Out Refi at Balloon — keep property</div>
           <div style="font-size:12px;color:#0369a1;margin:2px 0 1px;">+ Cash-Out Refi Proceeds: <span id="badge-best-case-refi-proceeds">—</span></div>
           <div class="v-year" id="badge-best-case-refi-val" style="color:#0369a1">—</div>
@@ -2747,28 +2739,29 @@ function recalc() {
   const bestCaseRow = document.getElementById('badge-best-case-row');
   const bestCaseEl  = document.getElementById('badge-best-case-val');
   if (bestCaseRow && hasProforma && balloonIntYr > 0) {
-    const brrrrCash    = (bridgeEnabled && brgParams) ? brgParams.refiNetCash : 0;
-    const bestCaseWith = balloonSaleSurplus + balloonPfCumCF;          // includes BRRRR cash
-    const bestCaseNo   = balloonSaleSurplus + balloonPfCumCF - brrrrCash; // without BRRRR cash
+    const brrrrCash  = (bridgeEnabled && brgParams) ? brgParams.refiNetCash : 0;
+    // bestCaseNo = base without BRRRR refi cash; bestCaseWith = explicit sum (base + BRRRR)
+    const bestCaseNo   = balloonSaleSurplus + balloonPfCumCF - brrrrCash;
+    const bestCaseWith = bestCaseNo + brrrrCash;  // = balloonSaleSurplus + balloonPfCumCF
 
     const compareDiv   = document.getElementById('badge-brrrr-compare');
-    const singleEl     = document.getElementById('badge-best-case-val-single');
     const noEl         = document.getElementById('badge-best-case-no-brrrr');
     const withEl       = document.getElementById('badge-best-case-val');
     const deltaEl      = document.getElementById('badge-brrrr-delta');
 
+    const subEl = document.getElementById('badge-best-case-sub');
+    if (subEl) subEl.textContent = `Property appreciates AND rents hit proforma — sell at balloon (Year ${balloonIntYr}), pay all debt`;
+
     if (bridgeEnabled && brgParams && brrrrCash !== 0) {
-      // Show side-by-side comparison
+      // Show stacked breakdown: without → + BRRRR @ Month X = total → TOTAL label → main value
       if (compareDiv) compareDiv.style.display = '';
-      if (singleEl)   singleEl.style.display   = 'none';
-      if (noEl)  noEl.textContent  = (bestCaseNo  >= 0 ? '+' : '') + fm(bestCaseNo);
-      if (withEl) { withEl.textContent = (bestCaseWith >= 0 ? '+' : '') + fm(bestCaseWith); withEl.style.color = bestCaseWith >= 0 ? '#15803d' : '#dc2626'; }
-      if (deltaEl) deltaEl.textContent = `+${fm(brrrrCash)} BRRRR refi cash @ Month ${Math.round(brgParams.refiYr * 12)}`;
+      if (noEl)    noEl.textContent    = (bestCaseNo  >= 0 ? '+' : '') + fm(bestCaseNo);
+      if (deltaEl) deltaEl.textContent = `+ ${fm(brrrrCash)} BRRRR refi cash @ Month ${Math.round(brgParams.refiYr * 12)} = ${(bestCaseWith >= 0 ? '+' : '')}${fm(bestCaseWith)}`;
+      if (withEl)  { withEl.textContent = (bestCaseWith >= 0 ? '+' : '') + fm(bestCaseWith); withEl.style.color = bestCaseWith >= 0 ? '#15803d' : '#dc2626'; }
     } else {
-      // No bridge — single value
+      // No bridge — single value, no breakdown
       if (compareDiv) compareDiv.style.display = 'none';
-      if (singleEl) { singleEl.style.display = ''; singleEl.textContent = (bestCaseWith >= 0 ? '+' : '') + fm(bestCaseWith); singleEl.style.color = bestCaseWith >= 0 ? '#15803d' : '#dc2626'; }
-      if (withEl)   withEl.textContent = (bestCaseWith >= 0 ? '+' : '') + fm(bestCaseWith); // keep in sync for refi calc below
+      if (withEl)  { withEl.textContent = (bestCaseWith >= 0 ? '+' : '') + fm(bestCaseWith); withEl.style.color = bestCaseWith >= 0 ? '#15803d' : '#dc2626'; }
     }
 
     // Cash-out refi at balloon alternative (appreciation basis + proforma CF, keep property)
@@ -4033,9 +4026,28 @@ EXIT VALUE & PROCEEDS:
   Net Cash-Out (excl. CF):  ${pfRefiNet >= 0 ? '+' : ''}${D(pfRefiNet)} (${pctOf(Math.abs(pfRefiNet), pp)} of purchase price)
   Net Cash-Out (incl. CF):  ${pfRefiWithCF >= 0 ? '+' : ''}${D(pfRefiWithCF)} (${pctOf(Math.abs(pfRefiWithCF), pp)} of purchase price)
 
-  ★ BEST CASE — APPRECIATION + PROFORMA CF SAVED:
+  ★ BEST CASE — SELL AT BALLOON (Appreciation + Proforma CF Saved):
   [Property appreciates at ${P(appr)}/yr AND rents hit proforma target]
-  Net Profit: ${(saleNet + pfCumCF) >= 0 ? '+' : ''}${D(saleNet + pfCumCF)} (${pctOf(Math.abs(saleNet + pfCumCF), pp)} of purchase price)` : '';
+${(() => {
+  const brrrrCashBP  = (bridgeEnabled && _exitCache.brgRefiNetCash != null) ? _exitCache.brgRefiNetCash : 0;
+  const bcWith       = saleNet + pfCumCF;          // pfCumCF already includes BRRRR cash
+  const bcNo         = bcWith - brrrrCashBP;
+  const brrrrMoBP    = stabMonths || (g('bridge_term_mo') || 18);
+  if (bridgeEnabled && brrrrCashBP !== 0) {
+    return `  Without BRRRR refi cash:    ${(bcNo  >= 0 ? '+' : '')}${D(bcNo)} (${pctOf(Math.abs(bcNo), pp)} of purchase price)
+  + BRRRR refi cash @ Month ${brrrrMoBP}: +${D(brrrrCashBP)} (capital recovery — perm loan proceeds returned to buyer)
+  ${'─'.repeat(44)}
+  TOTAL WITH BRRRR REFI CASH: ${(bcWith >= 0 ? '+' : '')}${D(bcWith)} (${pctOf(Math.abs(bcWith), pp)} of purchase price)`;
+  }
+  return `  Net Profit: ${(bcWith >= 0 ? '+' : '')}${D(bcWith)} (${pctOf(Math.abs(bcWith), pp)} of purchase price)`;
+})()}
+
+  ★ Or: Cash-Out Refi at Balloon (keep the property):
+  [Appreciation-based refi, retain asset, collect all proforma CF]
+  Cash-Out Refi Proceeds (net): ${(refiNet >= 0 ? '+' : '')}${D(refiNet)}
+  + Cumulative Proforma CF:     ${(pfCumCF >= 0 ? '+' : '')}${D(pfCumCF)}
+  ${'─'.repeat(44)}
+  Total Wealth Created:          ${((refiNet + pfCumCF) >= 0 ? '+' : '')}${D(refiNet + pfCumCF)} (${pctOf(Math.abs(refiNet + pfCumCF), pp)} of purchase price) — property retained` : '';
 
   const pfBlock = hasCFStory ? `
 ══════════════════════════════════════
