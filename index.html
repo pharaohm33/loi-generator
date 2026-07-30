@@ -1265,22 +1265,23 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     </div>
     <!-- Proforma exit banner — hidden until proforma NOI is entered -->
     <div id="proforma-exit-banner" style="display:none; margin:0 12px 12px; padding:10px 14px; background:#f0fdf4; border:1px solid #86efac; border-radius:7px;">
-      <div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:6px;letter-spacing:.04em">PROFORMA EXIT @ BALLOON (stabilized NOI path)</div>
+      <div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:2px;letter-spacing:.04em">PROFORMA EXIT @ BALLOON (stabilized NOI path)</div>
+      <div style="font-size:10px;color:#166534;margin-bottom:8px;">Exit value = proforma NOI ÷ cap rate (no appreciation). CF = proforma rent growth path, not current NOI.</div>
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <div>
           <div class="v-label">Proforma NOI at Balloon</div>
           <div class="v-year" id="pf-noi-at-balloon" style="color:#15803d">—</div>
         </div>
         <div style="text-align:right;">
-          <div class="v-label">Implied Value at Cap Rate</div>
+          <div class="v-label">Implied Value at Cap Rate <span style="font-weight:400;opacity:.7">(no appreciation)</span></div>
           <div class="v-year" id="pf-implied-val" style="color:#15803d">—</div>
         </div>
         <div style="text-align:right;">
-          <div class="v-label">Sale Exit (with CF)</div>
+          <div class="v-label">Sale Exit + proforma CF saved</div>
           <div class="v-year" id="pf-sale-val">—</div>
         </div>
         <div style="text-align:right;">
-          <div class="v-label">Refi Cash-Out (with CF)</div>
+          <div class="v-label">Refi Cash-Out + proforma CF</div>
           <div class="v-year" id="pf-refi-val">—</div>
         </div>
       </div>
