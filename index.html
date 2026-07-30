@@ -431,7 +431,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   <h1>Suede Buffalo LLC — Seller Carryback Calculator</h1>
   <p>Acquisition &amp; LOI Generator</p>
   <button class="btn-admin" onclick="adminTemplate()">★ Admin Template</button>
-  <button class="btn-admin" id="btn-static-cf" onclick="toggleStaticCF()" style="background:#e0e7ff;color:#3730a3;border-color:#c7d2fe;" title="When ON: CF projection uses Day-1 CF × years (no NOI growth). When OFF: CF compounds at your NOI growth % each year.">📊 Static CF: OFF</button>
+  <button class="btn-admin" id="btn-static-cf" onclick="toggleStaticCF()" style="background:#e0e7ff;color:#3730a3;border-color:#c7d2fe;" title="When ON: CF projection uses Day-1 CF × years (no NOI growth, no phase changes). Freezes debt service at Phase 1 — so if Phase 2 payments step UP, Static CF will look MORE optimistic than the growth path, not less.">📊 Static CF: OFF</button>
   <button class="btn-share" onclick="shareCalc()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
