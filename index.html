@@ -2169,8 +2169,12 @@ function recalc() {
     }
     const _permLoan    = Math.min(_maxByLTV, isFinite(_maxByDSCR) ? _maxByDSCR : _maxByLTV);
     const _permPmtMo   = pmtPI(_refiRate, _refiAmort, _permLoan);
+    const _refiCostAmt = _permLoan * (gb('bridge_refi_costs') / 100);
+    // Positive = cash buyer receives at refi; negative = cash buyer must inject to cover gap
+    const _refiNetCash = _permLoan - _brgAmount - _refiCostAmt;
     brgParams = { brgAmount: _brgAmount, brgIOmo: _brgIOmo, refiYr: _refiYr,
                   permLoan: _permLoan, permPmtMo: _permPmtMo,
+                  refiNetCash: _refiNetCash,
                   refiRate: _refiRate, refiAmort: _refiAmort };
   }
 
@@ -2292,8 +2296,18 @@ function recalc() {
   if (pfCapRateHeader) pfCapRateHeader.style.display = hasProforma ? '' : 'none';
 
   let baseCumCF = 0, pfCumCF = 0, staticCumCFAccum = 0;
+  let brgRefiApplied = false; // one-time refi cash event (injection or extraction)
 
   for (let yr = 1; yr <= maxYr; yr++) {
+    // Apply one-time refi cash event at the refi year boundary
+    // Positive refiNetCash = buyer gets cash back → boosts cumCF
+    // Negative refiNetCash = buyer must inject cash to cover gap → reduces cumCF
+    if (brgParams && !brgRefiApplied && yr >= Math.ceil(brgParams.refiYr)) {
+      baseCumCF        += brgParams.refiNetCash;
+      staticCumCFAccum += brgParams.refiNetCash;
+      pfCumCF          += brgParams.refiNetCash;
+      brgRefiApplied = true;
+    }
     // Value-add: ramp from as-is → ARV during stabilization, then appreciate from ARV
     const stabYrsExit = stabMonths > 0 ? stabMonths / 12 : 0;
     const propVal = (arvRaw > 0 && stabYrsExit > 0)
