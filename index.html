@@ -2179,6 +2179,17 @@ function recalc() {
                   refiRate: _refiRate, refiAmort: _refiAmort };
   }
 
+  // Bridge-aware Day-1 display values — bridge I/O during holding period, not full amort P&I
+  const dispDayOneSrPmt = brgParams ? brgParams.brgIOmo : srPmt;
+  const dispDayOneDebt  = dispDayOneSrPmt + scMonthly;
+  const dispDayOneNetCF = noiMo - dispDayOneDebt;
+  const dispDayOneDSCR  = dispDayOneDebt > 0 ? noiAn / (dispDayOneDebt * 12) : 0;
+  // Re-set displays that were set above with srPmt — override with bridge-aware values when bridge is on
+  if (brgParams) {
+    set('s-sr-pmt', fmd(brgParams.brgIOmo) + '/mo (I/O)');
+    set('s-dscr', dispDayOneDSCR.toFixed(2) + 'x');
+  }
+
   // Effective senior loan balance at a given year — accounts for bridge-to-perm if enabled
   function effectiveSrBalAt(yr) {
     if (!brgParams) {
@@ -2390,6 +2401,11 @@ function recalc() {
         pfRefiWithCF,
         pfNOIatBalloon: pfNOIyr,
         totalDebtMo,
+        dispDayOneDebt,
+        dispDayOneSrPmt,
+        brgPermPmtMo: brgParams ? brgParams.permPmtMo : null,
+        brgIOmo:      brgParams ? brgParams.brgIOmo    : null,
+        brgRefiNetCash: brgParams ? brgParams.refiNetCash : null,
         balloonYr,
       };
     }
@@ -2470,9 +2486,10 @@ function recalc() {
     const stabYr       = stabMonths > 0 ? stabMonths / 12 : 0;
 
     // ── SNAPSHOT 1: Day 1 ──
-    const day1Debt = totalDebtMo; // Phase 1 debt service
-    const day1CF   = noiMo - day1Debt;
-    const day1DSCR = day1Debt > 0 ? noiAn / (day1Debt * 12) : 0;
+    // When bridge is enabled Day-1 payment is bridge I/O (not full amort P&I)
+    const day1Debt = dispDayOneDebt;
+    const day1CF   = dispDayOneNetCF;
+    const day1DSCR = dispDayOneDSCR;
     set('s-pf-day1-noi',  fmd(noiMo) + '/mo  (' + fm(noiAn) + '/yr)');
     set('s-pf-day1-debt', fmd(day1Debt) + '/mo');
     const day1CFEl = document.getElementById('s-pf-day1-cf');
@@ -2484,7 +2501,11 @@ function recalc() {
     const stabSnapEl = document.getElementById('s-pf-stab-header') && document.getElementById('s-pf-stab-header').closest
       ? document.getElementById('s-pf-stab-header').parentElement : null;
     if (hasProforma) {
-      const debtMoAtStab = effectiveSrPmtMoAt(stabYr) + scMonthlyAtYear(stabYr);
+      // When bridge-to-perm is active and stab period = refi date, show post-refi (perm) payment,
+      // not bridge I/O — the snapshot represents the state AFTER the refi closes.
+      const debtMoAtStab = (brgParams && stabYr >= brgParams.refiYr
+        ? brgParams.permPmtMo
+        : effectiveSrPmtMoAt(stabYr)) + scMonthlyAtYear(stabYr);
       const pfNetCFstabAdj = pfNOIstab / 12 - debtMoAtStab;
       const pfDSCRstabAdj  = debtMoAtStab > 0 ? pfNOIstab / (debtMoAtStab * 12) : 0;
       const stabPhaseNote = ph2Enabled && ph2Result
@@ -2574,10 +2595,11 @@ function recalc() {
   setBadge('badge-refi',    firstRefiYr,   maxYr, balloonYr);
   setBadge('badge-refi-cf', firstRefiCFYr, maxYr, balloonYr);
 
-  const cfPos = netCF >= 0;
+  // Use bridge-aware Day-1 CF for the badge (brgIOmo, not full amort P&I)
+  const cfPos = dispDayOneNetCF >= 0;
   const cfBadge = document.getElementById('badge-cf');
   cfBadge.className = `viability-badge ${cfPos ? 'badge-green' : 'badge-red'}`;
-  set('badge-cf-val', fmd(netCF) + '/mo');
+  set('badge-cf-val', fmd(dispDayOneNetCF) + '/mo');
   set('badge-cf-sub', cfPos ? 'Positive cash flow ✓' : 'Negative — review terms');
 
   // ── TERM SUMMARY BANNER ──
@@ -3755,9 +3777,6 @@ function generateBuyerPresentation() {
   // Proforma exit values (also from cache when available)
   const pfNOIatStab    = hasProforma ? noiProforma : 0;
   const pfNOIatBalloon = _exitCache.pfNOIatBalloon ?? (hasProforma ? bpPfNOIatYear(balloonYr) : 0);
-  const pfNetCFatStab  = hasProforma ? pfNOIatStab / 12 - totalDebtMo : 0;
-  const pfDSCRatStab   = hasProforma && totalDebtMo > 0 ? pfNOIatStab / (totalDebtMo * 12) : 0;
-  const pfDSCRatBalloon = hasProforma && totalDebtMo > 0 ? pfNOIatBalloon / (totalDebtMo * 12) : 0;
   const pfImplied      = hasProforma && capRate > 0 ? pfNOIatBalloon / capRate : exitPropVal;
   const pfCumCF        = _exitCache.pfCumCF        ?? 0;
   const pfSaleNet      = _exitCache.pfSaleNet      ?? (pfImplied * 0.92 - exitSrBal - exitSellerOwed);
@@ -3765,14 +3784,18 @@ function generateBuyerPresentation() {
   const pfRefiNet      = _exitCache.pfRefiNet      ?? (pfImplied * srLTV - exitSrBal - exitSellerOwed);
   const pfRefiWithCF   = _exitCache.pfRefiWithCF   ?? (pfRefiNet + pfCumCF);
 
+  // Bridge-aware senior payment: after refi use perm P&I; Day-1 use bridge I/O; otherwise standard P&I
+  const bpPermPmtMo    = _exitCache.brgPermPmtMo ?? srPmt;  // DSCR perm P&I (post-refi)
+  const bpDayOneSrPmt  = _exitCache.dispDayOneSrPmt ?? srPmt; // bridge I/O or srPmt on Day-1
+  const bpDayOneDebt   = _exitCache.dispDayOneDebt  ?? totalDebtMo;
+
   // Phase-aware debt service for buyer presentation timeline
-  const bpDebtAtStab = srPmt + ((() => {
-    if (!ph2Enabled || !bpPh2) return scMonthly;
-    return stabYrs > bpPh1Yrs ? scMonthly2 : scMonthly;
-  })());
+  // At stabilization and beyond: use perm P&I (bridge has been refi'd by then)
+  const bpStabScMo = (!ph2Enabled || !bpPh2) ? scMonthly : (stabYrs > bpPh1Yrs ? scMonthly2 : scMonthly);
+  const bpDebtAtStab = bpPermPmtMo + bpStabScMo;
   const bpPfNetCFatStab = pfNOIatStab / 12 - bpDebtAtStab;
   const bpPfDSCRatStab  = bpDebtAtStab > 0 ? pfNOIatStab / (bpDebtAtStab * 12) : 0;
-  const bpDebtAtBalloon = srPmt + (ph2Enabled && bpPh2 ? scMonthly2 : scMonthly);
+  const bpDebtAtBalloon = bpPermPmtMo + (ph2Enabled && bpPh2 ? scMonthly2 : scMonthly);
   const bpPfNetCFatBalloon = pfNOIatBalloon / 12 - bpDebtAtBalloon;
   const bpPfDSCRatBalloon  = bpDebtAtBalloon > 0 ? pfNOIatBalloon / (bpDebtAtBalloon * 12) : 0;
   const bpStabPhaseLabel   = ph2Enabled && bpPh2
@@ -3780,7 +3803,7 @@ function generateBuyerPresentation() {
     : '';
   // Phase 2 snapshot for buyer presentation
   const bpPh2NOI  = ph2Enabled && bpPh2 ? bpPfNOIatYear(bpPh1Yrs) : 0;
-  const bpPh2Debt = srPmt + scMonthly2;
+  const bpPh2Debt = bpPermPmtMo + scMonthly2;
   const bpPh2CF   = bpPh2NOI / 12 - bpPh2Debt;
   const bpPh2DSCR = bpPh2Debt > 0 ? bpPh2NOI / (bpPh2Debt * 12) : 0;
   const ph2SnapshotBlock = ph2Enabled && bpPh2 ? `
@@ -3823,9 +3846,10 @@ EXIT VALUE & PROCEEDS:
   ${capRate > 0
     ? `Proforma Implied Value @ ${P(capRate)} cap: ${D(pfImplied)}  (${D(pfNOIatBalloon)}/yr ÷ ${P(capRate)})`
     : `Proforma Exit Value (appreciation-based): ${D(pfImplied)}`}
-  Senior Loan Balance:      ${D(exitSrBal)} (${pctOf(exitSrBal, pfImplied)} of exit value)
+  Senior Loan Balance:      ${D(exitSrBal)}${bridgeEnabled ? ' (DSCR perm loan, amortized from refi date)' : ''} (${pctOf(exitSrBal, pfImplied)} of exit value)
   Seller Carry Owed:        ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, pfImplied)} of exit value)
-  Cumulative CF (proforma NOI path — ramps to target then grows ${P(noiGrowthRate)}/yr): ${pfCumCF >= 0 ? '+' : ''}${D(pfCumCF)}
+  Cumulative CF (proforma NOI path — ramps to target then grows ${P(noiGrowthRate)}/yr): ${pfCumCF >= 0 ? '+' : ''}${D(pfCumCF)}${bridgeEnabled && _exitCache.brgRefiNetCash != null ? `
+    ↳ Includes ${_exitCache.brgRefiNetCash >= 0 ? '+' : ''}${D(_exitCache.brgRefiNetCash)} DSCR refi cash-out at Month ${stabMonths || (g('bridge_term_mo') || 18)} (BRRRR capital recovery — offset by higher perm loan at exit)` : ''}
 
   PROFORMA SALE EXIT (cap-rate implied value — no appreciation, proforma NOI path):
   Net Profit (excl. CF):    ${pfSaleNet >= 0 ? '+' : ''}${D(pfSaleNet)} (${pctOf(Math.abs(pfSaleNet), pp)} of purchase price)
@@ -3843,11 +3867,11 @@ EXIT VALUE & PROCEEDS:
 ══════════════════════════════════════
 EXIT PROFIT PROJECTION — CASH FLOW STORY (Year ${balloonYr} Balloon)
 ══════════════════════════════════════
-  DAY 1 (current NOI, Period 1 payments):
+  DAY 1 (current NOI, ${bridgeEnabled ? 'bridge I/O payment' : 'Period 1 payments'}):
   Current NOI:              ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)
-  Total Debt Service:       ${Dfmt(totalDebtMo)}/mo
-  Net Cash Flow:            ${noiMo - totalDebtMo >= 0 ? '+' : ''}${Dfmt(noiMo - totalDebtMo)}/mo  (${noiMo - totalDebtMo >= 0 ? 'cash flowing ✓' : 'negative — see growth path below'})
-  DSCR:                     ${totalDebtMo > 0 ? (noiAn / (totalDebtMo * 12)).toFixed(2) : '—'}x
+  Total Debt Service:       ${Dfmt(bpDayOneDebt)}/mo${bridgeEnabled ? '  (bridge I/O + seller carry)' : ''}
+  Net Cash Flow:            ${noiMo - bpDayOneDebt >= 0 ? '+' : ''}${Dfmt(noiMo - bpDayOneDebt)}/mo  (${noiMo - bpDayOneDebt >= 0 ? 'cash flowing ✓' : 'negative — see growth path below'})
+  DSCR:                     ${bpDayOneDebt > 0 ? (noiAn / (bpDayOneDebt * 12)).toFixed(2) : '—'}x
 ${stabSection}
 ${ph2SnapshotBlock}${balloonSection}${exitSection}
 ` : '';
@@ -3876,9 +3900,12 @@ Loan Type: ${loanType === 'hard_money' ? 'Hard Money' : 'DSCR'}
 Senior Loan Amount: ${D(maxLoan)} — ${P(actualLTV)} LTV of As-Is Value (binding constraint: ${bindingConstraint})
 Interest Rate: ${P(srRate)}
 Amortization: ${g('sr_amort')} years
-Senior Monthly Payment: ${Dfmt(srPmt)}/mo
-DSCR (Senior Only): ${dscrSrOnly.toFixed(2)}x
-DSCR (All Debt incl. Seller Carry): ${dscrAllDebt.toFixed(2)}x
+${bridgeEnabled
+  ? `Senior Monthly Payment: ${Dfmt(bpDayOneSrPmt)}/mo (bridge I/O during holding period)
+  → After DSCR Refi (Month ${stabMonths || (g('bridge_term_mo') || 18)}): ${Dfmt(bpPermPmtMo)}/mo (DSCR P&I)`
+  : `Senior Monthly Payment: ${Dfmt(srPmt)}/mo`}
+DSCR (Senior Only): ${(bpDayOneSrPmt > 0 ? noiAn / (bpDayOneSrPmt * 12) : dscrSrOnly).toFixed(2)}x
+DSCR (All Debt incl. Seller Carry): ${(bpDayOneDebt > 0 ? noiAn / (bpDayOneDebt * 12) : dscrAllDebt).toFixed(2)}x
 
 Seller Carry Terms:
   Total Term: ${scTerm} years${ph2Enabled && bpPh2 ? ` (${bpPh1Yrs}-yr Period 1 + ${bpPh2Yrs}-yr Period 2)` : ''}
@@ -3959,40 +3986,91 @@ Cumulative Net Cash Flow (${staticCF ? 'NOI flat at Day-1, Static CF mode' : `cu
   Net Cash-Out — CF saved:    ${refiNetWithCF >= 0 ? '+' : ''}${D(refiNetWithCF)} (${pctOf(Math.abs(refiNetWithCF), pp)} of purchase price)
 ${pfBlock}
 
-${bridgeEnabled ? `
+${bridgeEnabled ? (() => {
+  const bpIsHM        = loanType === 'hard_money';
+  const bpBrgAmt      = bpIsHM ? maxLoan : arv * (gb('bridge_ltv') / 100);
+  const bpBrgRate     = gb('bridge_rate') / 100;
+  const bpBrgIOmo     = bpBrgAmt * bpBrgRate / 12;
+  const bpBrgOrigFee  = bpBrgAmt * (gb('bridge_orig_pct') / 100);
+  const bpBrgTermMo   = gb('bridge_term_mo');
+  const bpRefiMo      = stabMonths || bpBrgTermMo;
+  const bpRefiNOI     = hasProforma ? noiProforma : noiAn;
+  const bpRefiLTV     = gb('bridge_refi_ltv') / 100;
+  const bpRefiRate    = gb('bridge_refi_rate') / 100;
+  const bpRefiAmort   = gb('bridge_refi_amort');
+  const bpRefiDSCR    = gb('bridge_refi_dscr');
+  const bpRefiCostPct = gb('bridge_refi_costs') / 100;
+  const bpMaxByLTV    = arv * bpRefiLTV;
+  const bpRmo = bpRefiRate / 12, bpRn = bpRefiAmort * 12;
+  const bpMaxByDSCR   = (bpRmo > 0 && bpRn > 0 && bpRefiDSCR > 0)
+    ? (bpRefiNOI / bpRefiDSCR / 12) * (1 - Math.pow(1 + bpRmo, -bpRn)) / bpRmo : Infinity;
+  const bpPermLoan    = Math.min(bpMaxByLTV, isFinite(bpMaxByDSCR) ? bpMaxByDSCR : bpMaxByLTV);
+  const bpRefiCosts   = bpPermLoan * bpRefiCostPct;
+  const bpNetAtRefi   = bpPermLoan - bpBrgAmt - bpRefiCosts;
+  const bpPermPmt     = pmtPI(bpRefiRate, bpRefiAmort, bpPermLoan);
+  const bpRefiScMo    = scMonthly; // Phase 1 carry payment (refi typically within Phase 1)
+  const bpStabCF      = bpRefiNOI / 12 - bpPermPmt - bpRefiScMo;
+  const bpStabDSCR    = (bpPermPmt + bpRefiScMo) > 0 ? bpRefiNOI / ((bpPermPmt + bpRefiScMo) * 12) : 0;
+  const bpBridgeCF    = noiMo - bpBrgIOmo - scMonthly;
+  const bpStrategy    = bpIsHM
+    ? 'Hard Money Acquisition → DSCR Refinance (BRRRR / Value-Add)'
+    : 'Bridge Loan Acquisition → Permanent Loan Refinance';
+  const bpRefiLabel   = bpIsHM ? 'DSCR Permanent Loan' : 'Permanent Loan';
+  const bpBindingNote = bpPermLoan === bpMaxByLTV
+    ? `LTV-constrained (${(gb('bridge_refi_ltv'))}% of ARV)`
+    : `DSCR-constrained (${bpRefiDSCR}x min DSCR)`;
+
+  return `
 ══════════════════════════════════════
-BRIDGE-TO-PERM FINANCING PLAN
+FINANCING STRATEGY: ${bpStrategy}
 ══════════════════════════════════════
-STEP 1 — BRIDGE LOAN (at Acquisition)
-${loanType === 'hard_money' ? '  [Sourced from Hard Money loan — same terms as Section C above]' : ''}
-  Bridge Loan Amount:         ${D(loanType === 'hard_money' ? maxLoan : arv * (gb('bridge_ltv')/100))}
-  Bridge Rate (Interest-Only):${(gb('bridge_rate')).toFixed(2)}%
-  Bridge Monthly I/O Payment: ${(() => { const ba = loanType === 'hard_money' ? maxLoan : arv*(gb('bridge_ltv')/100); return '$'+((ba*(gb('bridge_rate')/100)/12)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); })()}/mo
-  Bridge Origination Fee:     ${(() => { const ba = loanType === 'hard_money' ? maxLoan : arv*(gb('bridge_ltv')/100); return D(ba*(gb('bridge_orig_pct')/100)); })()}
-  Bridge Term:                ${gb('bridge_term_mo')} months
-  Seller Carry Note:          ${D(carry)} (remains in place — seller stays in equity position)
+${bpIsHM
+  ? `This deal is structured as a hard money acquisition with a rate-and-term refinance into a long-term DSCR loan at stabilization. The hard money loan funds the acquisition and rehab/lease-up period. Once the property is stabilized and rents hit proforma, the buyer refinances the hard money out with a conventional DSCR loan. The seller carry note remains in place throughout and is paid off at the Year ${scTerm} balloon.`
+  : `This deal uses a short-term bridge loan to fund the acquisition at a higher LTV, giving the seller more cash at closing. At the end of the stabilization period, the bridge is refinanced into a long-term permanent loan. The seller carry note remains in place and is paid off at the Year ${scTerm} balloon.`}
+
+PHASE 1 — ${bpIsHM ? 'HARD MONEY' : 'BRIDGE LOAN'} (Acquisition through Month ${bpRefiMo})
+  ${bpIsHM ? 'Hard Money' : 'Bridge'} Loan Amount:   ${D(bpBrgAmt)}${bpIsHM ? ' (constrained by LTV / LTC / DSCR per Section C)' : ` (${gb('bridge_ltv')}% of ARV)`}
+  Rate (Interest-Only):       ${P(bpBrgRate)}  →  ${Dfmt(bpBrgIOmo)}/mo
+  Origination Fee:            ${D(bpBrgOrigFee)}
+  Max Commitment Term:        ${bpBrgTermMo} months
+  Seller Carry Note:          ${D(carry)} (seller stays in equity position — no payoff yet)
   Cash to Seller at Closing:  ${D(cac)}
 
-STEP 2 — PERM REFI (at Stabilization — Month ${stabMonths || gb('bridge_term_mo')})
+  HOLDING PERIOD CASH FLOW (current NOI):
+  NOI / mo:                   ${Dfmt(noiMo)}/mo
+  ${bpIsHM ? 'Hard Money' : 'Bridge'} I/O Payment:   −${Dfmt(bpBrgIOmo)}/mo
+  Seller Carry Payment:       −${Dfmt(scMonthly)}/mo
+  Net CF / mo (holding):      ${bpBridgeCF >= 0 ? '+' : ''}${Dfmt(bpBridgeCF)}/mo ${bpBridgeCF >= 0 ? '✓' : '← negative during holding is expected on value-add deals'}
+
+PHASE 2 — ${bpIsHM ? 'DSCR REFI' : 'PERM REFI'} (Month ${bpRefiMo} — End of Stabilization Period)
+  Trigger:                    End of ${stabMonths > 0 ? `${stabMonths}-month stabilization period` : `${bpBrgTermMo}-month bridge term`}
   Stabilized Value (ARV):     ${D(arv)}
-  Proforma NOI at Refi:       ${D(hasProforma ? noiProforma : noiAn)}/yr  (${D((hasProforma ? noiProforma : noiAn)/12)}/mo)
-  Max Perm Loan by LTV (${gb('bridge_refi_ltv')}%): ${D(arv * gb('bridge_refi_ltv')/100)}
-  Max Perm Loan by DSCR (${gb('bridge_refi_dscr')}x): ${(() => { const r=gb('bridge_refi_rate')/100/12, n=gb('bridge_refi_amort')*12, noi=hasProforma?noiProforma:noiAn, dscr=gb('bridge_refi_dscr'); if(!r||!n||!dscr) return '—'; return D((noi/dscr/12)*(1-Math.pow(1+r,-n))/r); })()}
-  Refi Closing Costs (${gb('bridge_refi_costs')}%):  ${(() => { const loan=Math.min(arv*gb('bridge_refi_ltv')/100, (() => { const r=gb('bridge_refi_rate')/100/12,n=gb('bridge_refi_amort')*12,noi=hasProforma?noiProforma:noiAn,dscr=gb('bridge_refi_dscr'); if(!r||!n||!dscr) return Infinity; const v=(noi/dscr/12)*(1-Math.pow(1+r,-n))/r; return isFinite(v)?v:Infinity; })()); return D(loan*gb('bridge_refi_costs')/100); })()}
-  Bridge Payoff at Refi:      ${D(loanType === 'hard_money' ? maxLoan : arv*(gb('bridge_ltv')/100))} (bridge fully retired — no bridge debt remains)
-  Seller Carry Continues:     ${D(carry)} carry note stays — seller paid at Year ${scTerm} balloon
+  Stabilized NOI at Refi:     ${D(bpRefiNOI)}/yr  (${Dfmt(bpRefiNOI / 12)}/mo)
+  Max ${bpRefiLabel} — LTV (${gb('bridge_refi_ltv')}%): ${D(bpMaxByLTV)}
+  Max ${bpRefiLabel} — DSCR (${bpRefiDSCR}x): ${isFinite(bpMaxByDSCR) ? D(bpMaxByDSCR) : '—'}
+  Binding Constraint:         ${bpBindingNote}
+  ${bpRefiLabel} Amount:  ${D(bpPermLoan)}
+  Refi Closing Costs (${gb('bridge_refi_costs')}%):    −${D(bpRefiCosts)}
+  ${bpIsHM ? 'Hard Money' : 'Bridge'} Payoff:          −${D(bpBrgAmt)} (${bpIsHM ? 'hard money' : 'bridge'} fully retired at refi)
+${'─'.repeat(44)}
+  ${bpNetAtRefi >= 0
+    ? `Net Cash Out at Refi:      +${D(bpNetAtRefi)} (returned to buyer)`
+    : `Cash Buyer Must Inject:    ${D(Math.abs(bpNetAtRefi))} (refi proceeds don't cover full ${bpIsHM ? 'HM' : 'bridge'} payoff + costs)`}
+  Seller Carry Note:          ${D(carry)} carry continues — seller still in equity position
 
-STEP 3 — AFTER REFI (Stabilized Operations)
-  Perm Loan Monthly P&I:      ${(() => { const loan=Math.min(arv*gb('bridge_refi_ltv')/100,(() => { const r=gb('bridge_refi_rate')/100/12,n=gb('bridge_refi_amort')*12,noi=hasProforma?noiProforma:noiAn,dscr=gb('bridge_refi_dscr'); if(!r||!n||!dscr) return Infinity; const v=(noi/dscr/12)*(1-Math.pow(1+r,-n))/r; return isFinite(v)?v:Infinity; })()); const r=gb('bridge_refi_rate')/100,am=gb('bridge_refi_amort'); return '$'+pmtPI(r,am,loan).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); })()}/mo
-  Seller Carry Pmt / mo:      ${D(scMonthly)}/mo  (${ph2Enabled ? 'Period 1 rate' : 'fixed for term'})
-  Stabilized NOI / mo:        ${D((hasProforma ? noiProforma : noiAn)/12)}/mo
-  Net CF / mo at Stabilization: (see Bridge-to-Perm panel in calculator)
+PHASE 3 — STABILIZED OPERATIONS (Post-Refi through Year ${scTerm} Balloon)
+  ${bpRefiLabel} P&I:     ${Dfmt(bpPermPmt)}/mo  (${P(bpRefiRate)}, ${bpRefiAmort}-yr amort)
+  Seller Carry Payment:       ${Dfmt(bpRefiScMo)}/mo${ph2Enabled ? ' (Phase 1 rate — steps up at Period 2 start)' : ''}
+  Stabilized NOI / mo:        ${Dfmt(bpRefiNOI / 12)}/mo
+  Net CF / mo at Stabilization: ${bpStabCF >= 0 ? '+' : ''}${Dfmt(bpStabCF)}/mo
+  DSCR (${bpRefiLabel} + carry):  ${bpStabDSCR.toFixed(2)}x
 
-STEP 4 — BALLOON (Year ${scTerm})
-  Seller carry balance is paid in full at the Year ${scTerm} maturity date.
-  Perm loan balance at balloon is paid off or refinanced by buyer at their discretion.
-  Buyer reserves the sole right to prepay the seller carry at any time with no prepayment penalty.
-` : ''}\
+PHASE 4 — BALLOON (Year ${scTerm})
+  At the end of Year ${scTerm}, the seller carry note balance is paid in full — this is the seller's final payoff.
+  The ${bpRefiLabel} balance at balloon is separately paid off, refinanced, or the property is sold.
+  Buyer reserves the sole right to prepay the seller carry at any time prior to maturity with no prepayment penalty.
+`;
+})() : ''}\
 ══════════════════════════════════════
 DISCLAIMER
 ══════════════════════════════════════
