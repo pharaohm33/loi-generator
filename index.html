@@ -1384,7 +1384,22 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         </div>
         <div id="badge-best-case-row" style="text-align:right; border-left:3px solid #15803d; padding-left:10px; display:none;">
           <div class="v-label" style="color:#15803d;">★ Best Case (SELL) — Appreciation + Proforma CF</div>
-          <div class="v-year" id="badge-best-case-val">—</div>
+          <!-- BRRRR side-by-side comparison (shown only when bridge is active) -->
+          <div id="badge-brrrr-compare" style="display:none;margin:4px 0 2px;display:none;">
+            <div style="display:flex;gap:18px;justify-content:flex-end;align-items:flex-start;flex-wrap:wrap;">
+              <div style="text-align:right;">
+                <div style="font-size:10px;font-weight:600;color:#6b7280;letter-spacing:.04em;margin-bottom:1px;">WITHOUT BRRRR REFI CASH</div>
+                <div class="v-year" id="badge-best-case-no-brrrr" style="color:#6b7280">—</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:10px;font-weight:600;color:#15803d;letter-spacing:.04em;margin-bottom:1px;">WITH BRRRR REFI CASH</div>
+                <div class="v-year" id="badge-best-case-val" style="color:#15803d">—</div>
+                <div style="font-size:11px;color:#166534;margin-top:1px;" id="badge-brrrr-delta">—</div>
+              </div>
+            </div>
+          </div>
+          <!-- Fallback single value when bridge not active -->
+          <div class="v-year" id="badge-best-case-val-single" style="color:#15803d">—</div>
           <div class="v-sub" style="color:#15803d;">Property appreciates AND rents hit proforma — sell at balloon, pay all debt</div>
           <div class="v-label" style="color:#0369a1;margin-top:8px;">Or: Cash-Out Refi at Balloon — keep property</div>
           <div style="font-size:12px;color:#0369a1;margin:2px 0 1px;">+ Cash-Out Refi Proceeds: <span id="badge-best-case-refi-proceeds">—</span></div>
@@ -2731,18 +2746,37 @@ function recalc() {
   // Best Case: appreciation-based exit value + proforma cumulative CF (only shown when proforma NOI is set)
   const bestCaseRow = document.getElementById('badge-best-case-row');
   const bestCaseEl  = document.getElementById('badge-best-case-val');
-  if (bestCaseRow && bestCaseEl && hasProforma && balloonIntYr > 0) {
-    const bestCaseSale = balloonSaleSurplus + balloonPfCumCF;
-    bestCaseEl.textContent = (bestCaseSale >= 0 ? '+' : '') + fm(bestCaseSale);
-    bestCaseEl.style.color = bestCaseSale >= 0 ? '#15803d' : '#dc2626';
+  if (bestCaseRow && hasProforma && balloonIntYr > 0) {
+    const brrrrCash    = (bridgeEnabled && brgParams) ? brgParams.refiNetCash : 0;
+    const bestCaseWith = balloonSaleSurplus + balloonPfCumCF;          // includes BRRRR cash
+    const bestCaseNo   = balloonSaleSurplus + balloonPfCumCF - brrrrCash; // without BRRRR cash
 
-    // Cash-out refi alternative: same appreciation basis + proforma CF, but refi instead of sell
-    // balloonRefiSurplus = refi proceeds net of all debt (keep property); same appreciation path as sale
+    const compareDiv   = document.getElementById('badge-brrrr-compare');
+    const singleEl     = document.getElementById('badge-best-case-val-single');
+    const noEl         = document.getElementById('badge-best-case-no-brrrr');
+    const withEl       = document.getElementById('badge-best-case-val');
+    const deltaEl      = document.getElementById('badge-brrrr-delta');
+
+    if (bridgeEnabled && brgParams && brrrrCash !== 0) {
+      // Show side-by-side comparison
+      if (compareDiv) compareDiv.style.display = '';
+      if (singleEl)   singleEl.style.display   = 'none';
+      if (noEl)  noEl.textContent  = (bestCaseNo  >= 0 ? '+' : '') + fm(bestCaseNo);
+      if (withEl) { withEl.textContent = (bestCaseWith >= 0 ? '+' : '') + fm(bestCaseWith); withEl.style.color = bestCaseWith >= 0 ? '#15803d' : '#dc2626'; }
+      if (deltaEl) deltaEl.textContent = `+${fm(brrrrCash)} BRRRR refi cash @ Month ${Math.round(brgParams.refiYr * 12)}`;
+    } else {
+      // No bridge — single value
+      if (compareDiv) compareDiv.style.display = 'none';
+      if (singleEl) { singleEl.style.display = ''; singleEl.textContent = (bestCaseWith >= 0 ? '+' : '') + fm(bestCaseWith); singleEl.style.color = bestCaseWith >= 0 ? '#15803d' : '#dc2626'; }
+      if (withEl)   withEl.textContent = (bestCaseWith >= 0 ? '+' : '') + fm(bestCaseWith); // keep in sync for refi calc below
+    }
+
+    // Cash-out refi at balloon alternative (appreciation basis + proforma CF, keep property)
     const bestCaseRefi = balloonRefiSurplus + balloonPfCumCF;
     const refiProcEl   = document.getElementById('badge-best-case-refi-proceeds');
     const refiTotalEl  = document.getElementById('badge-best-case-refi-val');
     const refiSubEl    = document.getElementById('badge-best-case-refi-sub');
-    if (refiProcEl)  refiProcEl.textContent  = (balloonRefiSurplus >= 0 ? '+' : '') + fm(balloonRefiSurplus);
+    if (refiProcEl)  refiProcEl.textContent = (balloonRefiSurplus >= 0 ? '+' : '') + fm(balloonRefiSurplus);
     if (refiTotalEl) { refiTotalEl.textContent = (bestCaseRefi >= 0 ? '+' : '') + fm(bestCaseRefi) + ' total'; refiTotalEl.style.color = bestCaseRefi >= 0 ? '#0369a1' : '#dc2626'; }
     if (refiSubEl)   refiSubEl.textContent = `${(balloonRefiSurplus >= 0 ? '+' : '')}${fm(balloonRefiSurplus)} refi equity + ${(balloonPfCumCF >= 0 ? '+' : '')}${fm(balloonPfCumCF)} proforma CF — property retained`;
 
