@@ -2698,8 +2698,12 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
         return `fully amortizing principal and interest payments of ${esc(Dfmt(monthly))}/month (${esc(rPct)}, ${extra.amortYrs || 30}-year amortization schedule)`;
       }
       if (modeStr === 'deferred_exit') {
-        if (rate === 0) return `no monthly payments — full principal balance due at the balloon with no interest`;
-        return `no monthly payments; interest accrues at ${esc(rPct)} simple interest on the full outstanding balance`;
+        if (rate === 0) return ph1RollsDeferred
+          ? `no monthly payments during this period — the full principal balance carries forward into Period 2 with no interest accruing`
+          : `no monthly payments — the full principal balance is due in a single lump-sum balloon payment at the end of Year ${scTerm}. No partial payments, no earlier payoff obligation`;
+        return ph1RollsDeferred
+          ? `no monthly payments during this period; interest accrues at ${esc(rPct)} simple interest on the full outstanding balance and rolls into the Period 2 starting balance`
+          : `no monthly payments; interest accrues at ${esc(rPct)} simple interest on the full outstanding balance — all principal and interest due at the Year ${scTerm} balloon`;
       }
       if (modeStr === 'deferred_then_pay') {
         const df = extra.deferMonths || 0;
@@ -2767,7 +2771,7 @@ For the first ${loiPh1Yrs} year${loiPh1Yrs!==1?'s':''} of the note (Months 1–$
 
 Beginning in Month ${ph2StartMo} (Year ${loiPh1Yrs+1}) and continuing through the balloon, the outstanding balance — approximately ${esc(D(loiPh1EndBal))} — will be subject to ${ph2Desc}${ph2NarrPmts}.
 
-At the end of year ${scTerm}, buyer will pay the remaining balance through a balloon payment of approximately ${esc(D(balloon))}.
+At the end of Year ${scTerm} — and not before — buyer will pay the full remaining balance in a single balloon payment of approximately ${esc(D(balloon))}. There is no partial payoff, no earlier balloon, and no obligation to pay the seller carry balance prior to the Year ${scTerm} maturity date.
 
 ${finIncome <= 0
   ? `Total seller receipts equal the full ${esc(D(pp))} purchase price.`
