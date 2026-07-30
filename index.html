@@ -4050,8 +4050,8 @@ ${(() => {
   [Appreciation-based refi, retain asset, collect all proforma CF]
   Cash-Out Refi Proceeds (net): ${(refiNet >= 0 ? '+' : '')}${D(refiNet)}
   + Cumulative Proforma CF:     ${(pfCumCF >= 0 ? '+' : '')}${D(pfCumCF)}
-  ${'─'.repeat(44)}
-  Total Wealth Created:          ${((refiNet + pfCumCF) >= 0 ? '+' : '')}${D(refiNet + pfCumCF)} (${pctOf(Math.abs(refiNet + pfCumCF), pp)} of purchase price) — property retained` : '';
+  Total Wealth Created:          ${((refiNet + pfCumCF) >= 0 ? '+' : '')}${D(refiNet + pfCumCF)} (${pctOf(Math.abs(refiNet + pfCumCF), pp)} of purchase price) — property retained
+  ${'─'.repeat(44)}` : '';
 
   const pfBlock = hasCFStory ? `
 ══════════════════════════════════════
