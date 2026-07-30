@@ -2071,7 +2071,13 @@ function recalc() {
   let baseCumCF = 0, pfCumCF = 0;
 
   for (let yr = 1; yr <= maxYr; yr++) {
-    const propVal    = arv * Math.pow(1 + appr, yr);
+    // Value-add: ramp from as-is → ARV during stabilization, then appreciate from ARV
+    const stabYrsExit = stabMonths > 0 ? stabMonths / 12 : 0;
+    const propVal = (arvRaw > 0 && stabYrsExit > 0)
+      ? (yr <= stabYrsExit
+          ? asIsVal + (arv - asIsVal) * (yr / stabYrsExit)
+          : arv * Math.pow(1 + appr, yr - stabYrsExit))
+      : arv * Math.pow(1 + appr, yr);
     const srBal      = srBalAt(yr * 12);
     const sellerOwe  = sellerOwedAt(yr);
 
@@ -3316,7 +3322,11 @@ function generateBuyerPresentation() {
     return sellerOwedAtPhase(bpPh1End, bpPh2Rate, yr - bpPh1Yrs, mode2, { ...bpPh2Extra, monthly: scMonthly2 });
   }
   // Use values computed by recalc to guarantee consistency with the exit grid badges
-  const exitPropVal    = _exitCache.exitPropVal    ?? arv * Math.pow(1 + appr, balloonYr);
+  const bpStabYrsExit  = stabYrs > 0 ? stabYrs : 0;
+  const exitPropVal    = _exitCache.exitPropVal    ?? (
+    (arvRaw > 0 && bpStabYrsExit > 0)
+      ? arv * Math.pow(1 + appr, balloonYr - bpStabYrsExit)
+      : arv * Math.pow(1 + appr, balloonYr));
   const exitSrBal      = _exitCache.exitSrBal      ?? srBalAt(balloonYr * 12);
   const exitSellerOwed = _exitCache.exitSellerOwed ?? sellerOwedAt(balloonYr);
   const cumCF          = _exitCache.cumCF          ?? 0;
