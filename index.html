@@ -2345,7 +2345,9 @@ function recalc() {
   set('badge-term-cf-val',   (balloonCumCF >= 0 ? '+' : '') + fm(balloonCumCF));
   const cfSubEl = document.getElementById('badge-term-cf-sub');
   if (cfSubEl) {
-    const growthPart = noiGrowthRate > 0 ? `current NOI + ${(noiGrowthRate*100).toFixed(0)}%/yr growth` : 'current NOI, no growth';
+    const growthPart = staticCF
+      ? 'NOI flat at Day-1 (Static CF mode — no growth)'
+      : (noiGrowthRate > 0 ? `current NOI + ${(noiGrowthRate*100).toFixed(0)}%/yr growth` : 'current NOI, no growth');
     const proformaPart = hasProforma ? ' — proforma target NOT used' : '';
     cfSubEl.textContent = growthPart + proformaPart + '; phase payments apply';
   }
@@ -3531,14 +3533,14 @@ ${'─'.repeat(40)}
 ${buyerNet >= 0 ? 'CASH BACK TO BUYER' : 'CASH NEEDED FROM BUYER'}: ${buyerNet >= 0 ? '+' : ''}${D(buyerNet)} (${pctOf(Math.abs(buyerNet), pp)} of purchase price)
 ${buyerNet >= 0 ? (parkEscrow ? '(Held in escrow against the deal, not taken home)' : '(Returned to buyer at closing)') : '(Buyer must bring this amount to close)'}
 ══════════════════════════════════════
-EXIT PROFIT PROJECTION (Year ${balloonYr} Balloon — Current NOI Path)
-  [NOI: Day-1 ${noiGrowthRate > 0 ? `+ ${P(noiGrowthRate)}/yr growth` : 'held flat, no growth'}${hasProforma ? ' — proforma target NOT used here' : ''}. Phase payments apply on schedule. Appreciation-based exit value.]
+EXIT PROFIT PROJECTION (Year ${balloonYr} Balloon — ${staticCF ? 'Static CF Mode' : 'Current NOI Path'})
+  [NOI: ${staticCF ? 'Day-1 held flat — Static CF mode, no growth applied' : (noiGrowthRate > 0 ? `Day-1 + ${P(noiGrowthRate)}/yr growth` : 'Day-1 held flat, no growth')}${hasProforma ? ' — proforma target NOT used here' : ''}. Phase payments apply on schedule. Appreciation-based exit value.]
 ══════════════════════════════════════
-Day-1 NOI: ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)${noiGrowthRate > 0 ? `  →  growing at ${P(noiGrowthRate)}/yr` : '  (held flat)'}
-${noiGrowthRate > 0 ? `NOI at Balloon (Year ${balloonYr}): ${D(bpNOIatYear(balloonYr))}/yr\n` : ''}Projected Property Value: ${D(exitPropVal)} (${P(appr)}/yr appreciation — ${pctOf(exitPropVal - arv, arv)} total gain since acquisition)
+Day-1 NOI: ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)${staticCF ? '  →  held flat (Static CF)' : noiGrowthRate > 0 ? `  →  growing at ${P(noiGrowthRate)}/yr` : '  (held flat)'}
+${!staticCF && noiGrowthRate > 0 ? `NOI at Balloon (Year ${balloonYr}): ${D(bpNOIatYear(balloonYr))}/yr\n` : ''}Projected Property Value: ${D(exitPropVal)} (${P(appr)}/yr appreciation — ${pctOf(exitPropVal - arv, arv)} total gain since acquisition)
 Senior Loan Balance Remaining: ${D(exitSrBal)} (${pctOf(exitSrBal, exitPropVal)} of exit value)
 Seller Carry Balance Owed: ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, exitPropVal)} of exit value)
-Cumulative Net Cash Flow (current NOI${noiGrowthRate > 0 ? ` + ${P(noiGrowthRate)}/yr` : ', flat'}${hasProforma ? ', proforma NOT used' : ''}): ${cumCF >= 0 ? '+' : ''}${D(cumCF)}
+Cumulative Net Cash Flow (${staticCF ? 'NOI flat at Day-1, Static CF mode' : `current NOI${noiGrowthRate > 0 ? ` + ${P(noiGrowthRate)}/yr` : ', flat'}`}${hasProforma ? ' — proforma NOT used' : ''}): ${cumCF >= 0 ? '+' : ''}${D(cumCF)}
 
   SALE EXIT (appreciation-based exit value):
   Net Profit — CF pocketed (buyer spent CF):  ${saleNet >= 0 ? '+' : ''}${D(saleNet)} (${pctOf(Math.abs(saleNet), pp)} of purchase price)
