@@ -914,6 +914,67 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     </div>
   </div>
 
+  <!-- BRIDGE-TO-PERM -->
+  <div class="card" id="bridge-card">
+    <div class="card-title" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="toggleBridge()">
+      <span>G) Bridge-to-Perm Analysis <span style="font-weight:400;color:#999;font-size:10px">(optional)</span></span>
+      <span id="bridge-toggle-arrow" style="font-size:13px;color:#6b7280">▶ expand</span>
+    </div>
+    <div class="card-body" id="bridge-body" style="display:none">
+      <div style="font-size:11px;color:#6b7280;margin-bottom:10px;">Use a short-term bridge loan at higher LTV to give seller more cash at closing, then refi into permanent terms at stabilization. Seller carry stays in place until balloon.</div>
+
+      <div style="font-size:12px;font-weight:700;color:#1d4ed8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Bridge Loan</div>
+      <div class="row cols-2">
+        <div class="field">
+          <label>Bridge LTV (% of ARV)</label>
+          <div class="suffix-wrap"><input type="number" id="bridge_ltv" placeholder="70" step="1" oninput="recalc()"><span>%</span></div>
+        </div>
+        <div class="field">
+          <label>Bridge Interest Rate</label>
+          <div class="suffix-wrap"><input type="number" id="bridge_rate" placeholder="9" step="0.25" oninput="recalc()"><span>%</span></div>
+        </div>
+      </div>
+      <div class="row cols-2">
+        <div class="field">
+          <label>Bridge Term (months)</label>
+          <input type="number" id="bridge_term_mo" placeholder="18" step="1" oninput="recalc()">
+        </div>
+        <div class="field">
+          <label>Bridge Origination Fee</label>
+          <div class="suffix-wrap"><input type="number" id="bridge_orig_pct" placeholder="2" step="0.25" oninput="recalc()"><span>%</span></div>
+        </div>
+      </div>
+
+      <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;margin-top:10px;text-transform:uppercase;letter-spacing:.05em">Perm Refi (at Stabilization)</div>
+      <div class="row cols-2">
+        <div class="field">
+          <label>Refi LTV</label>
+          <div class="suffix-wrap"><input type="number" id="bridge_refi_ltv" placeholder="75" step="1" oninput="recalc()"><span>%</span></div>
+        </div>
+        <div class="field">
+          <label>Refi Interest Rate</label>
+          <div class="suffix-wrap"><input type="number" id="bridge_refi_rate" placeholder="7" step="0.25" oninput="recalc()"><span>%</span></div>
+        </div>
+      </div>
+      <div class="row cols-2">
+        <div class="field">
+          <label>Refi Amortization (yrs)</label>
+          <input type="number" id="bridge_refi_amort" placeholder="30" step="1" oninput="recalc()">
+        </div>
+        <div class="field">
+          <label>Refi Min DSCR</label>
+          <input type="number" id="bridge_refi_dscr" placeholder="1.25" step="0.05" oninput="recalc()">
+        </div>
+      </div>
+      <div class="row cols-2">
+        <div class="field">
+          <label>Refi Closing Costs</label>
+          <div class="suffix-wrap"><input type="number" id="bridge_refi_costs" placeholder="2" step="0.25" oninput="recalc()"><span>%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- EXIT STRATEGY -->
   <div class="card">
     <div class="card-title">G) Exit Strategy</div>
@@ -1181,6 +1242,40 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     </div>
   </div>
 
+  <!-- BRIDGE-TO-PERM SUMMARY -->
+  <div class="sum-card" id="bridge-summary-card" style="display:none;border-color:#1d4ed8">
+    <div class="sum-title" style="background:#eff6ff;border-bottom-color:#1d4ed8;color:#1d4ed8">
+      Bridge-to-Perm Analysis
+    </div>
+    <div class="sum-body">
+      <div style="font-size:10px;font-weight:700;color:#1d4ed8;padding:6px 0 2px;letter-spacing:.05em">BRIDGE LOAN (at Acquisition)</div>
+      <div class="sum-row"><span class="lbl">Bridge Loan Amount</span><span class="val" id="s-bridge-amount">—</span></div>
+      <div class="sum-row"><span class="lbl">Bridge Monthly I/O Payment</span><span class="val" id="s-bridge-io">—</span></div>
+      <div class="sum-row"><span class="lbl">Bridge Origination Fee</span><span class="val" id="s-bridge-orig">—</span></div>
+      <div class="sum-row"><span class="lbl">Additional Cash to Seller vs DSCR</span><span class="val" id="s-bridge-extra-seller">—</span></div>
+      <div class="sum-row" style="border-top:1px solid #bfdbfe"><span class="lbl">CF / mo During Bridge (current NOI)</span><span class="val" id="s-bridge-cf-mo">—</span></div>
+
+      <div style="font-size:10px;font-weight:700;color:#15803d;padding:10px 0 2px;letter-spacing:.05em">PERM REFI (at Stabilization)</div>
+      <div class="sum-row"><span class="lbl">Stabilized Value at Refi</span><span class="val" id="s-bridge-stab-val">—</span></div>
+      <div class="sum-row"><span class="lbl">Max Perm Loan — LTV cap</span><span class="val" id="s-bridge-max-ltv">—</span></div>
+      <div class="sum-row"><span class="lbl">Max Perm Loan — DSCR cap</span><span class="val" id="s-bridge-max-dscr">—</span></div>
+      <div class="sum-row" style="background:#f0fdf4"><span class="lbl" style="font-weight:600;color:#166534">Binding Perm Loan</span><span class="val" id="s-bridge-perm-loan" style="color:#15803d">—</span></div>
+      <div class="sum-row"><span class="lbl">Bridge Payoff at Refi</span><span class="val" id="s-bridge-payoff">—</span></div>
+      <div class="sum-row" id="s-bridge-gap-row"><span class="lbl" id="s-bridge-gap-lbl">Net After Bridge Payoff</span><span class="val" id="s-bridge-gap">—</span></div>
+      <div class="sum-row"><span class="lbl">Refi Closing Costs</span><span class="val" id="s-bridge-refi-costs">—</span></div>
+      <div class="sum-row" style="border-top:1px solid #bbf7d0"><span class="lbl">Perm Loan Monthly P&amp;I</span><span class="val" id="s-bridge-perm-pmt">—</span></div>
+      <div class="sum-row"><span class="lbl">Seller Carry Pmt / mo (at Refi)</span><span class="val" id="s-bridge-sc-mo">—</span></div>
+      <div class="sum-row"><span class="lbl">Stabilized NOI / mo</span><span class="val" id="s-bridge-stab-noi">—</span></div>
+      <div class="sum-row" style="background:#f0fdf4"><span class="lbl" style="font-weight:600;color:#166534">Net CF / mo at Stabilization</span><span class="val" id="s-bridge-cf-stab" style="font-size:15px;color:#15803d">—</span></div>
+      <div class="sum-row"><span class="lbl">DSCR at Stabilization (perm + carry)</span><span class="val" id="s-bridge-dscr-stab">—</span></div>
+
+      <div style="font-size:10px;font-weight:700;color:#92400e;padding:10px 0 2px;letter-spacing:.05em">SELLER CARRY AT BALLOON</div>
+      <div class="sum-row"><span class="lbl">Seller Carry Balance at Balloon</span><span class="val" id="s-bridge-balloon-bal">—</span></div>
+      <div class="sum-row"><span class="lbl">Perm Loan Balance at Balloon</span><span class="val" id="s-bridge-perm-bal-balloon">—</span></div>
+      <div class="sum-row" style="background:#fffbeb"><span class="lbl" style="font-weight:600;color:#92400e">Total Debt at Balloon</span><span class="val" id="s-bridge-total-balloon" style="color:#92400e">—</span></div>
+    </div>
+  </div>
+
   <!-- SELLER RECEIPTS -->
   <div class="sum-card" style="border-color:#fde047">
     <div class="sum-title" style="background:#fefce8; border-bottom-color:#fde047; color:#854d0e">
@@ -1401,6 +1496,15 @@ function setAgentFeeType(type) {
   document.getElementById('btn-fee-type-pct').style.color        = type === 'pct'  ? '#fff' : '#555';
   document.getElementById('btn-fee-type-flat').style.background  = type === 'flat' ? '#111' : '#f9fafb';
   document.getElementById('btn-fee-type-flat').style.color       = type === 'flat' ? '#fff' : '#555';
+}
+
+let bridgeEnabled = false;
+function toggleBridge() {
+  bridgeEnabled = !bridgeEnabled;
+  document.getElementById('bridge-body').style.display = bridgeEnabled ? '' : 'none';
+  document.getElementById('bridge-toggle-arrow').textContent = bridgeEnabled ? '▼ collapse' : '▶ expand';
+  document.getElementById('bridge-summary-card').style.display = bridgeEnabled ? '' : 'none';
+  recalc();
 }
 
 function toggleStaticCF() {
@@ -2423,6 +2527,108 @@ function recalc() {
     bestCaseRow.style.display = '';
   } else if (bestCaseRow) {
     bestCaseRow.style.display = 'none';
+  }
+
+  // ── BRIDGE-TO-PERM CALC ──
+  if (bridgeEnabled) {
+    const brgLTV      = g('bridge_ltv') / 100;
+    const brgRate     = g('bridge_rate') / 100;
+    const brgTermMo   = g('bridge_term_mo') || 18;
+    const brgOrigPct  = g('bridge_orig_pct') / 100;
+    const refiLTV     = g('bridge_refi_ltv') / 100;
+    const refiRate    = g('bridge_refi_rate') / 100;
+    const refiAmort   = g('bridge_refi_amort') || 30;
+    const refiDSCRmin = g('bridge_refi_dscr') || 1.25;
+    const refiCostPct = g('bridge_refi_costs') / 100;
+
+    // Bridge loan — interest only, principal = ARV × LTV
+    const brgAmount   = arv * brgLTV;
+    const brgIOmo     = brgAmount * brgRate / 12;   // I/O payment
+    const brgOrigFee  = brgAmount * brgOrigPct;
+    const extraToSeller = Math.max(0, brgAmount - maxLoan); // vs what DSCR loan would give
+    const brgCFmo     = noiMo - brgIOmo - scMonthly; // CF during bridge period (current NOI)
+
+    // Bridge balance at refi = full principal (I/O, no paydown)
+    const brgPayoff   = brgAmount;
+
+    // Stabilized value at refi — use ARV (stab period complete)
+    const stabVal     = arv;
+    // NOI at refi — use proforma if set, otherwise current + growth through stab months
+    const refiNOIann  = hasProforma ? noiProforma
+      : noiAn * Math.pow(1 + noiGrowthRate, Math.max((stabMonths / 12) - 1, 0));
+    const refiNOImo   = refiNOIann / 12;
+
+    // Max perm loan
+    const refiMaxByLTV  = stabVal * refiLTV;
+    let refiMaxByDSCR   = Infinity;
+    if (refiRate > 0 && refiAmort > 0 && refiDSCRmin > 0) {
+      const rmo = refiRate / 12, rn = refiAmort * 12;
+      refiMaxByDSCR = (refiNOIann / refiDSCRmin / 12) * (1 - Math.pow(1 + rmo, -rn)) / rmo;
+    }
+    const permLoan    = Math.min(refiMaxByLTV, isFinite(refiMaxByDSCR) ? refiMaxByDSCR : refiMaxByLTV);
+    const refiCosts   = permLoan * refiCostPct;
+    const netAfterBrg = permLoan - brgPayoff - refiCosts; // positive = cash out, negative = cash needed
+
+    // Perm loan monthly P&I
+    const permPmt     = pmtPI(refiRate, refiAmort, permLoan);
+
+    // Seller carry payment at refi timing (which phase are we in?)
+    const refiYr      = (stabMonths || brgTermMo) / 12;
+    const scAtRefi    = scPmtAtYear(Math.ceil(refiYr));
+    const totalDebtAtRefi = permPmt + scAtRefi;
+    const cfAtStab    = refiNOImo - totalDebtAtRefi;
+    const dscrAtStab  = totalDebtAtRefi > 0 ? refiNOIann / (totalDebtAtRefi * 12) : 0;
+
+    // Perm loan balance at balloon (amortized from refi to balloon)
+    const moFromRefiToBalloon = Math.max(0, Math.round((balloonIntYr - refiYr) * 12));
+    let permBalAtBalloon = permLoan;
+    if (refiRate > 0 && refiAmort > 0 && moFromRefiToBalloon > 0) {
+      const rmo = refiRate / 12, rn = refiAmort * 12;
+      permBalAtBalloon = permLoan * (Math.pow(1 + rmo, rn) - Math.pow(1 + rmo, moFromRefiToBalloon))
+                         / (Math.pow(1 + rmo, rn) - 1);
+    }
+    const scBalAtBalloon = _exitCache.exitSellerOwed ?? 0;
+    const totalDebtAtBalloon = permBalAtBalloon + scBalAtBalloon;
+
+    // Populate summary
+    const fmd2 = v => '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    const set2 = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const clr  = (id, v) => { const el = document.getElementById(id); if (el) el.style.color = v >= 0 ? '#15803d' : '#dc2626'; };
+
+    set2('s-bridge-amount',       fm(brgAmount));
+    set2('s-bridge-io',           fmd2(brgIOmo) + '/mo');
+    set2('s-bridge-orig',         fm(brgOrigFee));
+    set2('s-bridge-extra-seller', (extraToSeller >= 0 ? '+' : '') + fm(extraToSeller));
+    document.getElementById('s-bridge-extra-seller').style.color = extraToSeller >= 0 ? '#15803d' : '#dc2626';
+    set2('s-bridge-cf-mo',        (brgCFmo >= 0 ? '+' : '') + fmd2(brgCFmo) + '/mo');
+    clr('s-bridge-cf-mo', brgCFmo);
+
+    set2('s-bridge-stab-val',     fm(stabVal));
+    set2('s-bridge-max-ltv',      fm(refiMaxByLTV));
+    set2('s-bridge-max-dscr',     isFinite(refiMaxByDSCR) ? fm(refiMaxByDSCR) : '—');
+    set2('s-bridge-perm-loan',    fm(permLoan));
+    set2('s-bridge-payoff',       fm(brgPayoff));
+    set2('s-bridge-refi-costs',   fm(refiCosts));
+
+    const gapEl  = document.getElementById('s-bridge-gap');
+    const gapLbl = document.getElementById('s-bridge-gap-lbl');
+    if (gapEl && gapLbl) {
+      gapLbl.textContent = netAfterBrg >= 0 ? 'Cash Out After Bridge Payoff' : 'Cash Needed to Close Refi';
+      gapEl.textContent  = (netAfterBrg >= 0 ? '+' : '') + fm(netAfterBrg);
+      gapEl.style.color  = netAfterBrg >= 0 ? '#15803d' : '#dc2626';
+    }
+
+    set2('s-bridge-perm-pmt',     fmd2(permPmt) + '/mo');
+    set2('s-bridge-sc-mo',        fmd2(scAtRefi) + '/mo');
+    set2('s-bridge-stab-noi',     fmd2(refiNOImo) + '/mo');
+    set2('s-bridge-cf-stab',      (cfAtStab >= 0 ? '+' : '') + fmd2(cfAtStab) + '/mo');
+    clr('s-bridge-cf-stab', cfAtStab);
+    set2('s-bridge-dscr-stab',    dscrAtStab.toFixed(2) + 'x');
+    document.getElementById('s-bridge-dscr-stab').style.color = dscrAtStab >= refiDSCRmin ? '#15803d' : '#dc2626';
+
+    set2('s-bridge-balloon-bal',      fm(scBalAtBalloon));
+    set2('s-bridge-perm-bal-balloon', fm(permBalAtBalloon));
+    set2('s-bridge-total-balloon',    fm(totalDebtAtBalloon));
   }
 }
 
