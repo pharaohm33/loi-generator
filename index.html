@@ -1300,7 +1300,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <th>Year</th>
             <th>Prop Value</th>
             <th>Seller Owed</th>
-            <th>Cum CF</th>
+            <th id="exit-cumcf-header">Cum CF</th>
             <th>Breakeven Price</th>
             <th>Exit Cap Rate</th>
             <th>Sale (no CF)</th>
@@ -2039,6 +2039,13 @@ function recalc() {
   growthLabel.textContent = staticCF
     ? 'Static CF (Day-1 × yrs)'
     : (noiGrowthRate > 0 ? noiGrowthRate * 100 + '%/yr NOI growth' : '');
+
+  const cumCFHeader = document.getElementById('exit-cumcf-header');
+  if (cumCFHeader) {
+    cumCFHeader.textContent = staticCF
+      ? 'Cum CF (Static)'
+      : (noiGrowthRate > 0 ? `Cum CF (${(noiGrowthRate * 100).toFixed(0)}%/yr)` : 'Cum CF (flat)');
+  }
 
   const maxCFYr = Math.max(balloonYr + 3, 10);
   for (let yr = 1; yr <= maxCFYr; yr++) {
