@@ -1316,7 +1316,8 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <th id="exit-cumcf-header">Cum CF</th>
             <th id="pf-cumcf-col-header" style="display:none;background:#dcfce7;color:#15803d">Cum PF CF</th>
             <th>Breakeven Price</th>
-            <th>Exit Cap Rate</th>
+            <th>Exit Cap Rate<br><span style="font-weight:400;font-size:10px;opacity:.7">(current NOI)</span></th>
+            <th id="pf-cap-rate-header" style="display:none;background:#dcfce7;color:#15803d">PF Exit Cap Rate<br><span style="font-weight:400;font-size:10px;opacity:.7">(proforma NOI)</span></th>
             <th>Sale (no CF)</th>
             <th>Sale + CF</th>
             <th>Refi (no CF)</th>
@@ -2097,6 +2098,8 @@ function recalc() {
   pfColHeader.style.display = hasProforma ? '' : 'none';
   const pfCumCFColHeader = document.getElementById('pf-cumcf-col-header');
   if (pfCumCFColHeader) pfCumCFColHeader.style.display = hasProforma ? '' : 'none';
+  const pfCapRateHeader = document.getElementById('pf-cap-rate-header');
+  if (pfCapRateHeader) pfCapRateHeader.style.display = hasProforma ? '' : 'none';
 
   let baseCumCF = 0, pfCumCF = 0, staticCumCFAccum = 0;
 
@@ -2208,6 +2211,7 @@ function recalc() {
 
     const breakevenPrice = saleClosingPct < 1 ? (srBal + sellerOwe) / (1 - saleClosingPct) : 0;
     const exitCapRate = propVal > 0 ? baseNOIatYear(yr) / propVal : 0;
+    const pfExitCapRate = hasProforma && propVal > 0 ? pfNOIyr / propVal : 0;
     tr.innerHTML = `
       <td>${yrLabel}</td>
       <td>${fm(propVal)}</td>
@@ -2216,6 +2220,7 @@ function recalc() {
       ${pfCumCFCell}
       <td style="color:#6b7280">${fm(breakevenPrice)}</td>
       <td style="color:#6b7280">${(exitCapRate*100).toFixed(2)}%</td>
+      ${hasProforma ? `<td style="color:#15803d;background:#f0fdf4">${(pfExitCapRate*100).toFixed(2)}%</td>` : ''}
       <td class="${cls(saleSurplus)}">${sgn(saleSurplus)}${fm(saleSurplus)}</td>
       <td class="${cls(saleCF)}">${sgn(saleCF)}${fm(saleCF)}</td>
       <td class="${cls(refiSurplus)}">${sgn(refiSurplus)}${fm(refiSurplus)}</td>
