@@ -2502,22 +2502,19 @@ function generateLOI() {
   let pmtBlock, narr;
 
   if (zeroInterest || mode === 'principal_only') {
-    pmtBlock = poDeferredRate > 0
-?`Monthly Principal-Reduction Payments:
+    const hasMonthlyPmts = scMonthly > 0;
+    if (poDeferredRate > 0) {
+      // Principal-only payments + separate deferred simple interest → balloon
+      pmtBlock =
+`Monthly Principal-Reduction Payments:
 Months 1–${months}: ${esc(D(scMonthly))}/month
 Total Monthly Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
 Deferred Simple Interest at ${esc(P(poDeferredRate))} (accrues on declining balance):
 Accrued Interest Due at Balloon: Approximately ${esc(D(poAccruedDeferred))}
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(poBalloon))} (remaining principal + ${esc(D(poAccruedDeferred))} deferred interest)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(poReceipts))}`
-:
-`Monthly Principal-Reduction Payments:
-Months 1–${months}: ${esc(D(scMonthly))}/month
-Total Monthly Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
-Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))}
-Total Seller Receipts Over ${scTerm} Years: ${zeroInterest ? '' : 'Approximately '}${esc(D(totalReceipts))}`;
-    narr = (zeroInterest && poDeferredRate > 0)
-      ? `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
+Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(poReceipts))}`;
+      narr =
+`The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
 During the ${scTerm}-year term, buyer will make monthly principal-reduction payments of ${esc(D(scMonthly))}/month, totaling approximately ${esc(D(totalPmts))}. These payments reduce the seller carry balance.
 
@@ -2525,26 +2522,57 @@ Separately, simple interest at ${esc(P(poDeferredRate))} accrues annually on the
 
 At the end of year ${scTerm}, buyer will pay the remaining principal balance plus approximately ${esc(D(poAccruedDeferred))} in accrued deferred interest through a balloon payment of approximately ${esc(D(poBalloon))}.
 
-Total seller receipts are approximately ${esc(D(poReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(poFinIncome))} in seller financing income.`
-      : zeroInterest
-      ? `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
+Total seller receipts are approximately ${esc(D(poReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(poFinIncome))} in seller financing income.`;
+    } else if (!hasMonthlyPmts) {
+      // No monthly payments, 0% interest (or principal-only with $0 monthly) — clean balloon-only
+      pmtBlock =
+`No monthly payments during the ${scTerm}-year term — this is a principal-only carry with no interest and no monthly obligations.
+Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (full principal balance)
+Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+      narr =
+`The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
-During the ${scTerm}-year term, buyer will make monthly principal-reduction payments totaling approximately ${esc(D(totalPmts))}. These payments reduce the seller carry balance.
+No monthly payments are required during the ${scTerm}-year term. This is a principal-only, zero-interest seller carry — the full ${esc(D(carry))} principal balance is due in a single balloon payment at the end of year ${scTerm}.
 
-At the end of year ${scTerm}, buyer will pay the remaining principal balance through a balloon payment of approximately ${esc(D(balloon))}.
+Total seller receipts are ${esc(D(totalReceipts))}.`;
+    } else if (zeroInterest) {
+      // Zero interest with monthly principal payments
+      pmtBlock =
+`Monthly Principal-Only Payments (0% Interest):
+Months 1–${months}: ${esc(D(scMonthly))}/month
+Total Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
+Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (remaining principal balance)
+Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+      narr =
+`The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
-Total seller receipts are ${esc(D(totalReceipts))}.`
-      : `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
+During the ${scTerm}-year term, buyer will make monthly principal-only payments of ${esc(D(scMonthly))}/month, totaling ${esc(D(totalPmts))}. No interest accrues — each payment directly reduces the outstanding balance.
 
-During the ${scTerm}-year term, buyer will make monthly principal-reduction payments totaling approximately ${esc(D(totalPmts))}. These payments reduce the seller carry balance.
+At the end of year ${scTerm}, buyer will pay the remaining principal balance through a balloon payment of ${esc(D(balloon))}.
 
-Interest accrues separately at ${esc(P(scRate))} simple interest on the declining principal balance and is paid at the end of the term with the remaining principal balance.
+Total seller receipts are ${esc(D(totalReceipts))}.`;
+    } else {
+      // Principal-only mode with interest accruing to balloon
+      pmtBlock =
+`Monthly Principal-Reduction Payments:
+Months 1–${months}: ${esc(D(scMonthly))}/month
+Total Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
+Interest accrues at ${esc(P(scRate))} simple interest on the declining balance — due at balloon
+Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))} (remaining principal + accrued interest)
+Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+      narr =
+`The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
-At the end of year ${scTerm}, buyer will pay the remaining principal balance plus accrued interest through a balloon payment of approximately ${esc(D(balloon))}.
+During the ${scTerm}-year term, buyer will make monthly principal-reduction payments of ${esc(D(scMonthly))}/month, totaling ${esc(D(totalPmts))}. These payments reduce the outstanding balance directly.
+
+Interest accrues separately at ${esc(P(scRate))} simple interest on the declining principal balance and is not paid monthly — it is due in full at the balloon.
+
+At the end of year ${scTerm}, buyer will pay the remaining principal balance plus all accrued interest through a balloon payment of approximately ${esc(D(balloon))}.
 
 ${finIncome <= 0
   ? `Total seller receipts equal the full ${esc(D(pp))} purchase price.`
   : `Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`}`;
+    }
 
   } else if (mode === 'interest_only') {
     pmtBlock =
@@ -2659,7 +2687,8 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
       const mo = Math.round(yrs * 12);
       const rPct = P(rate);
       if (modeStr === 'principal_only') {
-        if (rate === 0) return `monthly principal-reduction payments of ${esc(Dfmt(monthly))}/month`;
+        if (rate === 0 && monthly <= 0) return `no monthly payments — full principal balance due at the end of this period`;
+        if (rate === 0) return `monthly principal-only payments of ${esc(Dfmt(monthly))}/month (0% interest — each payment directly reduces the outstanding balance)`;
         return `monthly principal-reduction payments of ${esc(Dfmt(monthly))}/month at ${esc(rPct)} simple interest (interest accrues on the declining balance and is due at balloon)`;
       }
       if (modeStr === 'interest_only') {
@@ -2669,6 +2698,7 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
         return `fully amortizing principal and interest payments of ${esc(Dfmt(monthly))}/month (${esc(rPct)}, ${extra.amortYrs || 30}-year amortization schedule)`;
       }
       if (modeStr === 'deferred_exit') {
+        if (rate === 0) return `no monthly payments — full principal balance due at the balloon with no interest`;
         return `no monthly payments; interest accrues at ${esc(rPct)} simple interest on the full outstanding balance`;
       }
       if (modeStr === 'deferred_then_pay') {
@@ -2703,15 +2733,16 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
       ? `\n  (= ${esc(D(carry))} original carry + ${esc(D(ph1AccruedDeferred))} accrued ${P(mode === 'io_deferred' ? (loiPh1Extra.deferredRate || 0) : scRate)} deferred interest from Period 1)`
       : '';
 
+    const ph1HasPmts = ph1TotPmts > 0;
+    const ph2HasPmts = ph2TotPmts > 0;
+
     pmtBlock =
 `Payment Period 1 (Months 1–${ph1Months} — Years 1–${loiPh1Yrs}):
-${ph1Desc.charAt(0).toUpperCase() + ph1Desc.slice(1)}
-Total payments Period 1: Approximately ${esc(D(ph1TotPmts))}
+${ph1Desc.charAt(0).toUpperCase() + ph1Desc.slice(1)}${ph1HasPmts ? `\nTotal payments Period 1: Approximately ${esc(D(ph1TotPmts))}` : ''}
 Carry balance entering Period 2: Approximately ${esc(D(loiPh1EndBal))}${balBreakdown}
 
 Payment Period 2 (Months ${ph2StartMo}–${totalMonths} — Years ${loiPh1Yrs+1}–${scTerm}):
-${ph2Desc.charAt(0).toUpperCase() + ph2Desc.slice(1)}
-Total payments Period 2: Approximately ${esc(D(ph2TotPmts))}
+${ph2Desc.charAt(0).toUpperCase() + ph2Desc.slice(1)}${ph2HasPmts ? `\nTotal payments Period 2: Approximately ${esc(D(ph2TotPmts))}` : ''}
 
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))}
 Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
@@ -2721,12 +2752,20 @@ Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts)
       ? ` The ${esc(D(ph1AccruedDeferred))} in accrued deferred interest from Period 1 is added to the original ${esc(D(carry))} carry balance, bringing the Period 2 starting balance to approximately ${esc(D(loiPh1EndBal))}.`
       : '';
 
+    // Phase-aware narrative: skip "totaling $0 in monthly payments" when a period has no payments
+    const ph1NarrPmts = ph1HasPmts
+      ? `, totaling approximately ${esc(D(ph1TotPmts))} in payments`
+      : '';
+    const ph2NarrPmts = ph2HasPmts
+      ? `, totaling approximately ${esc(D(ph2TotPmts))} in payments`
+      : '';
+
     narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
-For the first ${loiPh1Yrs} year${loiPh1Yrs!==1?'s':''} of the note (Months 1–${ph1Months}), buyer will make ${ph1Desc}, totaling approximately ${esc(D(ph1TotPmts))} in monthly payments.${deferredRollupSentence}
+For the first ${loiPh1Yrs} year${loiPh1Yrs!==1?'s':''} of the note (Months 1–${ph1Months}), buyer will make ${ph1Desc}${ph1NarrPmts}.${deferredRollupSentence}
 
-Beginning in Month ${ph2StartMo} (Year ${loiPh1Yrs+1}) and continuing through the balloon, the outstanding balance — approximately ${esc(D(loiPh1EndBal))} — will be subject to ${ph2Desc}, totaling approximately ${esc(D(ph2TotPmts))}.
+Beginning in Month ${ph2StartMo} (Year ${loiPh1Yrs+1}) and continuing through the balloon, the outstanding balance — approximately ${esc(D(loiPh1EndBal))} — will be subject to ${ph2Desc}${ph2NarrPmts}.
 
 At the end of year ${scTerm}, buyer will pay the remaining balance through a balloon payment of approximately ${esc(D(balloon))}.
 
