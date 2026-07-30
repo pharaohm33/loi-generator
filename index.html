@@ -2371,10 +2371,27 @@ function recalc() {
     // Positive refiNetCash = buyer gets cash back → boosts cumCF
     // Negative refiNetCash = buyer must inject cash to cover gap → reduces cumCF
     if (brgParams && !brgRefiApplied && yr >= Math.ceil(brgParams.refiYr)) {
-      baseCumCF        += brgParams.refiNetCash;
-      staticCumCFAccum += brgParams.refiNetCash;
-      pfCumCF          += brgParams.refiNetCash;
+      const _brrrCash  = brgParams.refiNetCash;
+      const _brrrPdwn  = brgParams.scRefiPaydown || 0;
+      const _brrrGross = _brrrCash + _brrrPdwn; // gross before seller paydown
+      const _brrrMo    = Math.round(brgParams.refiYr * 12);
+      baseCumCF        += _brrrCash;
+      staticCumCFAccum += _brrrCash;
+      pfCumCF          += _brrrCash;
       brgRefiApplied = true;
+
+      // Insert a spanning event row so the BRRRR cash is visible in the exit table
+      const colCount = hasProforma ? 13 : 10;
+      const brgTr = document.createElement('tr');
+      brgTr.style.cssText = 'background:#eff6ff;';
+      const brgColor = _brrrCash >= 0 ? '#1d4ed8' : '#dc2626';
+      let brgLabel = _brrrCash >= 0
+        ? `↓ BRRRR REFI @ Month ${_brrrMo} — Perm Loan: ${fm(brgParams.permLoan)} | Bridge Payoff: −${fm(brgParams.brgAmount)} | Refi Costs: −${fm(brgParams.permLoan * (gb('bridge_refi_costs')/100))}` +
+          (_brrrPdwn > 0 ? ` | Carry Paydown: −${fm(_brrrPdwn)}` : '') +
+          ` | Net Cash to Buyer: +${fm(_brrrCash)} ↓`
+        : `↓ BRRRR REFI @ Month ${_brrrMo} — Perm loan short of bridge payoff by ${fm(-_brrrCash)} — buyer must inject cash at refi ↓`;
+      brgTr.innerHTML = `<td colspan="${colCount}" style="color:${brgColor};font-weight:700;font-size:11px;text-align:center;padding:5px 10px;border-top:2px solid ${brgColor};border-bottom:1px solid #bfdbfe;">${brgLabel}</td>`;
+      tbody.appendChild(brgTr);
     }
     // Value-add: ramp from as-is → ARV during stabilization, then appreciate from ARV
     const stabYrsExit = stabMonths > 0 ? stabMonths / 12 : 0;
@@ -2526,9 +2543,13 @@ function recalc() {
     pfRefiEl.style.color = balloonPfRefiWithCF >= 0 ? '#15803d' : '#dc2626';
     const stabYrs = stabMonths > 0 ? stabMonths / 12 : 0;
     const noteEl = document.getElementById('pf-stabilization-note');
-    noteEl.textContent = stabYrs > 0
+    const pfStabBase = stabYrs > 0
       ? `NOI ramps from ${fm(noiAn)}/yr → ${fm(noiProforma)}/yr over ${stabMonths} months, then grows at ${g('noi_growth')}%/yr through balloon at Yr ${balloonYr}.`
       : `NOI jumps to proforma ${fm(noiProforma)}/yr immediately, then grows at ${g('noi_growth')}%/yr through balloon at Yr ${balloonYr}.`;
+    const pfBrrrrNote = (brgParams && brgParams.refiNetCash !== 0)
+      ? ` CF totals include ${brgParams.refiNetCash >= 0 ? '+' : ''}${fm(brgParams.refiNetCash)} BRRRR capital recovery from the Month ${Math.round(brgParams.refiYr * 12)} refi.`
+      : '';
+    noteEl.textContent = pfStabBase + pfBrrrrNote;
   } else {
     pfBanner.style.display = 'none';
   }
@@ -2673,7 +2694,10 @@ function recalc() {
       ? 'NOI flat at Day-1 (Static CF mode — no growth)'
       : (noiGrowthRate > 0 ? `current NOI + ${(noiGrowthRate*100).toFixed(0)}%/yr growth` : 'current NOI, no growth');
     const proformaPart = hasProforma ? ' — proforma target NOT used' : '';
-    cfSubEl.textContent = growthPart + proformaPart + '; phase payments apply';
+    const brrrrPart = (brgParams && brgParams.refiNetCash !== 0)
+      ? `  |  incl. ${brgParams.refiNetCash >= 0 ? '+' : ''}${fm(brgParams.refiNetCash)} BRRRR capital recovery @ Month ${Math.round(brgParams.refiYr * 12)}`
+      : '';
+    cfSubEl.textContent = growthPart + proformaPart + '; phase payments apply' + brrrrPart;
   }
   const saleWithCF = balloonSaleSurplus + balloonCumCF;
   const refiWithCF = balloonRefiSurplus + balloonCumCF;
