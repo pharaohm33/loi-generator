@@ -522,6 +522,25 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <input type="number" id="res_comp" placeholder="nearest sold comp">
           </div>
         </div>
+        <div class="row cols-3">
+          <div class="field">
+            <label>Annual Property Taxes ($)</label>
+            <div class="prefix-wrap"><span>$</span><input type="number" id="res_taxes" placeholder="e.g. 3600" step="100"></div>
+          </div>
+          <div class="field">
+            <label>Annual Insurance ($)</label>
+            <div class="prefix-wrap"><span>$</span><input type="number" id="res_insurance" placeholder="e.g. 1200" step="100"></div>
+          </div>
+          <div class="field">
+            <label>Maintenance ($/yr or % of value)</label>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <div class="prefix-wrap" style="flex:1"><span>$</span><input type="number" id="res_maint_amt" placeholder="e.g. 2400" step="100" oninput="onResMaintInput('amt')"></div>
+              <span style="color:#6b7280;font-size:12px;">or</span>
+              <div class="suffix-wrap" style="flex:1"><input type="number" id="res_maint_pct" placeholder="1.0" step="0.1" min="0" max="10" oninput="onResMaintInput('pct')"><span>%</span></div>
+            </div>
+            <div style="font-size:10px;color:#6b7280;margin-top:3px;" id="res-maint-hint">—</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -4450,6 +4469,22 @@ function onPropTypeChange() {
   const t = document.getElementById('prop_type').value;
   document.getElementById('res-fields').style.display = t === 'residential' ? '' : 'none';
 }
+function onResMaintInput(source) {
+  const amtEl = document.getElementById('res_maint_amt');
+  const pctEl = document.getElementById('res_maint_pct');
+  const hint  = document.getElementById('res-maint-hint');
+  const arv   = g('res_arv') || g('arv') || g('as_is_value') || 0;
+  if (source === 'amt') {
+    pctEl.value = '';
+    const amt = parseFloat(amtEl.value) || 0;
+    hint.textContent = arv > 0 && amt > 0 ? '≈ ' + ((amt / arv) * 100).toFixed(2) + '% of value/yr' : '';
+  } else {
+    amtEl.value = '';
+    const pct = parseFloat(pctEl.value) || 0;
+    const derived = arv > 0 ? arv * pct / 100 : 0;
+    hint.textContent = derived > 0 ? '≈ $' + Math.round(derived).toLocaleString() + '/yr' : '';
+  }
+}
 function showLOIReasoningModal() {
   _loiReasoningType = 'initial';
   // Auto-read property type from calculator
@@ -5098,18 +5133,29 @@ function generateResidentialLOIReasoning(offerType, sellerData) {
   const balloon   = bpPh2 ? bpPh2.balloon : bpPh1.balloon;
   const totalReceipts = cac + (scMonthly * scTerm * 12) + balloon;
 
+  // Residential expenses
+  const resTaxesAn   = g('res_taxes')    || 0;
+  const resInsAn     = g('res_insurance') || 0;
+  const resMaintAmt  = g('res_maint_amt') || 0;
+  const resMaintPct  = g('res_maint_pct') || 0;
+  const resMaintAn   = resMaintAmt > 0 ? resMaintAmt : (resMaintPct > 0 ? arv * resMaintPct / 100 : 0);
+  const resExpensesAn = resTaxesAn + resInsAn + resMaintAn;
+  const resGrossRentAn = resRent * 12;
+  // NOI for residential: gross rent − vacancy (~5%) − taxes − insurance − maintenance
+  const resVacancyAn  = resGrossRentAn * 0.05;
+  const resNOIAn      = resGrossRentAn - resVacancyAn - resExpensesAn;
+  const resNOIMo      = resNOIAn / 12;
+
   // Senior loan (may be 0 if all seller-financed)
   const srRate  = g('sr_rate') / 100;
   const srAmort = g('sr_amort') || 30;
   const maxLoan = g('purchase_price') - g('cash_at_closing') - carry; // = 0 for all-carry deals
-  // For display, the "senior" in residential may just be the buyer's own financing
-  // We'll use actual maxLoan from existing calculator
   const srLTV   = g('sr_ltv') / 100;
   const asIsVal = g('as_is_value') || pp;
   const byLTV   = srLTV > 0 ? asIsVal * srLTV : Infinity;
   let calcMaxLoan = byLTV;
   if (g('sr_dscr') > 0 && srRate > 0 && srAmort > 0) {
-    const noiAn = g('noi_direct') || (g('res_rent') * 12 * 0.7); // 70% expense ratio for res
+    const noiAn = g('noi_direct') || (resNOIAn > 0 ? resNOIAn : resGrossRentAn * 0.70);
     const mo2 = srRate/12, n2 = srAmort*12;
     const byD = (noiAn/12/g('sr_dscr')) * (1-Math.pow(1+mo2,-n2))/mo2;
     calcMaxLoan = Math.min(byLTV, byD);
@@ -5292,10 +5338,19 @@ of ${D(pp - traditionalNet)}. The 0% rate is what makes our higher price possibl
 by keeping the buyer's debt service manageable without a bank.`}
 
 ${resRent > 0 ? `
-RENTAL INCOME NOTE:
-${col('  Market Rent', Dfmt(resRent) + '/mo  (' + D(resRent*12) + '/yr)')}
-The buyer will use rental income to service the carry note, giving you confidence
-that the monthly cash flow is there to support the balloon payoff at Year ${scTerm}.
+RENTAL INCOME & EXPENSE ANALYSIS:
+${col('  Gross Rent', Dfmt(resRent) + '/mo  (' + D(resGrossRentAn) + '/yr)')}
+${col('  Less: Vacancy (~5%)', '−' + Dfmt(resVacancyAn/12) + '/mo  (−' + D(resVacancyAn) + '/yr)')}
+${resTaxesAn > 0  ? col('  Less: Property Taxes', '−' + Dfmt(resTaxesAn/12) + '/mo  (−' + D(resTaxesAn) + '/yr)') : '  Property Taxes:               (not entered)'}
+${resInsAn > 0    ? col('  Less: Insurance', '−' + Dfmt(resInsAn/12) + '/mo  (−' + D(resInsAn) + '/yr)') : '  Insurance:                    (not entered)'}
+${resMaintAn > 0  ? col('  Less: Maintenance' + (resMaintPct > 0 ? ' (' + resMaintPct + '% of value)' : ''), '−' + Dfmt(resMaintAn/12) + '/mo  (−' + D(resMaintAn) + '/yr)') : '  Maintenance:                  (not entered)'}
+${thin.slice(0,46)}
+${col('  Net Operating Income (NOI)', Dfmt(resNOIMo) + '/mo  (' + D(resNOIAn) + '/yr)')}
+${scMonthly > 0 ? col('  Less: Seller Carry Payment', '−' + Dfmt(scMonthly) + '/mo') : ''}
+${srPmt > 0 ? col('  Less: Senior Loan Payment', '−' + Dfmt(srPmt) + '/mo') : ''}
+${col('  Net Cash Flow to Buyer', Dfmt(resNOIMo - scMonthly - (srPmt||0)) + '/mo')}
+The buyer will use rental income to service the carry note — you can see the
+income covers the obligations${resNOIMo - scMonthly - (srPmt||0) >= 0 ? ', with positive cash flow giving confidence in balloon payoff at Year ' + scTerm + '.' : '. Note: cash flow is tight — buyer is relying on appreciation and principal paydown for the balloon.'}
 ` : ''}
 ${sep}
 PART IV — YOUR SECURITY POSITION
