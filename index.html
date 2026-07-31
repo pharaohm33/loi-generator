@@ -4979,8 +4979,7 @@ ${(() => {
   const sellerOwed    = _exitCache.exitSellerOwed || balloon;
   const totalDebtAtEx = srBalBalloon + sellerOwed;
   const projSaleNet   = projVal * (1 - saleClosingPct) - totalDebtAtEx;
-  const buyerROI      = totalBuyerIn > 0 ? projSaleNet / totalBuyerIn : 0;
-  const isTight       = projSaleNet < totalBuyerIn * 0.20;
+  const isTight       = projSaleNet > 0 && projSaleNet < 30000;
 
   // Downside scenarios
   const flatVal      = arv;
@@ -5009,9 +5008,8 @@ ${(() => {
     col('  Less: Est. Senior Loan Balance', '−' + D(srBalBalloon)),
     col('  Less: Seller Carry Balloon (to you)', '−' + D(sellerOwed) + '  ← YOUR NOTE IS PAID HERE'),
     thin,
-    col('  Buyer Net at Base-Case Exit', (projSaleNet >= 0 ? '+' : '−') + D(projSaleNet)),
-    col('  Buyer Cash Invested', D(totalBuyerIn) + '  (down payment' + (rehabOOP > 0 ? ' + rehab OOP' : '') + ')'),
-    col('  Buyer ROI at Exit', (buyerROI >= 0 ? '+' : '') + (buyerROI * 100).toFixed(1) + '%  on invested capital'),
+    col('  BUYER TOTAL PROFIT AT EXIT (base)', (projSaleNet >= 0 ? '+' : '−') + D(projSaleNet) + '  after all debt paid'),
+    totalBuyerIn > 0 ? col('  Buyer Cash Invested', D(totalBuyerIn) + '  (down payment' + (rehabOOP > 0 ? ' + rehab OOP' : '') + ')') : '  Buyer Cash Invested:    $0  (infinite return — seller financing covered full price)',
     '',
     'MARKET CONTINGENCY — YOUR NOTE COVERAGE UNDER STRESS:',
     col('  Break-Even Value (covers all debt)', D(breakEvenVal) + '  — ' + breakEvenDir),
@@ -5021,17 +5019,22 @@ ${(() => {
     '',
     'BUYER TRANSPARENCY — WHAT WE PLAN TO MAKE ON THIS DEAL:',
     isTight
-      ? `  This is a tight-margin deal. At base-case exit our projected profit is
-  ${(projSaleNet >= 0 ? '+' : '−') + D(projSaleNet)} on ${D(totalBuyerIn)} invested — a ${(buyerROI*100).toFixed(1)}% return over ${scTerm} years.
-  That is a thin spread, which means there is no room to pay more. We are
-  acquiring at the highest price that makes this deal executable. If the
-  property performs as projected, we each win. If it underperforms, we bear
-  the downside — your note is paid regardless at the balloon date.`
-      : `  Our projected profit at Year ${scTerm} base-case sale is ${(projSaleNet >= 0 ? '+' : '−') + D(projSaleNet)}
-  on ${D(totalBuyerIn)} invested (${(buyerROI*100).toFixed(1)}% ROI over ${scTerm} years). We believe
-  this is a fair return for executing the acquisition, managing the asset,
-  and bearing the risk of market downside during the hold period. Your note
-  is paid in full at balloon regardless of our ultimate profit or loss.`,
+      ? `  This is a tight-margin deal. At base-case exit our total projected profit is
+  ${(projSaleNet >= 0 ? '+' : '−') + D(projSaleNet)} after paying off your note and all debt — a thin
+  spread over ${scTerm} years. There is no room to pay more. We are at the ceiling
+  of what this deal will support. If the property performs as projected, we
+  each win. If it underperforms, we bear the downside — your note is paid
+  in full at the balloon date regardless.`
+      : totalBuyerIn === 0
+        ? `  This deal is structured with no cash out of pocket from the buyer — your
+  seller financing covered the full acquisition. Our total profit at Year ${scTerm}
+  base-case sale is ${(projSaleNet >= 0 ? '+' : '−') + D(projSaleNet)} after paying off your note and all debt.
+  That profit is entirely dependent on the property performing as projected.
+  Your note is secured by the property and paid in full at balloon.`
+        : `  Our total profit at Year ${scTerm} base-case sale is ${(projSaleNet >= 0 ? '+' : '−') + D(projSaleNet)} after
+  paying off your note and all senior debt. We view this as a fair return for
+  acquiring, managing, and bearing market risk during the hold. Your note is
+  paid in full at balloon regardless of our ultimate profit or loss.`,
   ].join('\n');
 })()}
 
@@ -5391,8 +5394,7 @@ ${(() => {
   const beDir       = breakEvenV > arv
     ? `property must appreciate +${bePct}% to cover all debt`
     : `property can decline ${Math.abs(+bePct)}% before note is at risk`;
-  const buyerROIR   = totalBuyerInR > 0 ? netBase / totalBuyerInR : 0;
-  const isTightR    = netBase < totalBuyerInR * 0.20;
+  const isTightR    = netBase > 0 && netBase < 30000;
   const noteOK      = (n) => n + totalDebtR >= balloon ? '✓ SELLER NOTE PAID IN FULL' : '⚠ SHORTFALL: ' + D(balloon - (n + totalDebtR));
   const sgn         = (n) => (n >= 0 ? '+' : '−') + D(n);
 
@@ -5409,9 +5411,8 @@ ${(() => {
     srBalRes > 0 ? col('  Less: Est. Senior Loan Balance', '−' + D(srBalRes)) : '',
     col('  Less: Seller Carry Balloon (to you)', '−' + D(balloon) + '  ← YOUR NOTE IS PAID HERE'),
     thin,
-    col('  Buyer Net at Base-Case Exit', sgn(netBase)),
-    col('  Buyer Cash Invested', D(totalBuyerInR) + (rehabOOPRes > 0 ? '  (down payment + rehab OOP)' : '')),
-    col('  Buyer ROI at Exit', (buyerROIR >= 0 ? '+' : '') + (buyerROIR * 100).toFixed(1) + '%  on invested capital'),
+    col('  BUYER TOTAL PROFIT AT EXIT (base)', sgn(netBase) + '  after all debt paid'),
+    totalBuyerInR > 0 ? col('  Buyer Cash Invested', D(totalBuyerInR) + (rehabOOPRes > 0 ? '  (down payment + rehab OOP)' : '')) : '  Buyer Cash Invested:    $0  (infinite return — seller financing covered full price)',
     '',
     'MARKET CONTINGENCY — YOUR NOTE COVERAGE UNDER STRESS:',
     col('  Break-Even Property Value', D(breakEvenV) + '  — ' + beDir),
@@ -5421,15 +5422,21 @@ ${(() => {
     '',
     'BUYER TRANSPARENCY — WHAT WE PLAN TO MAKE ON THIS DEAL:',
     isTightR
-      ? `  This is a tight-margin deal. At base-case exit our projected profit is
-  ${sgn(netBase)} on ${D(totalBuyerInR)} invested — a ${(buyerROIR*100).toFixed(1)}% return over ${scTerm} years.
-  That is a thin spread. There is no room to pay more. We are at the top of
-  what this deal will support. Your note is paid in full at balloon regardless
+      ? `  This is a tight-margin deal. Our total projected profit at Year ${scTerm}
+  base-case sale is ${sgn(netBase)} after paying off your note and all debt — a
+  thin spread. There is no room to pay more. We are at the ceiling of what
+  this deal will support. Your note is paid in full at balloon regardless
   of whether our profit is strong or thin.`
-      : `  Our projected profit at Year ${scTerm} base-case sale is ${sgn(netBase)}
-  on ${D(totalBuyerInR)} invested (${(buyerROIR*100).toFixed(1)}% ROI over ${scTerm} years). We view this
-  as a fair return for the work of acquiring, managing, and improving the
-  property. Your note is paid in full at balloon regardless of our profit.`,
+      : totalBuyerInR === 0
+        ? `  This deal is structured with no cash out of pocket from the buyer — your
+  seller financing covered the full acquisition. Our total profit at Year ${scTerm}
+  base-case sale is ${sgn(netBase)} after paying off your note and all debt. That
+  profit depends entirely on the property performing. Your note is secured
+  by the property and paid in full at balloon.`
+        : `  Our total profit at Year ${scTerm} base-case sale is ${sgn(netBase)} after
+  paying off your note and all senior debt. We view this as a fair return for
+  acquiring, managing, and bearing market risk during the hold. Your note is
+  paid in full at balloon regardless of our ultimate profit or loss.`,
   ].filter(l => l !== undefined).join('\n');
 })()}
 
