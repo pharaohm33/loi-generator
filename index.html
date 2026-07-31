@@ -4898,6 +4898,7 @@ ${isCounter ? `  ${''.padEnd(28)}${'Seller Proposal'.padEnd(22)}Our Counter-Offe
   ${'Day-1 Buyer Net CF:'.padEnd(28)}${Dfmt(noiMo-sSrPmt-sCarryPmt).padEnd(22)}${(netCF>=0?'+':'')+Dfmt(netCF)}/mo` :
 `${col('Purchase Price', D(pp) + (units > 0 ? '  (' + D(perUnit) + '/unit)' : ''))}
 ${col('Net Cash to Seller at Closing', D(cac) + '  (' + pctOf(cac, pp) + ' of purchase price)')}
+${maxLoan > cac ? col('  ↳ Senior Loan Proceeds', D(maxLoan) + '  — diff of ' + D(maxLoan - cac) + ' covers buyer closing costs & reserves') : ''}
 ${col('Seller Carryback Note', D(carry) + ' at ' + P(scRate) + ' — ' + scTerm + '-yr balloon')}
 ${col('Balloon Payment (Year ' + scTerm + ')', D(balloon))}
 ${col('Total Seller Receipts', D(totalReceipts) + '  (' + D(cac) + ' cash + ' + D(balloon) + ' balloon)')}
@@ -5005,7 +5006,16 @@ ${sep}
 ${isCounter ? 'PART V' : 'PART IV'} — TOTAL SELLER PROCEEDS: WHAT YOU ACTUALLY RECEIVE
 ${sep}
 ${col('Net Cash at Closing', D(cac))}
-${scMonthly > 0 ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(scMonthly*scTerm*12)) : '  Monthly Carry Payments:   $0 (deferred to balloon — no waiting for checks)'}
+${maxLoan > cac ? `${col('  Senior Loan Proceeds', D(maxLoan))}
+${col('  Less: Cash to Seller', '−' + D(cac))}
+${col('  Remaining Equity (' + D(maxLoan - cac) + ')', 'covers buyer closing costs, lender reserves & operating capital')}
+  NOTE: This difference is NOT buyer profit at closing. Lenders require cash
+  reserves (typically 3–6 months of debt service = ${D(Math.round(totalDebtMo * 3))}–${D(Math.round(totalDebtMo * 6))}), plus loan
+  origination, title, escrow, legal, and due diligence costs that must be
+  funded at close. These are a structural requirement of the senior loan
+  approval — without them, the lender will not fund and the deal cannot close.
+  This equity position is what enables a successful exit at Year ${scTerm}.
+` : ''}${scMonthly > 0 ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(scMonthly*scTerm*12)) : '  Monthly Carry Payments:   $0 (deferred to balloon — no waiting for checks)'}
 ${col('Balloon at Year ' + scTerm, D(balloon))}
 ${thin}
 ${col('TOTAL SELLER RECEIPTS', D(totalReceipts))}
@@ -5292,6 +5302,7 @@ ${sep}
 ${col('Property', propLine || propSubtype)}
 ${col('Purchase Price', D(pp) + (arv > 0 && Math.abs(pp-arv) < arv*0.05 ? '  (at appraised value)' : arv > 0 ? '  (ARV/Comp: '+D(arv)+')' : ''))}
 ${col('Cash to Seller at Closing', D(cac))}
+${calcMaxLoan > cac ? col('  ↳ Senior Loan Proceeds', D(calcMaxLoan) + '  — diff of ' + D(calcMaxLoan - cac) + ' covers closing costs & reserves') : ''}
 ${col('Seller Carry Note', D(carry) + ' at ' + P(scRate) + (scRate===0?' (0% — pure principal)':'') + ' — ' + scTerm + '-yr balloon')}
 ${scMonthly > 0 ? col('Monthly Payment to Seller', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(scMonthly*scTerm*12) + ' over term') : col('Monthly Payment', '$0 deferred — full amount at balloon')}
 ${col('Balloon at Year ' + scTerm, D(balloon))}
@@ -5320,7 +5331,11 @@ ${col('  Risk', 'Buyer financing may fall through — back to market')}
 
 OUR SELLER-FINANCING OFFER:
 ${col('  Cash at Closing', D(cac) + '  (no agent, no repair credits)')}
-${scMonthly > 0 ? col('  Monthly Income', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' months') : '  Monthly Income:       $0 deferred (lump sum at balloon)'}
+${calcMaxLoan > cac ? `  Senior Loan: ${D(calcMaxLoan)} — the ${D(calcMaxLoan - cac)} difference between loan proceeds
+  and cash to seller covers buyer closing costs, lender-required reserves
+  (typically 3–6 months debt service), and title/escrow/legal fees. This
+  equity is a structural requirement for loan approval — not buyer profit.
+` : ''}${scMonthly > 0 ? col('  Monthly Income', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' months') : '  Monthly Income:       $0 deferred (lump sum at balloon)'}
 ${col('  Balloon at Year ' + scTerm, D(balloon))}
 ${thin.slice(0,46)}
 ${col('  TOTAL RECEIPTS', D(totalReceipts) + '  over ' + scTerm + ' years')}
