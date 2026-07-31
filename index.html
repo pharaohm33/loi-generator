@@ -469,15 +469,58 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         </div>
       </div>
       <div class="row cols-2">
+        <div class="field">
+          <label>Property Type</label>
+          <select id="prop_type" onchange="onPropTypeChange()">
+            <option value="commercial">Commercial / Multi-Family</option>
+            <option value="residential">Residential (1–4 units)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Property Class / Subtype</label>
+          <select id="prop_class">
+            <option value="">—</option>
+            <option value="A">Class A</option><option value="B">Class B</option><option value="C">Class C</option><option value="D">Class D</option>
+            <option value="sfr">SFR</option><option value="duplex">Duplex</option><option value="triplex">Triplex</option><option value="fourplex">Fourplex</option>
+            <option value="condo">Condo / Townhome</option>
+          </select>
+        </div>
+      </div>
+      <div class="row cols-2">
         <div class="field loi">
           <label><span class="loi-dot"></span> Unit Count <span class="loi-tag">→ LOI</span></label>
           <input type="number" id="units" placeholder="0" min="1">
         </div>
-        <div class="field">
-          <label>Property Class</label>
-          <select id="prop_class">
-            <option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option>
-          </select>
+        <div class="field" id="field-sqft">
+          <label>Square Footage</label>
+          <input type="number" id="sqft" placeholder="e.g. 1850">
+        </div>
+      </div>
+      <!-- Residential-only fields -->
+      <div id="res-fields" style="display:none;">
+        <div class="row cols-3">
+          <div class="field">
+            <label>Bedrooms</label>
+            <input type="number" id="res_beds" placeholder="3" min="0">
+          </div>
+          <div class="field">
+            <label>Bathrooms</label>
+            <input type="number" id="res_baths" placeholder="2" min="0" step="0.5">
+          </div>
+          <div class="field">
+            <label>Market Rent / mo ($)</label>
+            <input type="number" id="res_rent" placeholder="e.g. 2200">
+          </div>
+        </div>
+        <div class="row cols-2">
+          <div class="field">
+            <label>Estimated ARV / Comp Value ($)</label>
+            <input type="number" id="res_arv" placeholder="same as ARV above">
+          </div>
+          <div class="field">
+            <label>Comparable Sale Price ($)</label>
+            <input type="number" id="res_comp" placeholder="nearest sold comp">
+          </div>
         </div>
       </div>
     </div>
@@ -1491,9 +1534,21 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   <div id="loi-reasoning-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px;" onclick="if(event.target===this)closeLOIReasoningModal()">
     <div style="background:#fff;border-radius:14px;padding:28px 24px;max-width:520px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.28);margin:auto;">
       <div style="font-size:17px;font-weight:700;margin-bottom:4px;">LOI Reasoning Analysis</div>
-      <div style="font-size:13px;color:#6b7280;margin-bottom:20px;">Select offer context — counter-offer mode adds a side-by-side comparison using the seller's proposed terms.</div>
+      <div style="font-size:13px;color:#6b7280;margin-bottom:16px;">Choose property type and offer context. Counter-offer mode adds a side-by-side comparison against the seller's proposed terms.</div>
 
-      <!-- Type selector -->
+      <!-- Property type selector -->
+      <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.05em;margin-bottom:6px;">PROPERTY TYPE</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;">
+        <button id="lri-btn-commercial" onclick="selectLOIPropertyType('commercial')" style="flex:1;padding:10px;border:2px solid #7c3aed;border-radius:8px;background:#7c3aed;color:#fff;font-size:13px;font-weight:600;cursor:pointer;line-height:1.3;">
+          Commercial<br><span style="font-size:11px;font-weight:400;opacity:.85;">Multi-family, mixed-use</span>
+        </button>
+        <button id="lri-btn-residential" onclick="selectLOIPropertyType('residential')" style="flex:1;padding:10px;border:2px solid #d1d5db;border-radius:8px;background:#f9fafb;color:#374151;font-size:13px;font-weight:600;cursor:pointer;line-height:1.3;">
+          Residential<br><span style="font-size:11px;font-weight:400;opacity:.7;">SFR, duplex, 1–4 units</span>
+        </button>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.05em;margin-bottom:6px;">OFFER CONTEXT</div>
+      <!-- Offer type selector -->
       <div style="display:flex;gap:10px;margin-bottom:20px;">
         <button id="lri-btn-initial" onclick="selectLOIReasoningType('initial')" style="flex:1;padding:12px 10px;border:2px solid #7c3aed;border-radius:8px;background:#7c3aed;color:#fff;font-size:13px;font-weight:600;cursor:pointer;line-height:1.3;">
           Initial Offer<br><span style="font-size:11px;font-weight:400;opacity:.85;">No seller proposal yet</span>
@@ -4390,10 +4445,27 @@ function copyLOIReasoning() {
 }
 
 let _loiReasoningType = 'initial';
+let _loiPropertyType  = 'commercial';
+function onPropTypeChange() {
+  const t = document.getElementById('prop_type').value;
+  document.getElementById('res-fields').style.display = t === 'residential' ? '' : 'none';
+}
 function showLOIReasoningModal() {
   _loiReasoningType = 'initial';
+  // Auto-read property type from calculator
+  const calcType = (document.getElementById('prop_type') || {}).value || 'commercial';
+  selectLOIPropertyType(calcType);
   selectLOIReasoningType('initial');
   document.getElementById('loi-reasoning-modal-overlay').style.display = 'flex';
+}
+function selectLOIPropertyType(type) {
+  _loiPropertyType = type;
+  const bc = document.getElementById('lri-btn-commercial');
+  const br = document.getElementById('lri-btn-residential');
+  if (!bc || !br) return;
+  [bc, br].forEach(b => { b.style.background = '#f9fafb'; b.style.color = '#374151'; b.style.border = '2px solid #d1d5db'; });
+  const active = type === 'commercial' ? bc : br;
+  active.style.background = '#7c3aed'; active.style.color = '#fff'; active.style.border = '2px solid #7c3aed';
 }
 function closeLOIReasoningModal() {
   document.getElementById('loi-reasoning-modal-overlay').style.display = 'none';
@@ -4424,7 +4496,11 @@ function runGenerateLOIReasoning() {
     carryPmt:  parseFloat(document.getElementById('lri_seller_carry_pmt').value) || 0,
     name:      document.getElementById('lri_seller_name').value.trim(),
   } : null;
-  generateLOIReasoning(_loiReasoningType, sellerData);
+  if (_loiPropertyType === 'residential') {
+    generateResidentialLOIReasoning(_loiReasoningType, sellerData);
+  } else {
+    generateLOIReasoning(_loiReasoningType, sellerData);
+  }
 }
 
 function generateLOIReasoning(offerType, sellerData) {
@@ -4897,6 +4973,330 @@ appraisal, lender underwriting, title review, final loan documents, and a
 mutually acceptable Purchase and Sale Agreement. This analysis is non-binding
 and does not constitute a loan commitment, legal advice, or tax advice.
 Consult qualified legal, financial, and tax advisors before proceeding.
+
+Respectfully submitted,
+
+${acName}${acPhone ? '\n' + acPhone : ''}${acEmail ? '\n' + acEmail : ''}`;
+
+  document.getElementById('loi-reasoning-text').textContent = doc;
+  const sec = document.getElementById('loi-reasoning-section');
+  sec.classList.add('visible');
+  setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+function generateResidentialLOIReasoning(offerType, sellerData) {
+  const isCounter = offerType === 'counter' && sellerData && sellerData.price > 0;
+  const D    = v => '$' + Math.round(Math.abs(v)).toLocaleString();
+  const Dfmt = v => '$' + (+v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const P    = r => (r * 100).toFixed(2) + '%';
+  const pctOf = (a, b) => b > 0 ? ((a/b)*100).toFixed(1)+'%' : '—';
+  const col  = (label, val, w=34) => (label+':').padEnd(w) + val;
+  const sep  = '═'.repeat(54);
+  const thin = '─'.repeat(54);
+
+  const addr   = s('address');
+  const acName = s('ac_name'), acPhone = s('ac_phone'), acEmail = s('ac_email1') || s('ac_email2');
+  const beds   = g('res_beds') || 0, baths = g('res_baths') || 0, sqft = g('sqft') || 0;
+  const propClass = (document.getElementById('prop_class') || {}).value || '';
+  const propSubtype = { sfr:'Single Family Residence', duplex:'Duplex', triplex:'Triplex',
+    fourplex:'Fourplex', condo:'Condo / Townhome' }[propClass] || propClass || 'Residential Property';
+
+  const pp   = g('purchase_price');
+  const cac  = g('cash_at_closing');
+  const carry = pp - cac;
+  const arvRaw = g('arv') || g('res_arv') || g('as_is_value') || pp;
+  const arv   = arvRaw > 0 ? arvRaw : pp;
+  const comp  = g('res_comp') || arv;
+  const resRent = g('res_rent') || 0;
+
+  const scRate  = g('sc_rate') / 100;
+  const scTerm  = g('sc_term');
+  const bpPh1Yrs = ph2Enabled ? Math.min(g('ph1_years')||1, scTerm) : scTerm;
+  const bpPh2Yrs = ph2Enabled ? Math.max(scTerm - bpPh1Yrs, 0) : 0;
+  const bpPh2Rate = ph2Enabled ? g('ph2_rate')/100 : 0;
+  const bpPh1Extra = { monthlyPmt: g('monthly_principal'), amortYrs: g('sc_amort_yrs')||30,
+    deferMonths: Math.round(g('sc_defer_months')||0), deferredRate: g('sc_deferred_rate')/100 };
+  const bpPh2Extra = { monthlyPmt: g('ph2_monthly_principal')||0, amortYrs: g('ph2_sc_amort_yrs')||30,
+    deferMonths: Math.round(g('ph2_defer_months')||0), deferredRate: g('ph2_deferred_rate')/100 };
+  const bpPh1  = calcPhase(carry, scRate, bpPh1Yrs, mode, bpPh1Extra);
+  const bpPh1End = bpPh1.balAtEnd + bpPh1.accruedDeferred;
+  const bpPh2  = (ph2Enabled && bpPh2Yrs > 0) ? calcPhase(bpPh1End, bpPh2Rate, bpPh2Yrs, mode2, bpPh2Extra) : null;
+  const scMonthly = bpPh1.monthly;
+  const balloon   = bpPh2 ? bpPh2.balloon : bpPh1.balloon;
+  const totalReceipts = cac + (scMonthly * scTerm * 12) + balloon;
+
+  // Senior loan (may be 0 if all seller-financed)
+  const srRate  = g('sr_rate') / 100;
+  const srAmort = g('sr_amort') || 30;
+  const maxLoan = g('purchase_price') - g('cash_at_closing') - carry; // = 0 for all-carry deals
+  // For display, the "senior" in residential may just be the buyer's own financing
+  // We'll use actual maxLoan from existing calculator
+  const srLTV   = g('sr_ltv') / 100;
+  const asIsVal = g('as_is_value') || pp;
+  const byLTV   = srLTV > 0 ? asIsVal * srLTV : Infinity;
+  let calcMaxLoan = byLTV;
+  if (g('sr_dscr') > 0 && srRate > 0 && srAmort > 0) {
+    const noiAn = g('noi_direct') || (g('res_rent') * 12 * 0.7); // 70% expense ratio for res
+    const mo2 = srRate/12, n2 = srAmort*12;
+    const byD = (noiAn/12/g('sr_dscr')) * (1-Math.pow(1+mo2,-n2))/mo2;
+    calcMaxLoan = Math.min(byLTV, byD);
+  }
+  if (!isFinite(calcMaxLoan) || calcMaxLoan < 0) calcMaxLoan = 0;
+  const srPmt = pmtPI(srRate, srAmort, calcMaxLoan);
+
+  // Effective yield on seller's carry note
+  const carryYield = scRate > 0 ? scRate : 0;
+  const carryYieldVsCD = 0.045; // approximate CD rate for comparison
+  const monthlyIfCD = carry * carryYieldVsCD / 12;
+
+  // Traditional sale comparison
+  const agentCommission = 0.06; // 6%
+  const sellerClosingPct = 0.02; // ~2% seller closing costs
+  const traditionalNet = arv * (1 - agentCommission - sellerClosingPct);
+  const ourAdvantage   = totalReceipts - traditionalNet;
+
+  // DTI context for conventional buyer
+  const convRate30 = 0.075; // approximate 30-yr conventional
+  const convAmort  = 30;
+  const convDown   = 0.20;  // 20% down
+  const convLoan   = arv * (1 - convDown);
+  const convPmt    = pmtPI(convRate30, convAmort, convLoan);
+  const convNetToSeller = arv * (1 - agentCommission - sellerClosingPct);
+
+  // FHA buyer
+  const fhaDown = 0.035;
+  const fhaRate = 0.075;
+  const fhaLoan = arv * (1 - fhaDown);
+  const fhaPmt  = pmtPI(fhaRate, convAmort, fhaLoan);
+  const minIncomeConv = convPmt * 12 / 0.43; // 43% max DTI
+  const minIncomeFHA  = fhaPmt  * 12 / 0.57; // 57% max DTI back-end
+
+  // Seller data for counter mode
+  let sPrice=0, sCarry=0, sCarryRate=0, sCarryTerm=0, sCarryPmt=0,
+      sBalloon=0, sCash=0, sTotalReceipts=0;
+  if (isCounter) {
+    sPrice     = sellerData.price;
+    sCarryRate = sellerData.carryRate / 100;
+    sCarryTerm = sellerData.carryTerm || 5;
+    sCarryPmt  = sellerData.carryPmt  || 0;
+    const sLoan = sellerData.loan || 0;
+    sCarry     = sPrice - (sellerData.cash > 0 ? sellerData.cash : sLoan);
+    const sMode  = sCarryPmt > 0 ? 'interest_only' : 'deferred_exit';
+    const sExtra = { monthlyPmt: sCarryPmt, amortYrs:30, deferMonths:0, deferredRate:0 };
+    const sPhase = calcPhase(sCarry, sCarryRate, sCarryTerm, sMode, sExtra);
+    sBalloon     = sPhase.balloon;
+    sCash        = sellerData.cash > 0 ? sellerData.cash : sLoan;
+    sTotalReceipts = sCash + (sCarryPmt * sCarryTerm * 12) + sBalloon;
+  }
+
+  const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  const sellerName = (isCounter && sellerData.name) ? sellerData.name : 'Property Seller';
+  const propLine = [propSubtype, beds>0?beds+'bd':'', baths>0?baths+'ba':'', sqft>0?sqft.toLocaleString()+' sqft':''].filter(Boolean).join(' · ');
+
+  // Comparison table (counter mode)
+  const compTable = !isCounter ? '' : `
+${sep}
+STRUCTURAL COMPARISON
+${sep}
+  ${'Metric:'.padEnd(30)}${'Seller Ask'.padEnd(22)}Our Offer
+  ${thin}
+  ${'Purchase Price:'.padEnd(30)}${D(sPrice).padEnd(22)}${D(pp)}
+  ${'Cash to Seller at Close:'.padEnd(30)}${D(sCash).padEnd(22)}${D(cac)}
+  ${'Seller Carry Note:'.padEnd(30)}${(D(sCarry)+' @ '+P(sCarryRate)).padEnd(22)}${D(carry)+' @ '+P(scRate)}
+  ${'Carry Term (Balloon Year):'.padEnd(30)}${('Year '+sCarryTerm).padEnd(22)}${'Year '+scTerm}
+  ${'Monthly Carry Payment:'.padEnd(30)}${(sCarryPmt>0?Dfmt(sCarryPmt)+'/mo':'$0 deferred').padEnd(22)}${scMonthly>0?Dfmt(scMonthly)+'/mo':'$0 deferred'}
+  ${'Balloon at Maturity:'.padEnd(30)}${D(sBalloon).padEnd(22)}${D(balloon)}
+  ${'Total Seller Receipts:'.padEnd(30)}${D(sTotalReceipts).padEnd(22)}${D(totalReceipts)}
+  ${thin}
+  ${'vs. Traditional Sale Net:'.padEnd(30)}${D(sTotalReceipts-traditionalNet).padEnd(22)}${D(ourAdvantage)} more than trad. sale`;
+
+  const doc =
+`${isCounter ? 'COUNTER-PROPOSAL & SELLER FINANCING ANALYSIS' : 'SELLER FINANCING ANALYSIS & LOI REASONING'}
+${addr ? addr + '\n' : ''}${propLine ? propLine + '\n' : ''}Date: ${today}
+${thin}
+Prepared by:    ${acName}${acPhone ? '  |  ' + acPhone : ''}${acEmail ? '  |  ' + acEmail : ''}
+Prepared for:   ${sellerName}
+Subject:        ${isCounter
+  ? 'Why Our Offer Outperforms a Traditional Sale — Seller Financing Analysis'
+  : 'Why Seller Financing Puts More Money in Your Pocket Than a Traditional Sale'}
+${thin}
+
+${isCounter
+  ? `Thank you for the opportunity to discuss the sale of ${addr || 'your property'}. We have
+reviewed your proposed terms and present below a detailed comparison showing
+why our structure delivers superior results — and why the terms we propose are
+the highest executable offer given current market conditions.`
+  : `We appreciate your openness to a seller-financed structure. Most sellers have
+never seen this approach clearly explained. This document shows — dollar by
+dollar — why seller financing puts more money in your pocket than a traditional
+listing, while still giving you a fast, clean close without the uncertainty of
+a financed buyer who might not qualify.`}
+
+${sep}
+EXECUTIVE OFFER SUMMARY
+${sep}
+${col('Property', propLine || propSubtype)}
+${col('Purchase Price', D(pp) + (arv > 0 && Math.abs(pp-arv) < arv*0.05 ? '  (at appraised value)' : arv > 0 ? '  (ARV/Comp: '+D(arv)+')' : ''))}
+${col('Cash to Seller at Closing', D(cac))}
+${col('Seller Carry Note', D(carry) + ' at ' + P(scRate) + (scRate===0?' (0% — pure principal)':'') + ' — ' + scTerm + '-yr balloon')}
+${scMonthly > 0 ? col('Monthly Payment to Seller', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(scMonthly*scTerm*12) + ' over term') : col('Monthly Payment', '$0 deferred — full amount at balloon')}
+${col('Balloon at Year ' + scTerm, D(balloon))}
+${thin}
+${col('TOTAL SELLER RECEIPTS', D(totalReceipts))}
+${thin}
+${col('vs. Traditional Sale Net', D(traditionalNet) + '  (ARV – 6% commissions – 2% closing costs)')}
+${col('Your Advantage with Our Offer', (ourAdvantage >= 0 ? '+' : '') + D(ourAdvantage) + '  ' + (ourAdvantage >= 0 ? '← MORE money to you' : '← review structure'))}
+${compTable}
+
+${sep}
+PART I — TRADITIONAL SALE VS. SELLER FINANCING: THE REAL NUMBERS
+${sep}
+Most sellers assume a traditional listing with a real estate agent is the best
+path. Here is what that actually looks like versus our offer:
+
+TRADITIONAL LISTING PATH:
+${col('  Listing Price (Optimistic)', D(arv))}
+${col('  Less: Real Estate Commission (6%)', '–' + D(arv * 0.06))}
+${col('  Less: Seller Closing Costs (~2%)',  '–' + D(arv * 0.02))}
+${col('  Less: Inspection / Repair Credits',  '–$X  (typical $5,000–$25,000 range)')}
+${thin.slice(0,46)}
+${col('  Net Cash to Seller (One-Time)', D(traditionalNet))}
+${col('  Timeline to Close', '30–90 days (pending buyer financing approval)')}
+${col('  Risk', 'Buyer financing may fall through — back to market')}
+
+OUR SELLER-FINANCING OFFER:
+${col('  Cash at Closing', D(cac) + '  (no agent, no repair credits)')}
+${scMonthly > 0 ? col('  Monthly Income', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' months') : '  Monthly Income:       $0 deferred (lump sum at balloon)'}
+${col('  Balloon at Year ' + scTerm, D(balloon))}
+${thin.slice(0,46)}
+${col('  TOTAL RECEIPTS', D(totalReceipts) + '  over ' + scTerm + ' years')}
+${col('  Timeline to Close', '7–21 days — no bank approval required')}
+${col('  Risk', 'You hold 2nd lien on property you already know')}
+${col('  Your Net Advantage', (ourAdvantage >= 0 ? '+' : '') + D(ourAdvantage) + ' MORE than a traditional listing')}
+
+${sep}
+PART II — WHAT CONVENTIONAL BUYERS ACTUALLY OFFER YOU
+${sep}
+A conventional buyer needs bank financing. Here is what that reality looks like:
+
+CONVENTIONAL BUYER (20% DOWN, 30-YR, ~${P(convRate30)}):
+${col('  Loan Amount', D(convLoan) + '  (' + P(1-convDown) + ' of ARV)')}
+${col('  Monthly Payment', Dfmt(convPmt) + '/mo')}
+${col('  Minimum Buyer Income Required', D(minIncomeConv) + '/yr  (43% max DTI rule)')}
+${col('  Net to Seller After Commission', D(convNetToSeller) + '  (same as traditional — one-time)')}
+
+FHA BUYER (3.5% DOWN, ~${P(fhaRate)}):
+${col('  Loan Amount', D(fhaLoan))}
+${col('  Monthly Payment', Dfmt(fhaPmt) + '/mo + MIP')}
+${col('  Minimum Buyer Income Required', D(minIncomeFHA) + '/yr  (57% max back-end DTI)')}
+${col('  Net to Seller After Commission', D(convNetToSeller) + '  (same — one-time lump sum)')}
+
+${col('Both paths give you', D(convNetToSeller) + ' today and NOTHING more — ever.')}
+${col('Our offer gives you', D(totalReceipts) + ' total — ' + D(ourAdvantage) + ' MORE.')}
+
+Why can't a financed buyer pay more? Their bank controls the purchase price
+through the appraisal. If the appraised value is ${D(arv)}, the bank will not
+lend above that regardless of what the buyer offers. The only way to capture
+value above appraised value is through seller financing.
+
+${sep}
+PART III — YOUR MONTHLY INCOME & INVESTMENT YIELD
+${sep}
+${scRate > 0
+  ? `Your seller carry note of ${D(carry)} at ${P(scRate)} generates:
+
+${col('  Monthly Interest Income', Dfmt(carry * scRate / 12) + '/mo')}
+${col('  Annual Interest Income', D(carry * scRate) + '/yr')}
+${col('  Effective Yield on Your Note', P(scRate))}
+${col('  vs. 4.5% CD / Money Market', Dfmt(monthlyIfCD) + '/mo  (' + (carry*scRate/12 > monthlyIfCD ? 'your note pays MORE' : D(monthlyIfCD - carry*scRate/12) + '/mo more from CD') + ')')}
+
+Your ${P(scRate)} note is secured by real property you know — not an abstract
+investment product. The property remains as collateral for your benefit.`
+  : `Your seller carry note of ${D(carry)} is at 0% interest. While you earn no
+interest during the term, the key benefit is the purchase PRICE — you receive
+${D(pp)} total versus ${D(traditionalNet)} from a traditional sale, a difference
+of ${D(pp - traditionalNet)}. The 0% rate is what makes our higher price possible
+by keeping the buyer's debt service manageable without a bank.`}
+
+${resRent > 0 ? `
+RENTAL INCOME NOTE:
+${col('  Market Rent', Dfmt(resRent) + '/mo  (' + D(resRent*12) + '/yr)')}
+The buyer will use rental income to service the carry note, giving you confidence
+that the monthly cash flow is there to support the balloon payoff at Year ${scTerm}.
+` : ''}
+${sep}
+PART IV — YOUR SECURITY POSITION
+${sep}
+As a note holder, you are secured by the property through a recorded lien.
+
+${col('  Property Value (ARV / Comp)', D(arv))}
+${calcMaxLoan > 0 ? col('  Any Senior Loan (1st Pos.)', D(calcMaxLoan) + '  (' + P(calcMaxLoan/arv) + ' LTV)') : '  Senior Loan:          None — you hold the ONLY lien'}
+${col('  Your Carry Note (2nd Pos.)', D(carry))}
+${col('  Total Debt on Property', D(calcMaxLoan + carry))}
+${col('  Combined LTV (all debt)', P((calcMaxLoan + carry) / arv))}
+${thin.slice(0,46)}
+${col('  Equity Cushion Protecting You', D(arv - calcMaxLoan - carry) + '  (' + P((arv-calcMaxLoan-carry)/arv) + ' of value)')}
+
+${arv > calcMaxLoan + carry
+  ? `The property would need to lose ${P((arv - calcMaxLoan - carry)/arv)} of its value before
+your note is at risk — a substantial equity buffer in any realistic scenario.`
+  : `NOTE: Combined debt is at or above current value — ensure the buyer has a
+clear path to value-add or appreciation to protect your note at balloon.`}
+
+Additional Protections:
+  • Recorded deed of trust / mortgage — your lien is public record
+  • You retain right to foreclose if buyer defaults (standard note terms)
+  • Title insurance protects against prior liens or title defects
+  • Recommend requiring property/casualty insurance naming you as loss payee
+
+${sep}
+PART V — FOUR REASONS SELLER FINANCING BEATS A TRADITIONAL SALE
+${sep}
+1. MORE TOTAL MONEY — ${D(totalReceipts)} vs. ${D(traditionalNet)} from a listing.
+   That's ${D(Math.abs(ourAdvantage))} ${ourAdvantage >= 0 ? 'more' : 'less (review structure)'} — and it goes straight to you,
+   not to real estate agents.
+
+2. SPEED & CERTAINTY — No bank underwriting, no 30-day financing contingency,
+   no risk of the deal falling through because a buyer's loan was denied.
+   We close in days, not months.
+
+3. INSTALLMENT SALE TAX TREATMENT — By receiving proceeds over time, you may
+   qualify for installment sale reporting under IRS Section 453, spreading
+   capital gains across the years you receive payments. This can significantly
+   reduce the tax hit in the year of sale. Consult your CPA.
+
+4. SECURED INCOME STREAM — Your note is backed by real property you already
+   know — not a stock, bond, or unsecured promise. If the buyer defaults,
+   you get the property back through foreclosure.
+
+${sep}
+${isCounter ? 'WHY OUR COUNTER-OFFER IS THE HIGHEST EXECUTABLE STRUCTURE' : 'WHY THIS IS OUR BEST OFFER'}
+${sep}
+Our offer of ${D(pp)} is not a lowball — it is the highest price that works
+within the following structural realities:
+
+1. CARRY SIZE LIMIT: The larger the carry, the larger the balloon at Year ${scTerm}.
+   A balloon that exceeds what the buyer can refinance at maturity creates a
+   default risk that ultimately puts YOUR note at risk. The current carry of
+   ${D(carry)} produces a Year-${scTerm} balloon of ${D(balloon)} — sized to remain
+   refinanceable against projected property value.
+
+2. CASH AT CLOSING: The ${D(cac)} cash at closing is funded by the buyer's
+   own resources plus any senior financing. We cannot manufacture cash
+   that does not exist in the deal.
+
+3. MARKET VALUE ANCHOR: Comparable sales in the area support a value of
+   approximately ${D(comp > 0 ? comp : arv)}. Our offer of ${D(pp)} is
+   ${pp >= (comp > 0 ? comp : arv) ? 'at or above' : D(Math.abs(pp-(comp>0?comp:arv)))+' below'} that benchmark — aggressive
+   for a seller-financed deal where we take on the execution risk.
+
+${sep}
+DISCLAIMER
+${sep}
+All figures are estimates. This analysis does not constitute legal, tax, or
+financial advice. Seller should consult a qualified real estate attorney, CPA,
+and financial advisor before accepting any offer. This document is for
+informational purposes only and does not create a binding obligation.
 
 Respectfully submitted,
 
