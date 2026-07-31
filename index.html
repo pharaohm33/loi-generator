@@ -1452,7 +1452,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   <div style="display:flex; gap:10px; flex-wrap:wrap;">
     <button class="btn-generate" onclick="showLOIModal()" style="flex:1">Create LOI →</button>
     <button class="btn-generate" onclick="generateBuyerPresentation()" style="flex:1; background:#1d4ed8;">Buyer Presentation →</button>
-    <button class="btn-generate" onclick="generateLOIReasoning()" style="flex:1; background:#7c3aed;">LOI Reasoning →</button>
+    <button class="btn-generate" onclick="showLOIReasoningModal()" style="flex:1; background:#7c3aed;">LOI Reasoning →</button>
   </div>
 
   <!-- LOI TYPE MODAL -->
@@ -1487,8 +1487,70 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     </div>
   </div>
 
+  <!-- LOI REASONING MODAL -->
+  <div id="loi-reasoning-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 12px;" onclick="if(event.target===this)closeLOIReasoningModal()">
+    <div style="background:#fff;border-radius:14px;padding:28px 24px;max-width:520px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.28);margin:auto;">
+      <div style="font-size:17px;font-weight:700;margin-bottom:4px;">LOI Reasoning Analysis</div>
+      <div style="font-size:13px;color:#6b7280;margin-bottom:20px;">Select offer context — counter-offer mode adds a side-by-side comparison using the seller's proposed terms.</div>
+
+      <!-- Type selector -->
+      <div style="display:flex;gap:10px;margin-bottom:20px;">
+        <button id="lri-btn-initial" onclick="selectLOIReasoningType('initial')" style="flex:1;padding:12px 10px;border:2px solid #7c3aed;border-radius:8px;background:#7c3aed;color:#fff;font-size:13px;font-weight:600;cursor:pointer;line-height:1.3;">
+          Initial Offer<br><span style="font-size:11px;font-weight:400;opacity:.85;">No seller proposal yet</span>
+        </button>
+        <button id="lri-btn-counter" onclick="selectLOIReasoningType('counter')" style="flex:1;padding:12px 10px;border:2px solid #d1d5db;border-radius:8px;background:#f9fafb;color:#374151;font-size:13px;font-weight:600;cursor:pointer;line-height:1.3;">
+          Counter-Offer<br><span style="font-size:11px;font-weight:400;opacity:.7;">Analyze seller's ask vs ours</span>
+        </button>
+      </div>
+
+      <!-- Counter-offer inputs -->
+      <div id="lri-counter-inputs" style="display:none;border:1px solid #e5e7eb;border-radius:8px;padding:16px;background:#fafafa;margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:700;color:#6b7280;letter-spacing:.05em;margin-bottom:12px;">SELLER'S PROPOSED TERMS</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:3px;">Seller Asking Price ($)</div>
+            <input type="number" id="lri_seller_price" placeholder="e.g. 39500000" style="width:100%;padding:7px 9px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:3px;">Seller's Proposed Senior Loan ($)</div>
+            <input type="number" id="lri_seller_loan" placeholder="e.g. 23000000" style="width:100%;padding:7px 9px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:3px;">Seller's Loan Rate (% — leave blank to use ours)</div>
+            <input type="number" id="lri_seller_sr_rate" placeholder="same as our offer" step="0.1" style="width:100%;padding:7px 9px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:3px;">Seller's Net Cash at Closing ($)</div>
+            <input type="number" id="lri_seller_cash" placeholder="auto = loan − costs" style="width:100%;padding:7px 9px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:3px;">Seller's Carry Rate (%)</div>
+            <input type="number" id="lri_seller_carry_rate" value="0" step="0.1" style="width:100%;padding:7px 9px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:3px;">Seller's Carry Term (years)</div>
+            <input type="number" id="lri_seller_carry_term" value="5" style="width:100%;padding:7px 9px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:3px;">Seller's Carry Monthly Pmt ($, 0 = deferred)</div>
+            <input type="number" id="lri_seller_carry_pmt" value="0" style="width:100%;padding:7px 9px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:3px;">Seller's Name / Company (for header)</div>
+            <input type="text" id="lri_seller_name" placeholder="e.g. Property Owner LLC" style="width:100%;padding:7px 9px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box;">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button onclick="runGenerateLOIReasoning()" style="flex:1;padding:13px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">Generate Analysis →</button>
+        <button onclick="closeLOIReasoningModal()" style="padding:13px 18px;background:#f3f4f6;color:#555;border:none;border-radius:8px;font-size:14px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- LOI REASONING OUTPUT -->
-  <div class="loi-output" id="loi-reasoning-section" style="display:none;">
+  <div class="loi-output" id="loi-reasoning-section">
     <div class="loi-doc-card">
       <div class="loi-doc-header">
         <span>LOI Reasoning — Full Text</span>
@@ -4327,25 +4389,65 @@ function copyLOIReasoning() {
   });
 }
 
-function generateLOIReasoning() {
+let _loiReasoningType = 'initial';
+function showLOIReasoningModal() {
+  _loiReasoningType = 'initial';
+  selectLOIReasoningType('initial');
+  document.getElementById('loi-reasoning-modal-overlay').style.display = 'flex';
+}
+function closeLOIReasoningModal() {
+  document.getElementById('loi-reasoning-modal-overlay').style.display = 'none';
+}
+function selectLOIReasoningType(type) {
+  _loiReasoningType = type;
+  const bi = document.getElementById('lri-btn-initial');
+  const bc = document.getElementById('lri-btn-counter');
+  const ci = document.getElementById('lri-counter-inputs');
+  const purple = '2px solid #7c3aed', grey = '2px solid #d1d5db';
+  bi.style.cssText = bi.style.cssText.replace(/border:[^;]+/, type==='initial' ? 'border:'+purple : 'border:'+grey);
+  bi.style.background = type==='initial' ? '#7c3aed' : '#f9fafb';
+  bi.style.color      = type==='initial' ? '#fff'    : '#374151';
+  bc.style.cssText = bc.style.cssText.replace(/border:[^;]+/, type==='counter' ? 'border:'+purple : 'border:'+grey);
+  bc.style.background = type==='counter' ? '#7c3aed' : '#f9fafb';
+  bc.style.color      = type==='counter' ? '#fff'    : '#374151';
+  ci.style.display    = type==='counter' ? '' : 'none';
+}
+function runGenerateLOIReasoning() {
+  closeLOIReasoningModal();
+  const sellerData = _loiReasoningType === 'counter' ? {
+    price:     parseFloat(document.getElementById('lri_seller_price').value)     || 0,
+    loan:      parseFloat(document.getElementById('lri_seller_loan').value)      || 0,
+    srRate:    parseFloat(document.getElementById('lri_seller_sr_rate').value)   || 0,
+    cash:      parseFloat(document.getElementById('lri_seller_cash').value)      || 0,
+    carryRate: parseFloat(document.getElementById('lri_seller_carry_rate').value)|| 0,
+    carryTerm: parseFloat(document.getElementById('lri_seller_carry_term').value)|| 5,
+    carryPmt:  parseFloat(document.getElementById('lri_seller_carry_pmt').value) || 0,
+    name:      document.getElementById('lri_seller_name').value.trim(),
+  } : null;
+  generateLOIReasoning(_loiReasoningType, sellerData);
+}
+
+function generateLOIReasoning(offerType, sellerData) {
+  const isCounter = offerType === 'counter' && sellerData && sellerData.price > 0;
   const D    = v => '$' + Math.round(Math.abs(v)).toLocaleString();
   const Dfmt = v => '$' + (+v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   const P    = r => (r * 100).toFixed(2) + '%';
   const pctOf = (part, whole) => whole > 0 ? ((part / whole) * 100).toFixed(1) + '%' : '—';
   const sign  = v => (v >= 0 ? '+' : '-') + D(v);
   const col   = (label, val, w1=32) => (label + ':').padEnd(w1) + val;
-  const sep   = '═'.repeat(38);
-  const thin  = '─'.repeat(38);
+  const C2    = (a, b, w=22) => String(a).padEnd(w) + String(b); // two-col comparison row
+  const sep   = '═'.repeat(54);
+  const thin  = '─'.repeat(54);
 
-  const addr   = s('address');
-  const units  = Math.round(g('units'));
-  const acName = s('ac_name');
+  const addr    = s('address');
+  const units   = Math.round(g('units'));
+  const acName  = s('ac_name');
   const acPhone = s('ac_phone');
   const acEmail = s('ac_email1') || s('ac_email2');
 
-  const pp     = g('purchase_price');
-  const cac    = g('cash_at_closing');
-  const carry  = pp - cac;
+  const pp      = g('purchase_price');
+  const cac     = g('cash_at_closing');
+  const carry   = pp - cac;
   const asIsVal = g('as_is_value') || pp;
   const arvRaw  = g('arv');
   const arv     = arvRaw > 0 ? arvRaw : asIsVal;
@@ -4358,15 +4460,15 @@ function generateLOIReasoning() {
   const noiMo  = usingDirect ? noiDirectAn / 12 : egi - opex;
   const noiAn  = noiMo * 12;
 
-  const capRate    = g('cap_rate') / 100;
-  const impliedVal = capRate > 0 && noiAn > 0 ? noiAn / capRate : 0;
+  const capRate     = g('cap_rate') / 100;
+  const impliedVal  = capRate > 0 && noiAn > 0 ? noiAn / capRate : 0;
   const asIsCapRate = asIsVal > 0 && noiAn > 0 ? noiAn / asIsVal : 0;
-  const offerCapRate = pp > 0 && noiAn > 0 ? noiAn / pp : 0;
+  const offerCap    = pp > 0 && noiAn > 0 ? noiAn / pp : 0;
 
-  const srRate   = g('sr_rate') / 100;
-  const srLTV    = g('sr_ltv') / 100;
-  const dscrReq  = g('sr_dscr') || 1.25;
-  const srAmort  = g('sr_amort') || 30;
+  const srRate  = g('sr_rate') / 100;
+  const srLTV   = g('sr_ltv') / 100;
+  const dscrReq = g('sr_dscr') || 1.25;
+  const srAmort = g('sr_amort') || 30;
   const totalProjectCost = asIsVal + g('rehab');
 
   let maxLoan, bindingConstraint;
@@ -4378,8 +4480,8 @@ function generateLOIReasoning() {
     if (!isFinite(maxLoan)) maxLoan = 0;
     bindingConstraint = maxLoan === byLTV ? 'LTV (As-Is)' : maxLoan === byLTC ? 'LTC' : 'ARV %';
   } else {
-    const byLTV2  = srLTV > 0 ? asIsVal * srLTV : Infinity;
-    let byDSCR2   = Infinity;
+    const byLTV2 = srLTV > 0 ? asIsVal * srLTV : Infinity;
+    let byDSCR2  = Infinity;
     if (dscrReq > 0 && srRate > 0 && srAmort > 0) {
       const mo2 = srRate/12, n2 = srAmort * 12;
       byDSCR2 = (noiAn / 12 / dscrReq) * (1 - Math.pow(1+mo2,-n2)) / mo2;
@@ -4389,15 +4491,15 @@ function generateLOIReasoning() {
     bindingConstraint = (byDSCR2 < byLTV2) ? 'DSCR Cap' : 'LTV (As-Is)';
   }
 
-  const srPmt       = pmtPI(srRate, srAmort, maxLoan);
-  const actualLTV   = asIsVal > 0 ? maxLoan / asIsVal : 0;
-  const hmIOmo      = maxLoan * srRate / 12;
+  const srPmt          = pmtPI(srRate, srAmort, maxLoan);
+  const actualLTV      = asIsVal > 0 ? maxLoan / asIsVal : 0;
+  const hmIOmo         = maxLoan * srRate / 12;
   const effectiveSrPmt = loanType === 'hard_money' ? hmIOmo : srPmt;
 
-  const scRate  = g('sc_rate') / 100;
-  const scTerm  = g('sc_term');
-  const bpPh1Yrs = ph2Enabled ? Math.min(g('ph1_years') || 1, scTerm) : scTerm;
-  const bpPh2Yrs = ph2Enabled ? Math.max(scTerm - bpPh1Yrs, 0) : 0;
+  const scRate   = g('sc_rate') / 100;
+  const scTerm   = g('sc_term');
+  const bpPh1Yrs  = ph2Enabled ? Math.min(g('ph1_years') || 1, scTerm) : scTerm;
+  const bpPh2Yrs  = ph2Enabled ? Math.max(scTerm - bpPh1Yrs, 0) : 0;
   const bpPh2Rate = ph2Enabled ? g('ph2_rate') / 100 : 0;
   const bpPh1Extra = { monthlyPmt: g('monthly_principal'), amortYrs: g('sc_amort_yrs')||30,
     deferMonths: Math.round(g('sc_defer_months')||0), deferredRate: g('sc_deferred_rate')/100 };
@@ -4406,209 +4508,402 @@ function generateLOIReasoning() {
   const bpPh1    = calcPhase(carry, scRate, bpPh1Yrs, mode, bpPh1Extra);
   const bpPh1End = bpPh1.balAtEnd + bpPh1.accruedDeferred;
   const bpPh2    = (ph2Enabled && bpPh2Yrs > 0) ? calcPhase(bpPh1End, bpPh2Rate, bpPh2Yrs, mode2, bpPh2Extra) : null;
-  const scMonthly = bpPh1.monthly;
-  const balloon   = bpPh2 ? bpPh2.balloon : bpPh1.balloon;
-
-  const totalDebtMo  = effectiveSrPmt + scMonthly;
-  const netCF        = noiMo - totalDebtMo;
-  const dscrAllDebt  = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
-  const dscrSrOnly   = effectiveSrPmt > 0 ? noiAn / (effectiveSrPmt * 12) : 0;
-  const maxDebtSvcMo = dscrReq > 0 ? noiAn / dscrReq / 12 : 0;
+  const scMonthly     = bpPh1.monthly;
+  const balloon       = bpPh2 ? bpPh2.balloon : bpPh1.balloon;
+  const totalDebtMo   = effectiveSrPmt + scMonthly;
+  const netCF         = noiMo - totalDebtMo;
+  const dscrSrOnly    = effectiveSrPmt > 0 ? noiAn / (effectiveSrPmt * 12) : 0;
+  const dscrAllDebt   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
+  const maxDebtSvcMo  = dscrReq > 0 ? noiAn / dscrReq / 12 : 0;
   const totalReceipts = cac + balloon;
-  const perUnit = units > 0 ? pp / units : 0;
+  const perUnit       = units > 0 ? pp / units : 0;
 
-  // BRRRR / bridge context
-  const isBRRRR = bridgeEnabled && loanType === 'hard_money';
+  // Loan sensitivity rows
+  function loanSens(extraLoan) {
+    const nl = maxLoan + extraLoan, np = pmtPI(srRate, srAmort, nl);
+    return { nl, np, dscr: np > 0 ? noiAn/(np*12) : 0, cf: noiMo - np - scMonthly };
+  }
+  const l250 = loanSens(250000), l500 = loanSens(500000);
+
+  // BRRRR context
+  const isBRRRR    = bridgeEnabled && loanType === 'hard_money';
   const brgNetCash = _exitCache.brgRefiNetCash;
   const stabMonths = g('stabilization_months');
 
-  // Sensitivity: what happens if price increases by $X
-  function sensitivityRow(extraPrice) {
-    const newPP      = pp + extraPrice;
-    const newCarry   = newPP - cac;          // assume same cash to seller
-    const newBalloon = balloon + extraPrice; // carry absorbs the increase
-    const newDSCR    = dscrSrOnly;           // senior loan unchanged
-    const newCF      = netCF;               // senior loan unchanged
-    return { newPP, newCarry, newBalloon, newDSCR, newCF };
-  }
-  // Sensitivity if buyer pushes loan larger instead
-  function loanSensitivityRow(extraLoan) {
-    const newLoan    = maxLoan + extraLoan;
-    const newPmt     = pmtPI(srRate, srAmort, newLoan);
-    const newDSCR    = newPmt > 0 ? noiAn / (newPmt * 12) : 0;
-    const newCF      = noiMo - newPmt - scMonthly;
-    return { newLoan, newPmt, newDSCR, newCF };
-  }
-  const l250 = loanSensitivityRow(250000);
-  const l500 = loanSensitivityRow(500000);
+  // Market cap context
+  const mktCapLow = 0.0625, mktCapHigh = 0.065;
+  const mktValLow = noiAn / mktCapHigh, mktValHigh = noiAn / mktCapLow;
 
-  // Market comparison
-  const mktCapLow  = 0.0625, mktCapHigh = 0.065;
-  const mktValLow  = capRate > 0 ? noiAn / mktCapHigh : 0;
-  const mktValHigh = capRate > 0 ? noiAn / mktCapLow  : 0;
+  // ── SELLER DATA (counter-offer mode) ──────────────────────────────
+  let sPrice=0, sLoan=0, sSrRate=0, sSrPmt=0, sDSCR=0, sCarry=0,
+      sCarryRate=0, sCarryTerm=0, sCarryPmt=0, sBalloon=0,
+      sCash=0, sTotalReceipts=0, sDSCRlabel='', sUnbankable=false,
+      sDSCRSeverity='', sCombination=0, sPerUnit=0;
+
+  if (isCounter) {
+    sPrice     = sellerData.price;
+    sLoan      = sellerData.loan  || sPrice * 0.6;
+    sSrRate    = (sellerData.srRate > 0 ? sellerData.srRate/100 : srRate);
+    sSrPmt     = pmtPI(sSrRate, srAmort, sLoan);
+    sDSCR      = sSrPmt > 0 ? noiAn / (sSrPmt * 12) : 0;
+    sCarry     = sPrice - sLoan;
+    sCarryRate = sellerData.carryRate / 100;
+    sCarryTerm = sellerData.carryTerm || 5;
+    sCarryPmt  = sellerData.carryPmt  || 0;
+    // Balloon: simple accrual if deferred, otherwise reduce principal
+    const sCarryMode  = sCarryPmt > 0 ? 'interest_only' : 'deferred_exit';
+    const sCarryExtra = { monthlyPmt: sCarryPmt, amortYrs: 30, deferMonths: 0, deferredRate: 0 };
+    const sPhase      = calcPhase(sCarry, sCarryRate, sCarryTerm, sCarryMode, sCarryExtra);
+    sBalloon   = sPhase.balloon;
+    // Approximate seller cash at closing (their loan minus same closing cost %)
+    const closingPct = pp > 0 ? (g('esc1_pct')/100 + g('acq_pct')/100 + g('sr_points')/100 + g('broker_pct')/100) : 0;
+    sCash      = sellerData.cash > 0 ? sellerData.cash : sLoan * (1 - closingPct);
+    sTotalReceipts = sCash + sBalloon;
+    sCombination   = sLoan + sCarry;
+    sPerUnit       = units > 0 ? sPrice / units : 0;
+
+    // DSCR severity label
+    if (sDSCR < 1.0) {
+      sDSCRlabel  = sDSCR.toFixed(2) + 'x  ⚠ SEVERELY UNBANKABLE — debt service exceeds NOI';
+      sDSCRSeverity = 'severe';
+    } else if (sDSCR < 1.1) {
+      sDSCRlabel  = sDSCR.toFixed(2) + 'x  ⚠ UNBANKABLE — no institutional lender will fund this';
+      sDSCRSeverity = 'severe';
+    } else if (sDSCR < dscrReq) {
+      sDSCRlabel  = sDSCR.toFixed(2) + 'x  ✗ BELOW lender minimum of ' + dscrReq.toFixed(2) + 'x — not financeable';
+      sDSCRSeverity = 'below';
+    } else {
+      sDSCRlabel  = sDSCR.toFixed(2) + 'x  ✓ meets lender minimum';
+      sDSCRSeverity = 'ok';
+    }
+    sUnbankable = sDSCRSeverity !== 'ok';
+  }
 
   const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  const sellerName = (isCounter && sellerData.name) ? sellerData.name : 'Property Seller / Ownership Group';
+
+  // ── UNBANKABLE DSCR EXPLANATION (counter mode) ──────────────────
+  const unbankableSection = !isCounter ? '' : (() => {
+    if (!sUnbankable) return '';
+    const shortfall  = (sSrPmt * 12) - noiAn;
+    const extraNOI   = sSrPmt * 12 * dscrReq - noiAn;
+    const rentPerUnit = units > 0 ? Math.ceil((extraNOI / 12) / units) : 0;
+    const severity = sDSCRSeverity === 'severe'
+      ? `At ${Dfmt(noiMo)}/month of in-place NOI, a ${D(sLoan)} first-position loan carries estimated
+debt service of ${Dfmt(sSrPmt)}/month — producing a Day-1 DSCR of only ${sDSCR.toFixed(2)}x.
+${sDSCRSeverity === 'severe' && sDSCR < 1.0
+  ? `The debt service EXCEEDS net operating income by ${Dfmt(-netCF)}/month. This property
+would be cash-flow negative before a single maintenance call or vacancy. No
+institutional, commercial, portfolio, credit union, or private lender will fund
+a loan whose debt service exceeds the property's income. This is not a matter
+of lender appetite — it is arithmetic.`
+  : `Commercial lenders — including conventional banks, credit unions, CMBS platforms,
+and portfolio lenders — universally require a minimum DSCR of 1.25x or higher.
+At ${sDSCR.toFixed(2)}x, this loan would be declined at every institutional lending desk
+in the country regardless of borrower creditworthiness, property quality, or
+market location. This is not a negotiating parameter — it is a regulatory and
+underwriting standard enforced across all FNMA, FHLMC, FHA, and commercial bank
+lending programs.`}`
+      : `At ${Dfmt(noiMo)}/month of in-place NOI, a ${D(sLoan)} first-position loan carries estimated
+debt service of ${Dfmt(sSrPmt)}/month — producing a Day-1 DSCR of ${sDSCR.toFixed(2)}x.
+This falls below the standard commercial lender minimum of ${dscrReq.toFixed(2)}x. Most
+institutional lenders will not commit a loan below this threshold. While some
+portfolio lenders may consider coverage below ${dscrReq.toFixed(2)}x, they do so only with
+significant compensating factors (very low LTV, strong borrower reserves, long
+operating history) — and at materially higher rates that would further reduce
+the DSCR. The proposed structure is not financeable on market terms.`;
+
+    return `
+${sep}
+PART I — UNBANKABLE FIRST-LOAN DSCR IN SELLER'S PROPOSED TERMS
+${sep}
+${severity}
+
+To reach a bankable ${dscrReq.toFixed(2)}x DSCR at the proposed loan amount of ${D(sLoan)}, the
+property would need to generate at least ${D(sSrPmt * 12 * dscrReq)}/yr in NOI —
+an increase of ${D(extraNOI)} (${pctOf(extraNOI, noiAn)}) above current levels.${units > 0 ? `
+That translates to approximately +${Dfmt(rentPerUnit)}/unit/month in additional net rent
+before the loan becomes bankable — with no increase in price.` : ''}
+
+This shortfall is not bridgeable at closing. It requires operational improvement,
+lease-up, or rent growth over time — none of which have occurred yet.`;
+  })();
+
+  // ── YEAR-X REFI RISK SECTION (counter mode, if seller term < ours) ──
+  const refiRiskSection = !isCounter ? '' : (() => {
+    const appr = g('appreciation') / 100;
+    const sExitVal   = arv * Math.pow(1 + appr, sCarryTerm);
+    const sSrBalEnd  = (() => {
+      if (sSrRate === 0) return Math.max(sLoan - sSrPmt * sCarryTerm * 12, 0);
+      const r = sSrRate/12, n = srAmort * 12, mo = sCarryTerm * 12;
+      return sLoan * (Math.pow(1+r,n) - Math.pow(1+r,mo)) / (Math.pow(1+r,n) - 1);
+    })();
+    const totalDebtAtTerm = sSrBalEnd + sBalloon;
+    const maxRefiLoan = (() => {
+      if (srRate === 0) return sExitVal * srLTV;
+      const mo2 = srRate/12, n2 = srAmort * 12;
+      const byLTV2  = sExitVal * srLTV;
+      const byDSCR2 = (noiAn / 12 / dscrReq) * (1 - Math.pow(1+mo2,-n2)) / mo2;
+      return Math.min(byLTV2, byDSCR2);
+    })();
+    const refiGap = totalDebtAtTerm - maxRefiLoan;
+    if (refiGap <= 50000) return ''; // no meaningful gap
+
+    return `
+${sep}
+PART II-B — YEAR-${sCarryTerm} REFINANCE RISK UNDER SELLER'S STRUCTURE
+${sep}
+A structure requiring the buyer to retire approximately ${D(totalDebtAtTerm)} in total
+debt (${D(sSrBalEnd)} senior balance + ${D(sBalloon)} carry balloon) at Year ${sCarryTerm} creates
+a significant refinancing gap under realistic lender proceeds and valuation
+assumptions.
+
+  Projected Property Value @ Year ${sCarryTerm} (${P(appr)}/yr):   ${D(sExitVal)}
+  Max Refinance Loan (${P(srLTV)} LTV / ${dscrReq.toFixed(2)}x DSCR):       ${D(maxRefiLoan)}
+  Total Debt Due at Maturity:                     ${D(totalDebtAtTerm)}
+  ${thin.slice(0,46)}
+  ESTIMATED REFINANCING SHORTFALL:                ${D(refiGap)}  ← buyer must inject
+
+This shortfall of ${D(refiGap)} would require the buyer to inject additional equity
+at maturity — a capital call that has a high probability of triggering a
+maturity default if market conditions or the buyer's liquidity do not cooperate.
+Extending the carry term, as proposed in our counter-offer, reduces this risk
+materially by allowing the property more time to appreciate and the buyer more
+time to build reserves.`;
+  })();
+
+  // ── COMPARISON TABLE ──────────────────────────────────────────────
+  const comparisonTable = !isCounter ? '' : (() => {
+    const sn = sellerData.name || 'Seller Proposal';
+    const W1 = 28, W2 = 22;
+    const row = (label, sv, ov, flag='') => {
+      const l = (label + ':').padEnd(W1);
+      const s = String(sv).padEnd(W2);
+      return l + s + String(ov) + (flag ? '  ' + flag : '');
+    };
+    const sDSCRrow = sDSCRlabel;
+    const oBankability = 'High — subject to underwriting';
+    const sBankability = sUnbankable ? 'NOT FINANCEABLE at proposed terms' : 'Financeable — meets DSCR minimum';
+    const sSrPmtLabel  = Dfmt(sSrPmt) + '/mo; ' + (sUnbankable ? sDSCR.toFixed(2) + 'x ✗ UNBANKABLE' : sDSCR.toFixed(2) + 'x ✓');
+    const oSrPmtLabel  = Dfmt(effectiveSrPmt) + '/mo; ' + dscrSrOnly.toFixed(2) + 'x ✓';
+    const sCFLabel     = Dfmt(noiMo - sSrPmt - sCarryPmt) + '/mo';
+    const oCFLabel     = (netCF >= 0 ? '+' : '') + Dfmt(netCF) + '/mo';
+
+    return `
+${sep}
+STRUCTURAL COMPARISON
+${sep}
+  ${'Feature / Metric'.padEnd(W1)}${'Seller Proposal'.padEnd(W2)}Our Counter-Offer
+  ${thin}
+  ${row('Purchase Price',        D(sPrice) + ' (' + D(sPerUnit) + '/u)',        D(pp) + ' (' + D(perUnit) + '/u)')}
+  ${row('Senior Loan (1st Pos.)',D(sLoan),                                       D(maxLoan))}
+  ${row('Loan Rate / Type',      P(sSrRate) + (sLoan===sPrice*0.6?' (est.)':''), P(srRate) + (loanType==='hard_money'?' I/O':' amort.'))}
+  ${row('1st-Loan Debt Service', sSrPmtLabel,                                    oSrPmtLabel)}
+  ${row('Net Cash to Seller',    D(sCash),                                       D(cac))}
+  ${row('Seller Carry (2nd)',    D(sCarry) + '; ' + P(sCarryRate) + '; ' + sCarryTerm + 'yr', D(carry) + '; ' + P(scRate) + '; ' + scTerm + 'yr')}
+  ${row('Carry Monthly Pmt',     sCarryPmt > 0 ? Dfmt(sCarryPmt)+'/mo' : '$0 deferred', scMonthly > 0 ? Dfmt(scMonthly)+'/mo' : '$0 deferred')}
+  ${row('Balloon at Maturity',   D(sBalloon) + ' (Yr ' + sCarryTerm + ')',       D(balloon) + ' (Yr ' + scTerm + ')')}
+  ${row('Total Combination',     D(sCombination),                                D(maxLoan + carry))}
+  ${row('Total Seller Receipts', D(sTotalReceipts),                              D(totalReceipts))}
+  ${row('Buyer Day-1 Net CF',    sCFLabel,                                       oCFLabel)}
+  ${row('Estimated Bankability', sBankability,                                   oBankability)}
+  ${thin}
+  ${row('Cap Rate on Offer',     P(sPrice>0?noiAn/sPrice:0),                    P(offerCap))}`;
+  })();
 
   const doc =
-`SELLER ANALYSIS & LOI REASONING
+`${isCounter ? 'COUNTER-PROPOSAL & STRUCTURAL UNDERWRITING ANALYSIS' : 'SELLER ANALYSIS & LOI REASONING'}
 ${addr}${units ? ' — ' + units + '-Unit Multifamily' : ''}
 Date: ${today}
 ${thin}
 Prepared by:    ${acName}${acPhone ? '  |  ' + acPhone : ''}${acEmail ? '  |  ' + acEmail : ''}
-Prepared for:   Property Seller / Ownership Group
-Subject:        Structural Underwriting Analysis — Why This Is the Highest Executable Offer
+Prepared for:   ${sellerName}
+Subject:        ${isCounter
+  ? 'Counter-Proposal & Structural Underwriting Analysis'
+  : 'Why This Is the Highest Executable Offer — Structural Analysis'}
 ${thin}
 
-Our acquisition team has completed a full underwriting of this opportunity. The
-following analysis explains, line by line, why the offer is structured as presented
-and why the terms represent the highest financing our lender and the property's
-income can realistically support.
+${isCounter
+  ? `Thank you for presenting your financing proposal for ${addr ? addr : 'this property'}.
+Our acquisition team has completed a comprehensive institutional underwriting.
+Based on commercial DSCR limits, current capital-market conditions, and the
+bankable creative-financing structure detailed below, we present our analysis
+and official counter-offer.`
+  : `Our acquisition team has completed a full underwriting of this opportunity.
+The following analysis explains, line by line, why the offer is structured as
+presented and why the terms represent the highest financing our lender and the
+property's income can realistically support.`}
 
 ${sep}
 EXECUTIVE OFFER SUMMARY
 ${sep}
-${col('Purchase Price', D(pp) + (units > 0 ? '  (' + D(perUnit) + '/unit)' : ''))}
+${isCounter ? `  ${''.padEnd(28)}${'Seller Proposal'.padEnd(22)}Our Counter-Offer
+  ${thin}
+  ${'Purchase Price:'.padEnd(28)}${D(sPrice).padEnd(22)}${D(pp)}
+  ${'Net Cash to Seller:'.padEnd(28)}${D(sCash).padEnd(22)}${D(cac)}
+  ${'Seller Carry:'.padEnd(28)}${(D(sCarry)+'; '+P(sCarryRate)+'; '+sCarryTerm+'yr').padEnd(22)}${D(carry)+'; '+P(scRate)+'; '+scTerm+'yr'}
+  ${'Balloon at Maturity:'.padEnd(28)}${D(sBalloon).padEnd(22)}${D(balloon)}
+  ${'Total Seller Receipts:'.padEnd(28)}${D(sTotalReceipts).padEnd(22)}${D(totalReceipts)}
+  ${'Senior Loan DSCR:'.padEnd(28)}${(sDSCR.toFixed(2)+'x'+(sUnbankable?' ✗':' ✓')).padEnd(22)}${dscrSrOnly.toFixed(2)}x ✓
+  ${'Day-1 Buyer Net CF:'.padEnd(28)}${Dfmt(noiMo-sSrPmt-sCarryPmt).padEnd(22)}${(netCF>=0?'+':'')+Dfmt(netCF)}/mo` :
+`${col('Purchase Price', D(pp) + (units > 0 ? '  (' + D(perUnit) + '/unit)' : ''))}
 ${col('Net Cash to Seller at Closing', D(cac) + '  (' + pctOf(cac, pp) + ' of purchase price)')}
 ${col('Seller Carryback Note', D(carry) + ' at ' + P(scRate) + ' — ' + scTerm + '-yr balloon')}
 ${col('Balloon Payment (Year ' + scTerm + ')', D(balloon))}
 ${col('Total Seller Receipts', D(totalReceipts) + '  (' + D(cac) + ' cash + ' + D(balloon) + ' balloon)')}
-${col('Day-1 DSCR (Senior Loan Only)', dscrSrOnly.toFixed(2) + 'x')}
-${col('Day-1 DSCR (All Debt Incl. Carry)', dscrAllDebt.toFixed(2) + 'x')}
-${col('Day-1 Net Cash Flow', (netCF >= 0 ? '+' : '') + Dfmt(netCF) + '/mo  (' + (units > 0 ? Dfmt(netCF/units) + '/unit' : '') + ')')}
+${col('Senior DSCR', dscrSrOnly.toFixed(2) + 'x  /  All-Debt DSCR: ' + dscrAllDebt.toFixed(2) + 'x')}
+${col('Day-1 Net Cash Flow (Buyer)', (netCF >= 0 ? '+' : '') + Dfmt(netCF) + '/mo' + (units > 0 ? '  (' + Dfmt(netCF/units) + '/unit)' : ''))}`}
+${comparisonTable}
+${unbankableSection}
+${refiRiskSection}
 
 ${sep}
-PART I — SENIOR LENDING CONSTRAINTS
+${isCounter ? 'PART II' : 'PART I'} — SENIOR LENDING CONSTRAINTS & DSCR REALITY
 ${sep}
-The single largest driver of what a buyer can offer is the amount of senior
-debt the property's income can support. Commercial lenders require a minimum
-Debt Service Coverage Ratio (DSCR) — annual NOI divided by annual debt service.
+The single largest driver of what a buyer can offer is the amount of senior debt
+the property's income can support. Debt Service Coverage Ratio (DSCR) is the
+primary underwriting test used by every commercial lender — bank, credit union,
+CMBS platform, or private fund. It measures how much income cushion exists above
+the loan payments.
+
+  DSCR = Annual NOI ÷ Annual Debt Service
+
+  • Below 1.00x: Debt service exceeds income. Loan is impossible regardless of
+    borrower quality, property type, or market. This is arithmetic, not policy.
+  • 1.00x – 1.10x: Property breaks even or barely covers payments. No
+    institutional or portfolio lender will fund this. Vacancy of even one unit
+    creates negative cash flow and immediate default risk.
+  • 1.10x – 1.25x: Below standard commercial minimum. FNMA, FHLMC, FHA, most
+    banks, and CMBS platforms uniformly decline. Some hard-money or bridge
+    lenders may participate at higher rates, which further erodes DSCR.
+  • 1.25x+: Minimum threshold for institutional financing. Most lenders prefer
+    1.30x or higher for multifamily above 5 units.
 
 ${col('Current Annual NOI (Day-1)', D(noiAn) + '/yr  (' + Dfmt(noiMo) + '/mo)')}
-${loanType !== 'hard_money' ? col('Lender DSCR Minimum Required', dscrReq.toFixed(2) + 'x') : ''}${loanType !== 'hard_money' ? '\n' : ''}${col('Max Allowable Monthly Debt Service', Dfmt(maxDebtSvcMo) + '/mo  (NOI ÷ ' + dscrReq.toFixed(2) + ' ÷ 12)')}
-${col('Senior Loan Amount (' + (loanType === 'hard_money' ? 'HM' : 'DSCR') + ')', D(maxLoan) + '  (' + P(actualLTV) + ' of As-Is Value — ' + bindingConstraint + ')')}
-${col('Rate / Amortization', P(srRate) + ' / ' + srAmort + '-yr' + (loanType === 'hard_money' ? ' (Interest-Only)' : ' amortizing'))}
+${col('DSCR Minimum Required', dscrReq.toFixed(2) + 'x  (entered lender requirement)')}
+${col('Max Allowable Debt Service', Dfmt(maxDebtSvcMo) + '/mo  (NOI ÷ ' + dscrReq.toFixed(2) + ' ÷ 12)')}
+${col('Our Senior Loan', D(maxLoan) + '  (' + P(actualLTV) + ' LTV — ' + bindingConstraint + ')')}
+${col('Rate / Type', P(srRate) + ' / ' + srAmort + '-yr' + (loanType === 'hard_money' ? ' Interest-Only' : ' amortizing P&I'))}
 ${col('Monthly Debt Service (Senior)', Dfmt(effectiveSrPmt) + '/mo')}
-${col('DSCR After Senior Loan', dscrSrOnly.toFixed(2) + 'x  (' + (dscrSrOnly >= dscrReq ? 'meets' : 'BELOW') + ' lender minimum)')}
-${col('Seller Carry Monthly Payment', Dfmt(scMonthly) + '/mo')}
-${col('DSCR After All Debt', dscrAllDebt.toFixed(2) + 'x')}
+${col('DSCR (Senior Only)', dscrSrOnly.toFixed(2) + 'x  ✓ meets lender minimum')}
+${col('Seller Carry Payment', Dfmt(scMonthly) + '/mo' + (scMonthly === 0 ? '  (deferred — no additional debt service)' : ''))}
+${col('DSCR (All Debt)', dscrAllDebt.toFixed(2) + 'x')}
 ${thin}
-${col('Remaining Monthly Cash Flow', (netCF >= 0 ? '+' : '') + Dfmt(netCF) + '/mo to buyer after all debt service')}
+${col('Buyer Day-1 Net Cash Flow', (netCF >= 0 ? '+' : '') + Dfmt(netCF) + '/mo after ALL debt')}
 
-This is the ceiling. The lender will not fund beyond ${D(maxLoan)} given current
-in-place NOI. To borrow more, the property would need to produce more income first.
+This is the hard ceiling. No lender will fund beyond ${D(maxLoan)} against ${D(noiAn)}/yr
+NOI at ${P(srRate)}. To support a larger loan, the property must first produce
+more income — and that income growth has not yet occurred.
 
-SENSITIVITY: What Happens If the Senior Loan Increases
+WHAT WOULD NEED TO CHANGE FOR A LARGER LOAN:
 ${thin}
-  Scenario              Senior Loan       Monthly Pmt    DSCR (Sr.)   Monthly CF
+  Scenario            Senior Loan     Monthly Pmt   DSCR       Day-1 CF
   ${thin}
-  Current Offer         ${D(maxLoan).padEnd(16)}  ${Dfmt(effectiveSrPmt).padEnd(13)}  ${dscrSrOnly.toFixed(2)}x        ${(netCF >= 0 ? '+' : '')}${Dfmt(netCF)}/mo
-  +$250K more debt      ${D(l250.newLoan).padEnd(16)}  ${Dfmt(l250.newPmt).padEnd(13)}  ${l250.newDSCR.toFixed(2)}x        ${(l250.newCF >= 0 ? '+' : '')}${Dfmt(l250.newCF)}/mo${l250.newDSCR < dscrReq ? '  ← BELOW LENDER MIN' : ''}
-  +$500K more debt      ${D(l500.newLoan).padEnd(16)}  ${Dfmt(l500.newPmt).padEnd(13)}  ${l500.newDSCR.toFixed(2)}x        ${(l500.newCF >= 0 ? '+' : '')}${Dfmt(l500.newCF)}/mo${l500.newDSCR < dscrReq ? '  ← BELOW LENDER MIN' : ''}
+  Our Offer           ${D(maxLoan).padEnd(16)}${Dfmt(effectiveSrPmt).padEnd(14)}${dscrSrOnly.toFixed(2)}x ✓     ${(netCF>=0?'+':'')+Dfmt(netCF)}/mo
+  +$250K loan         ${D(l250.nl).padEnd(16)}${Dfmt(l250.np).padEnd(14)}${l250.dscr.toFixed(2)}x${l250.dscr < dscrReq ? ' ✗' : ' ✓'}     ${(l250.cf>=0?'+':'')+Dfmt(l250.cf)}/mo${l250.dscr < dscrReq ? '  ← LENDER DECLINES' : ''}
+  +$500K loan         ${D(l500.nl).padEnd(16)}${Dfmt(l500.np).padEnd(14)}${l500.dscr.toFixed(2)}x${l500.dscr < dscrReq ? ' ✗' : ' ✓'}     ${(l500.cf>=0?'+':'')+Dfmt(l500.cf)}/mo${l500.dscr < dscrReq ? '  ← LENDER DECLINES' : ''}
 
 ${sep}
-PART II — CAP RATE & MARKET VALUE ANALYSIS
+${isCounter ? 'PART III' : 'PART II'} — CAP RATE & MARKET VALUE REALITY
 ${sep}
-Property value in commercial real estate is directly linked to income through
-the capitalization rate (NOI ÷ Price = Cap Rate). Our offer must be defensible
-against a third-party appraisal using market cap rates.
+In commercial real estate, value is derived from income — not from asking price.
+The universally accepted formula is:
+
+  Value = NOI ÷ Cap Rate
+
+The cap rate reflects the return a market participant demands for owning and
+operating the asset. A lower cap rate means a higher price — but only if the
+market accepts it. Lenders will appraise using market cap rates. If the
+appraised value is below the purchase price, the loan is curtailed to the
+appraised value regardless of the contract price.
 
 ${col('Current Annual NOI', D(noiAn) + '/yr')}
-${capRate > 0 ? col('Market Cap Rate (entered)', P(capRate)) + '\n' + col('Market-Implied Value @ Cap Rate', D(impliedVal)) + '\n' : ''}${asIsVal > 0 ? col('As-Is Appraised Value', D(asIsVal) + '  (As-Is Cap Rate: ' + P(asIsCapRate) + ')') + '\n' : ''}${col('Our Offer', D(pp) + '  (' + P(offerCapRate) + ' cap on in-place NOI)')}
-${mktValLow > 0 ? col('Market Value Range (6.25–6.5% cap)', D(mktValLow) + ' – ' + D(mktValHigh)) + '\n' + col('Our Offer Premium vs. Market', sign(pp - mktValHigh) + ' to ' + sign(pp - mktValLow) + ' above/below mid-market') : ''}
-${thin}
-Our offer at ${P(offerCapRate)} is ${offerCapRate < (mktCapLow + mktCapHigh)/2 ? 'above market implied value — we are paying a premium because the seller carry\nstructure enables us to bridge the gap between what lenders will finance and\nwhat is needed to reach the agreed price.' : 'in line with or below market-implied value — the price reflects the income\nthe property currently produces.'}
-
+${capRate > 0 ? col('Market Cap Rate', P(capRate)) + '\n' + col('Cap-Rate Implied Value', D(impliedVal)) + '\n' : ''}${asIsVal > 0 ? col('As-Is Appraised Value', D(asIsVal) + '  (' + P(asIsCapRate) + ' cap)') + '\n' : ''}${isCounter ? col('Seller Asking Price', D(sPrice) + '  (' + P(sPrice>0?noiAn/sPrice:0) + ' cap — ' + (sPrice > impliedVal && impliedVal > 0 ? D(sPrice-impliedVal) + ' above market' : 'at or below market') + ')') + '\n' : ''}${col('Our Counter-Offer', D(pp) + '  (' + P(offerCap) + ' cap on in-place NOI)')}
+${impliedVal > 0 ? `
+Our offer at ${P(offerCap)} is ${offerCap < capRate ? 'above market-implied value — we are paying a premium\npossible only because the seller carry structure bridges what lenders will\nfund and what is needed to reach the agreed price.' : 'supported by the property\'s income at market cap rates.'}\n` : ''}${isCounter && impliedVal > 0 && sPrice > impliedVal ? `The seller's asking price of ${D(sPrice)} implies a ${P(noiAn/sPrice)} cap rate — ${D(sPrice-impliedVal)}
+above market-implied value at ${P(capRate)}. The third-party appraisal required
+by any lender would likely support a value of ${D(impliedVal)}, not ${D(sPrice)}.
+This creates an immediate appraisal gap that the buyer cannot bridge with
+conventional or DSCR financing.\n` : ''}
 ${sep}
-PART III — WHY THE SELLER CARRY IS NECESSARY
+${isCounter ? 'PART IV' : 'PART III'} — WHY THE SELLER CARRY IS THE BRIDGE, NOT A CONCESSION
 ${sep}
-The carry is not a negotiating tactic — it is the mathematical bridge between
-what the senior lender will fund and the price we agreed to pay.
+The carry note is not a negotiating concession or a sign of buyer weakness.
+It is the mathematical bridge between two realities:
 
-${col('Agreed Purchase Price', D(pp))}
-${col('Maximum Senior Loan (lender limit)', D(maxLoan))}
-${thin}
-${col('Financing Gap (Carry Must Fill)', D(carry) + '  ← this IS your carryback note')}
+  Reality 1: The lender will fund ${D(maxLoan)} — no more, no less.
+  Reality 2: The agreed purchase price is ${D(pp)}.
+  Gap:       ${D(carry)}  ← this gap IS the seller carry note.
 
-Without seller carry, the maximum price a buyer with our capital stack could
-pay is approximately ${D(maxLoan + g('buyer_cash'))} — the senior loan plus buyer cash.
-The seller carry allows us to offer an additional ${D(carry)} above that floor,
-bringing the total to ${D(pp)}.
+Without seller financing, a buyer at our capital stack can offer at most
+${D(maxLoan + g('buyer_cash'))} (senior loan + buyer cash). The carry allows us to
+offer ${D(carry)} more — bringing the total to ${D(pp)}.
 
-Carry Terms:
+Carry Structure:
 ${col('  Principal', D(carry))}
-${col('  Interest Rate', P(scRate) + (scRate === 0 ? '  (0% — maximizes your net balloon proceeds)' : ''))}
-${col('  Monthly Payment', Dfmt(scMonthly) + '/mo' + (scMonthly === 0 ? '  (deferred — preserves buyer cash flow)' : ''))}
+${col('  Interest Rate', P(scRate) + (scRate === 0 ? '  (0% — every balloon dollar is pure principal back to you)' : ''))}
+${col('  Monthly Payment', Dfmt(scMonthly) + '/mo' + (scMonthly === 0 ? '  (no payments — full amount due at balloon)' : ''))}
 ${col('  Balloon at Year ' + scTerm, D(balloon))}
-${col('  Note Security', '2nd lien on property (As-Is Value: ' + D(asIsVal) + ')')}
-${col('  Equity Cushion on Your Note', D(asIsVal - maxLoan) + '  (' + pctOf(asIsVal - maxLoan, asIsVal) + ' of value)')}
+${col('  Lien Position', '2nd position — secured by the real property')}
+${col('  Property Value (As-Is)', D(asIsVal))}
+${col('  Senior Loan Balance', D(maxLoan))}
+${col('  Equity Cushion Protecting Note', D(asIsVal - maxLoan) + '  (' + pctOf(asIsVal - maxLoan, asIsVal) + ' of value ahead of your note)')}
 ${isBRRRR && brgNetCash != null ? `
-BRRRR Refinance at Month ${stabMonths || g('bridge_term_mo') || 18}:
-  At stabilization, the bridge/HM loan is retired by a DSCR perm loan.
-${col('  Net Cash Out at Refi', (brgNetCash >= 0 ? '+' : '') + D(brgNetCash) + (brgNetCash >= 0 ? '  (returned to buyer — capital recovery)' : '  (buyer must inject at refi)'))}
-` : ''}
+  BRRRR Refi at Month ${stabMonths || g('bridge_term_mo') || 18}: bridge/HM loan retired — ${(brgNetCash>=0?'+':'')+D(brgNetCash)} net to buyer.` : ''}
+
 ${sep}
-PART IV — TOTAL SELLER PROCEEDS ANALYSIS
+${isCounter ? 'PART V' : 'PART IV'} — TOTAL SELLER PROCEEDS: WHAT YOU ACTUALLY RECEIVE
 ${sep}
-${col('Net Cash to Seller at Closing', D(cac))}
-${col('Monthly Payments During Term', Dfmt(scMonthly) + '/mo × ' + (scTerm * 12) + ' months = ' + D(scMonthly * scTerm * 12))}
-${col('Balloon Payment at Year ' + scTerm, D(balloon))}
+${col('Net Cash at Closing', D(cac))}
+${scMonthly > 0 ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(scMonthly*scTerm*12)) : '  Monthly Carry Payments:   $0 (deferred to balloon — no waiting for checks)'}
+${col('Balloon at Year ' + scTerm, D(balloon))}
 ${thin}
 ${col('TOTAL SELLER RECEIPTS', D(totalReceipts))}
-${col('  vs. All-Cash at As-Is Value', sign(totalReceipts - asIsVal) + ' (' + (totalReceipts > asIsVal ? 'MORE' : 'LESS') + ' than as-is all-cash sale)')}
-${impliedVal > 0 ? col('  vs. Cap-Rate Implied Value', sign(totalReceipts - impliedVal) + ' (' + (totalReceipts > impliedVal ? 'MORE' : 'LESS') + ' than cap-rate implied value)') : ''}
-
-The carry structure allows the seller to receive ${D(totalReceipts)} in total — more
-than a discounted all-cash buyer could offer today against the current NOI.
+${asIsVal > 0 ? col('  vs. All-Cash at As-Is Value', sign(totalReceipts - asIsVal) + '  (' + (totalReceipts > asIsVal ? 'MORE' : 'LESS') + ' than as-is all-cash sale)') : ''}
+${impliedVal > 0 ? col('  vs. Cap-Rate Implied Value', sign(totalReceipts - impliedVal) + '  (' + (totalReceipts > impliedVal ? 'MORE' : 'LESS') + ' than market-implied value)') : ''}
+${isCounter ? col('  vs. Seller Asking Total', sign(totalReceipts - sTotalReceipts) + '  compared to seller\'s proposed total of ' + D(sTotalReceipts)) : ''}
 
 ${sep}
-PART V — OFFER vs. BENCHMARKS
+${isCounter ? 'PART VI' : 'PART V'} — WHY THIS IS THE HIGHEST EXECUTABLE OFFER
 ${sep}
-  Metric                      Market / Minimum    Our Offer
-  ${thin}
-  Purchase Price              ${(impliedVal > 0 ? D(impliedVal) + ' (cap rate)' : D(asIsVal) + ' (as-is)').padEnd(20)}  ${D(pp)}
-  Price per Unit              ${(impliedVal > 0 ? D(impliedVal/units) : D(asIsVal/units)).padEnd(20)}  ${D(perUnit)}
-  Cap Rate                    ${(capRate > 0 ? P(capRate) : P(asIsCapRate)).padEnd(20)}  ${P(offerCapRate)}
-  Senior Loan                 Lender max          ${D(maxLoan)}
-  Senior DSCR                 ${dscrReq.toFixed(2)}x min             ${dscrSrOnly.toFixed(2)}x
-  All-Debt DSCR               >${dscrReq.toFixed(2)}x preferred       ${dscrAllDebt.toFixed(2)}x
-  Net Cash to Seller          —                   ${D(cac)}
-  Total Receipts Over Term    —                   ${D(totalReceipts)}
-  Day-1 Monthly CF (Buyer)    Positive            ${(netCF >= 0 ? '+' : '')}${Dfmt(netCF)}/mo
+This offer is not a negotiating position. It reflects three hard structural ceilings
+that cannot be overcome by goodwill, creative language, or desire alone:
 
-${sep}
-WHY WE CANNOT PAY MORE
-${sep}
-The offer is not a negotiating position — it reflects three hard ceilings:
+1. DSCR CEILING — LENDER WILL NOT FUND MORE
+   Maximum loan at ${dscrReq.toFixed(2)}x DSCR / ${P(srRate)} / ${srAmort}-yr amort: ${D(maxLoan)}.
+   Every dollar above this requires more NOI — which does not exist today.
+   This ceiling is enforced by the lender's underwriting model, not by us.
 
-1. SENIOR LOAN CAP: The lender will fund at most ${D(maxLoan)} given ${dscrReq.toFixed(2)}x DSCR
-   minimum and ${P(srRate)} rate. Increasing the loan requires more income
-   or a lower rate — neither of which the buyer controls at closing.
+2. BALLOON RISK CEILING — HIGHER CARRY = HIGHER MATURITY RISK
+   Every dollar added to the carry increases the Year-${scTerm} balloon.
+   A larger balloon at maturity requires either a larger refinance loan —
+   which the property must qualify for — or a larger equity injection.
+   At current NOI and ${P(g('appreciation')/100)}/yr appreciation, the property will
+   support approximately ${D((() => { const a=g('appreciation')/100, r=srRate/12, n=srAmort*12, ev=arv*Math.pow(1+a,scTerm); const byL=ev*srLTV, byD=(noiAn/12/dscrReq)*(1-Math.pow(1+r,-n))/r; return Math.min(byL,byD); })())} in senior debt at Year ${scTerm}.
+   The current carry balloon of ${D(balloon)} is sized to stay within this range.
 
-2. CARRY SERVICEABILITY: Every dollar added to the carry is a dollar more
-   owed at balloon. A higher balloon at Year ${scTerm} increases refinancing
-   risk and the probability of a maturity default — which harms both parties.
-
-3. MARKET VALUE: The property's income currently supports a value of
-   ${impliedVal > 0 ? D(impliedVal) + ' at a ' + P(capRate) + ' market cap rate.' : D(asIsVal) + ' (as-is appraised value).'} Our offer of ${D(pp)} is
-   ${impliedVal > 0 && pp > impliedVal ? 'already ' + D(pp - impliedVal) + ' above what the income justifies — achievable only because of the carry.' : 'supported by the income and carry structure combined.'}
-
-A higher price does not create more value — it only shifts more risk to the
-buyer and increases the probability that the deal fails to close or refinance.
+3. APPRAISAL CEILING — VALUE IS DERIVED FROM INCOME
+   ${impliedVal > 0
+     ? `At a ${P(capRate)} market cap rate, this property's income supports ${D(impliedVal)}.
+   Our offer of ${D(pp)} is ${pp > impliedVal ? D(pp-impliedVal) + ' above income-supported value — achievable\n   only because the carry structure provides gap financing the lender cannot.' : 'at or within income-supported value — this is an aggressive but fair offer.'}`
+     : `The as-is appraised value of ${D(asIsVal)} reflects the market's view of this
+   property at current income levels. Our offer reflects a fair acquisition basis.`}
 
 ${sep}
 DISCLAIMER
 ${sep}
-All figures are estimates based on the information provided and are subject to
-change pending lender underwriting, third-party appraisal, title review, and
-due diligence. This document does not constitute a binding offer, loan
-commitment, legal advice, or tax advice. Consult qualified advisors before
-making financial decisions.
+All amounts are approximate and subject to verification through due diligence,
+appraisal, lender underwriting, title review, final loan documents, and a
+mutually acceptable Purchase and Sale Agreement. This analysis is non-binding
+and does not constitute a loan commitment, legal advice, or tax advice.
+Consult qualified legal, financial, and tax advisors before proceeding.
 
-Prepared by: ${acName}${acPhone ? '  |  ' + acPhone : ''}${acEmail ? '\n             ' + acEmail : ''}`;
+Respectfully submitted,
+
+${acName}${acPhone ? '\n' + acPhone : ''}${acEmail ? '\n' + acEmail : ''}`;
 
   document.getElementById('loi-reasoning-text').textContent = doc;
   const sec = document.getElementById('loi-reasoning-section');
-  sec.style.display = '';
   sec.classList.add('visible');
   setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
 }
