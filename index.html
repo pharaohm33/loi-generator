@@ -4591,8 +4591,12 @@ function generateLOIReasoning(offerType, sellerData) {
   const dscrSrOnly    = effectiveSrPmt > 0 ? noiAn / (effectiveSrPmt * 12) : 0;
   const dscrAllDebt   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
   const maxDebtSvcMo  = dscrReq > 0 ? noiAn / dscrReq / 12 : 0;
-  const totalReceipts = cac + balloon;
-  const perUnit       = units > 0 ? pp / units : 0;
+  const totalReceipts  = cac + balloon;
+  const perUnit        = units > 0 ? pp / units : 0;
+  const apprRate       = g('appreciation') / 100;
+  const saleClosingPct = (g('exit_sale_costs') || 6) / 100;
+  const rehabOOP       = g('rehab_oop') || 0;
+  const totalBuyerIn   = cac + rehabOOP;
 
   // Loan sensitivity rows
   function loanSens(extraLoan) {
@@ -4966,6 +4970,72 @@ that cannot be overcome by goodwill, creative language, or desire alone:
    property at current income levels. Our offer reflects a fair acquisition basis.`}
 
 ${sep}
+${isCounter ? 'PART VII' : 'PART VI'} — SALE EXIT PLAN, MARKET CONTINGENCY & BUYER TRANSPARENCY
+${sep}
+${(() => {
+  // Pull projected values at balloon from _exitCache (computed by recalc())
+  const projVal       = _exitCache.exitPropVal  || arv * Math.pow(1 + apprRate, scTerm);
+  const srBalBalloon  = _exitCache.exitSrBal    || 0;
+  const sellerOwed    = _exitCache.exitSellerOwed || balloon;
+  const totalDebtAtEx = srBalBalloon + sellerOwed;
+  const projSaleNet   = projVal * (1 - saleClosingPct) - totalDebtAtEx;
+  const buyerROI      = totalBuyerIn > 0 ? projSaleNet / totalBuyerIn : 0;
+  const isTight       = projSaleNet < totalBuyerIn * 0.20;
+
+  // Downside scenarios
+  const flatVal      = arv;
+  const dn10Val      = arv * 0.90;
+  const dn20Val      = arv * 0.80;
+  const flatSaleNet  = flatVal  * (1 - saleClosingPct) - totalDebtAtEx;
+  const dn10SaleNet  = dn10Val  * (1 - saleClosingPct) - totalDebtAtEx;
+  const dn20SaleNet  = dn20Val  * (1 - saleClosingPct) - totalDebtAtEx;
+  const breakEvenVal = totalDebtAtEx / (1 - saleClosingPct);
+  const breakEvenChg = arv > 0 ? ((breakEvenVal - arv) / arv * 100).toFixed(1) : '—';
+  const breakEvenDir = breakEvenVal > arv ? `property must APPRECIATE +${breakEvenChg}% from as-is value` : `property can fall ${Math.abs(+breakEvenChg)}% before your note is at risk`;
+
+  // Note coverage check per scenario
+  const noteCovers = (saleNet) => saleNet + totalDebtAtEx >= sellerOwed ? '✓ SELLER NOTE PAID IN FULL' : '⚠ SHORTFALL: ' + D(sellerOwed - (saleNet + totalDebtAtEx - srBalBalloon));
+
+  return [
+    col('  Projected Value at Year ' + scTerm + ' (base @ +' + (apprRate*100).toFixed(1) + '%/yr)', D(projVal)),
+    col('  Projected Value — Flat Market (+0%/yr)', D(flatVal) + '  (no appreciation assumed)'),
+    col('  Projected Value — Down 10%', D(dn10Val)),
+    col('  Projected Value — Down 20%', D(dn20Val)),
+    '',
+    'SALE EXIT AT YEAR ' + scTerm + ' — WHAT GETS PAID AND WHAT BUYER NETS:',
+    col('  Projected Sale Price (base)', D(projVal)),
+    col('  Less: Sale Transaction Costs (' + (saleClosingPct*100).toFixed(0) + '%)', '−' + D(projVal * saleClosingPct)),
+    col('  Net Sale Proceeds', D(projVal * (1 - saleClosingPct))),
+    col('  Less: Est. Senior Loan Balance', '−' + D(srBalBalloon)),
+    col('  Less: Seller Carry Balloon (to you)', '−' + D(sellerOwed) + '  ← YOUR NOTE IS PAID HERE'),
+    thin,
+    col('  Buyer Net at Base-Case Exit', (projSaleNet >= 0 ? '+' : '−') + D(projSaleNet)),
+    col('  Buyer Cash Invested', D(totalBuyerIn) + '  (down payment' + (rehabOOP > 0 ? ' + rehab OOP' : '') + ')'),
+    col('  Buyer ROI at Exit', (buyerROI >= 0 ? '+' : '') + (buyerROI * 100).toFixed(1) + '%  on invested capital'),
+    '',
+    'MARKET CONTINGENCY — YOUR NOTE COVERAGE UNDER STRESS:',
+    col('  Break-Even Value (covers all debt)', D(breakEvenVal) + '  — ' + breakEvenDir),
+    col('  Flat Market (+0%): buyer net', (flatSaleNet >= 0 ? '+' : '−') + D(flatSaleNet) + '  —  ' + noteCovers(flatSaleNet)),
+    col('  Down 10%: buyer net', (dn10SaleNet >= 0 ? '+' : '−') + D(dn10SaleNet) + '  —  ' + noteCovers(dn10SaleNet)),
+    col('  Down 20%: buyer net', (dn20SaleNet >= 0 ? '+' : '−') + D(dn20SaleNet) + '  —  ' + noteCovers(dn20SaleNet)),
+    '',
+    'BUYER TRANSPARENCY — WHAT WE PLAN TO MAKE ON THIS DEAL:',
+    isTight
+      ? `  This is a tight-margin deal. At base-case exit our projected profit is
+  ${(projSaleNet >= 0 ? '+' : '−') + D(projSaleNet)} on ${D(totalBuyerIn)} invested — a ${(buyerROI*100).toFixed(1)}% return over ${scTerm} years.
+  That is a thin spread, which means there is no room to pay more. We are
+  acquiring at the highest price that makes this deal executable. If the
+  property performs as projected, we each win. If it underperforms, we bear
+  the downside — your note is paid regardless at the balloon date.`
+      : `  Our projected profit at Year ${scTerm} base-case sale is ${(projSaleNet >= 0 ? '+' : '−') + D(projSaleNet)}
+  on ${D(totalBuyerIn)} invested (${(buyerROI*100).toFixed(1)}% ROI over ${scTerm} years). We believe
+  this is a fair return for executing the acquisition, managing the asset,
+  and bearing the risk of market downside during the hold period. Your note
+  is paid in full at balloon regardless of our ultimate profit or loss.`,
+  ].join('\n');
+})()}
+
+${sep}
 DISCLAIMER
 ${sep}
 All amounts are approximate and subject to verification through due diligence,
@@ -5289,6 +5359,79 @@ within the following structural realities:
    approximately ${D(comp > 0 ? comp : arv)}. Our offer of ${D(pp)} is
    ${pp >= (comp > 0 ? comp : arv) ? 'at or above' : D(Math.abs(pp-(comp>0?comp:arv)))+' below'} that benchmark — aggressive
    for a seller-financed deal where we take on the execution risk.
+
+${sep}
+${isCounter ? 'PART VI' : 'PART V'} — SALE EXIT PLAN, MARKET CONTINGENCY & BUYER TRANSPARENCY
+${sep}
+${(() => {
+  const resAppr       = g('appreciation') / 100 || 0.03;
+  const resExitCosts  = (g('exit_sale_costs') || 6) / 100;
+  const rehabOOPRes   = g('rehab_oop') || 0;
+  const totalBuyerInR = cac + rehabOOPRes;
+  const projValBase   = arv * Math.pow(1 + resAppr, scTerm);
+  const flatVal       = arv;
+  const dn10Val       = arv * 0.90;
+  const dn20Val       = arv * 0.80;
+
+  // Senior loan remaining balance at balloon (amortizing)
+  const srBalRes = (() => {
+    if (calcMaxLoan <= 0 || convRate30 <= 0) return calcMaxLoan;
+    const rm = convRate30/12, n = convAmort*12, k = Math.min(scTerm*12, n);
+    if (k >= n) return 0;
+    return calcMaxLoan * (Math.pow(1+rm,n) - Math.pow(1+rm,k)) / (Math.pow(1+rm,n) - 1);
+  })();
+
+  const totalDebtR  = srBalRes + balloon;
+  const netBase     = projValBase * (1 - resExitCosts) - totalDebtR;
+  const netFlat     = flatVal    * (1 - resExitCosts) - totalDebtR;
+  const netDn10     = dn10Val    * (1 - resExitCosts) - totalDebtR;
+  const netDn20     = dn20Val    * (1 - resExitCosts) - totalDebtR;
+  const breakEvenV  = totalDebtR / (1 - resExitCosts);
+  const bePct       = arv > 0 ? ((breakEvenV - arv) / arv * 100).toFixed(1) : '—';
+  const beDir       = breakEvenV > arv
+    ? `property must appreciate +${bePct}% to cover all debt`
+    : `property can decline ${Math.abs(+bePct)}% before note is at risk`;
+  const buyerROIR   = totalBuyerInR > 0 ? netBase / totalBuyerInR : 0;
+  const isTightR    = netBase < totalBuyerInR * 0.20;
+  const noteOK      = (n) => n + totalDebtR >= balloon ? '✓ SELLER NOTE PAID IN FULL' : '⚠ SHORTFALL: ' + D(balloon - (n + totalDebtR));
+  const sgn         = (n) => (n >= 0 ? '+' : '−') + D(n);
+
+  return [
+    col('  Projected Value at Year ' + scTerm + ' (base @ +' + (resAppr*100).toFixed(1) + '%/yr)', D(projValBase)),
+    col('  Projected Value — Flat Market (+0%/yr)', D(flatVal) + '  (no appreciation assumed)'),
+    col('  Projected Value — Down 10%', D(dn10Val)),
+    col('  Projected Value — Down 20%', D(dn20Val)),
+    '',
+    'SALE EXIT AT YEAR ' + scTerm + ' — WHAT GETS PAID AND WHAT BUYER NETS:',
+    col('  Projected Sale Price (base)', D(projValBase)),
+    col('  Less: Sale Transaction Costs (' + (resExitCosts*100).toFixed(0) + '%)', '−' + D(projValBase * resExitCosts)),
+    col('  Net Sale Proceeds (base)', D(projValBase * (1 - resExitCosts))),
+    srBalRes > 0 ? col('  Less: Est. Senior Loan Balance', '−' + D(srBalRes)) : '',
+    col('  Less: Seller Carry Balloon (to you)', '−' + D(balloon) + '  ← YOUR NOTE IS PAID HERE'),
+    thin,
+    col('  Buyer Net at Base-Case Exit', sgn(netBase)),
+    col('  Buyer Cash Invested', D(totalBuyerInR) + (rehabOOPRes > 0 ? '  (down payment + rehab OOP)' : '')),
+    col('  Buyer ROI at Exit', (buyerROIR >= 0 ? '+' : '') + (buyerROIR * 100).toFixed(1) + '%  on invested capital'),
+    '',
+    'MARKET CONTINGENCY — YOUR NOTE COVERAGE UNDER STRESS:',
+    col('  Break-Even Property Value', D(breakEvenV) + '  — ' + beDir),
+    col('  Flat Market (+0%): buyer net', sgn(netFlat) + '  —  ' + noteOK(netFlat)),
+    col('  Down 10%: buyer net', sgn(netDn10) + '  —  ' + noteOK(netDn10)),
+    col('  Down 20%: buyer net', sgn(netDn20) + '  —  ' + noteOK(netDn20)),
+    '',
+    'BUYER TRANSPARENCY — WHAT WE PLAN TO MAKE ON THIS DEAL:',
+    isTightR
+      ? `  This is a tight-margin deal. At base-case exit our projected profit is
+  ${sgn(netBase)} on ${D(totalBuyerInR)} invested — a ${(buyerROIR*100).toFixed(1)}% return over ${scTerm} years.
+  That is a thin spread. There is no room to pay more. We are at the top of
+  what this deal will support. Your note is paid in full at balloon regardless
+  of whether our profit is strong or thin.`
+      : `  Our projected profit at Year ${scTerm} base-case sale is ${sgn(netBase)}
+  on ${D(totalBuyerInR)} invested (${(buyerROIR*100).toFixed(1)}% ROI over ${scTerm} years). We view this
+  as a fair return for the work of acquiring, managing, and improving the
+  property. Your note is paid in full at balloon regardless of our profit.`,
+  ].filter(l => l !== undefined).join('\n');
+})()}
 
 ${sep}
 DISCLAIMER
