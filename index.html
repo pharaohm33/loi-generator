@@ -2036,8 +2036,22 @@ function recalc() {
   const rentMo = usingDirectNOI ? 0 : (g('gross_rent') + g('other_income'));
   const egi    = usingDirectNOI ? 0 : rentMo * (1 - g('vacancy') / 100);
   const opex   = usingDirectNOI ? 0 : (g('taxes') + g('insurance') + g('rm')) / 12 + egi * g('pm_pct') / 100;
-  const noiMo  = usingDirectNOI ? noiDirectAn / 12 : egi - opex;
-  const noiAn  = noiMo * 12;
+  let noiMo  = usingDirectNOI ? noiDirectAn / 12 : egi - opex;
+  let noiAn  = noiMo * 12;
+
+  // Residential override: use res_rent + actual expense fields when prop_type === 'residential'
+  const isResidential = (document.getElementById('prop_type') || {}).value === 'residential';
+  const resGrossRentAn = g('res_rent') * 12;
+  if (isResidential && resGrossRentAn > 0 && !usingDirectNOI) {
+    const _resVac   = resGrossRentAn * 0.05;
+    const _resTax   = g('res_taxes')    || 0;
+    const _resIns   = g('res_insurance') || 0;
+    const _resMtAmt = g('res_maint_amt') || 0;
+    const _resMtPct = g('res_maint_pct') || 0;
+    const _resMt    = _resMtAmt > 0 ? _resMtAmt : (_resMtPct > 0 ? (arvRaw > 0 ? arvRaw : asIsVal) * _resMtPct / 100 : 0);
+    noiAn = resGrossRentAn - _resVac - _resTax - _resIns - _resMt;
+    noiMo = noiAn / 12;
+  }
 
   const noiGrowthRate   = g('noi_growth') / 100;
   const noiProforma     = g('noi_proforma');
@@ -3974,8 +3988,23 @@ function generateBuyerPresentation() {
   const rentMo = usingDirectNOI ? 0 : (g('gross_rent') + g('other_income'));
   const egi    = usingDirectNOI ? 0 : rentMo * (1 - g('vacancy') / 100);
   const opex   = usingDirectNOI ? 0 : (g('taxes') + g('insurance') + g('rm')) / 12 + egi * g('pm_pct') / 100;
-  const noiMo  = usingDirectNOI ? noiDirectAn / 12 : egi - opex;
-  const noiAn  = noiMo * 12;
+  let noiMo  = usingDirectNOI ? noiDirectAn / 12 : egi - opex;
+  let noiAn  = noiMo * 12;
+
+  // Residential override
+  const isResidential = (document.getElementById('prop_type') || {}).value === 'residential';
+  const bpResGrossRentAn = g('res_rent') * 12;
+  const bpResTaxesAn   = g('res_taxes')     || 0;
+  const bpResInsAn     = g('res_insurance') || 0;
+  const bpResMaintAmt  = g('res_maint_amt') || 0;
+  const bpResMaintPct  = g('res_maint_pct') || 0;
+  const bpResMaintAn   = bpResMaintAmt > 0 ? bpResMaintAmt : (bpResMaintPct > 0 ? (arvRaw > 0 ? arvRaw : asIsVal) * bpResMaintPct / 100 : 0);
+  const bpResVacAn     = bpResGrossRentAn * 0.05;
+  const bpResExpAn     = bpResVacAn + bpResTaxesAn + bpResInsAn + bpResMaintAn;
+  if (isResidential && bpResGrossRentAn > 0 && !usingDirectNOI) {
+    noiAn = bpResGrossRentAn - bpResExpAn;
+    noiMo = noiAn / 12;
+  }
 
   const capRate = g('cap_rate') / 100;
   const impliedVal = capRate > 0 && noiAn > 0 ? noiAn / capRate : 0;
@@ -4212,11 +4241,11 @@ ${(() => {
 ══════════════════════════════════════
 EXIT PROFIT PROJECTION — CASH FLOW STORY (Year ${balloonYr} Balloon)
 ══════════════════════════════════════
-  DAY 1 (current NOI, ${bridgeEnabled ? 'bridge I/O payment' : 'Period 1 payments'}):
-  Current NOI:              ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)
+  DAY 1 (${isResidential ? 'current net rental income' : 'current NOI'}, ${bridgeEnabled ? 'bridge I/O payment' : 'Period 1 payments'}):
+  ${isResidential ? 'Net Rental Income' : 'Current NOI'}:        ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)
   Total Debt Service:       ${Dfmt(bpDayOneDebt)}/mo${bridgeEnabled ? '  (bridge I/O + seller carry)' : ''}
   Net Cash Flow:            ${noiMo - bpDayOneDebt >= 0 ? '+' : ''}${Dfmt(noiMo - bpDayOneDebt)}/mo  (${noiMo - bpDayOneDebt >= 0 ? 'cash flowing ✓' : 'negative — see growth path below'})
-  DSCR:                     ${bpDayOneDebt > 0 ? (noiAn / (bpDayOneDebt * 12)).toFixed(2) : '—'}x
+  ${isResidential ? 'Debt Coverage' : 'DSCR'}:                ${bpDayOneDebt > 0 ? (noiAn / (bpDayOneDebt * 12)).toFixed(2) : '—'}x
 ${stabSection}
 ${ph2SnapshotBlock}${balloonSection}${exitSection}
 ` : '';
@@ -4234,8 +4263,14 @@ DEAL SUMMARY
 ══════════════════════════════════════
 Purchase Price: ${D(pp)}
 As-Is Market Value: ${D(asIsVal)} (${pctOf(asIsVal, pp)} of purchase price)
-${asIsCapRate > 0 ? `As-Is Cap Rate: ${P(asIsCapRate)} (NOI ÷ As-Is Value)\n` : ''}${arvRaw > 0 ? `After Repair Value (ARV): ${D(arv)} (${pctOf(arv, pp)} of purchase price)\n` : ''}${impliedVal > 0 ? `Cap Rate Implied Valuation: ${D(impliedVal)} (at ${P(capRate)} market cap on ${D(noiAn)} NOI)\n` : ''}NOI (Annual, Day-1): ${D(noiAn)}
-Cash to Seller at Closing: ${D(cac)} (${pctOf(cac, pp)} of purchase price)
+${arvRaw > 0 ? `After Repair Value (ARV): ${D(arv)} (${pctOf(arv, pp)} of purchase price)\n` : ''}${isResidential && bpResGrossRentAn > 0 ? `
+RENTAL INCOME & EXPENSE SUMMARY:
+  Gross Rent:                 ${Dfmt(g('res_rent'))}/mo  (${D(bpResGrossRentAn)}/yr)
+  Less: Vacancy (~5%):       −${Dfmt(bpResVacAn/12)}/mo  (−${D(bpResVacAn)}/yr)
+${bpResTaxesAn > 0  ? `  Less: Property Taxes:     −${Dfmt(bpResTaxesAn/12)}/mo  (−${D(bpResTaxesAn)}/yr)\n` : ''}${bpResInsAn > 0   ? `  Less: Insurance:          −${Dfmt(bpResInsAn/12)}/mo  (−${D(bpResInsAn)}/yr)\n` : ''}${bpResMaintAn > 0 ? `  Less: Maintenance${bpResMaintPct > 0 ? ' ('+bpResMaintPct+'% of value)' : ''}:  −${Dfmt(bpResMaintAn/12)}/mo  (−${D(bpResMaintAn)}/yr)\n` : ''}  ${'─'.repeat(38)}
+  Net Operating Income:       ${Dfmt(noiMo)}/mo  (${D(noiAn)}/yr)
+` : `${asIsCapRate > 0 ? `As-Is Cap Rate: ${P(asIsCapRate)} (NOI ÷ As-Is Value)\n` : ''}${impliedVal > 0 ? `Cap Rate Implied Valuation: ${D(impliedVal)} (at ${P(capRate)} market cap on ${D(noiAn)} NOI)\n` : ''}NOI (Annual, Day-1): ${D(noiAn)}
+`}Cash to Seller at Closing: ${D(cac)} (${pctOf(cac, pp)} of purchase price)
 Seller Carryback Note: ${D(carry)} (${pctOf(carry, pp)} of purchase price)
 
 ══════════════════════════════════════
@@ -4251,8 +4286,8 @@ ${bridgeEnabled
   : loanType === 'hard_money'
     ? `Senior Monthly Payment: ${Dfmt(hmIOmoLocal)}/mo (I/O — HM loan, no amortization during hold)`
     : `Senior Monthly Payment: ${Dfmt(srPmt)}/mo`}
-${loanType === 'hard_money' && !bridgeEnabled ? 'ICR' : 'DSCR'} (Senior Only): ${(bpDayOneSrPmt > 0 ? noiAn / (bpDayOneSrPmt * 12) : dscrSrOnly).toFixed(2)}x
-${loanType === 'hard_money' && !bridgeEnabled ? 'ICR' : 'DSCR'} (All Debt incl. Seller Carry): ${(bpDayOneDebt > 0 ? noiAn / (bpDayOneDebt * 12) : dscrAllDebt).toFixed(2)}x
+${isResidential ? 'Debt Coverage (Senior Only)' : (loanType === 'hard_money' && !bridgeEnabled ? 'ICR' : 'DSCR') + ' (Senior Only)'}: ${(bpDayOneSrPmt > 0 ? noiAn / (bpDayOneSrPmt * 12) : dscrSrOnly).toFixed(2)}x${isResidential ? '  (net income ÷ senior payment)' : ''}
+${isResidential ? 'Debt Coverage (All Debt incl. Seller Carry)' : (loanType === 'hard_money' && !bridgeEnabled ? 'ICR' : 'DSCR') + ' (All Debt incl. Seller Carry)'}: ${(bpDayOneDebt > 0 ? noiAn / (bpDayOneDebt * 12) : dscrAllDebt).toFixed(2)}x
 
 Seller Carry Terms:
   Total Term: ${scTerm} years${ph2Enabled && bpPh2 ? ` (${bpPh1Yrs}-yr Period 1 + ${bpPh2Yrs}-yr Period 2)` : ''}
@@ -4292,8 +4327,8 @@ ${ph2Enabled && bpPh2 ? `
 
 Total Monthly Debt Service (Day-1 / Period 1): ${Dfmt(totalDebtMo)}/mo${ph2Enabled && bpPh2 ? `
 Total Monthly Debt Service (Period 2): ${Dfmt(srPmt + scMonthly2)}/mo` : ''}
-Monthly NOI (Day-1 / Current): ${Dfmt(noiMo)}/mo
-Monthly Net Cash Flow (Day-1, current NOI): ${Dfmt(netCF)}/mo ${netCF >= 0 ? '(positive ✓)' : '(negative — review terms)'}${ph2Enabled && bpPh2 ? (() => {
+${isResidential ? 'Monthly Net Rental Income' : 'Monthly NOI (Day-1 / Current)'}: ${Dfmt(noiMo)}/mo
+Monthly Net Cash Flow (Day-1): ${Dfmt(netCF)}/mo ${netCF >= 0 ? '(positive ✓)' : '(negative — review terms)'}${ph2Enabled && bpPh2 ? (() => {
   const ph2CF = noiMo - srPmt - scMonthly2;
   const note = hasProforma
     ? `  ← current NOI only; see Proforma section for NOI-adjusted figure`
@@ -4318,7 +4353,7 @@ ${buyerNet >= 0 ? (parkEscrow ? '(Held in escrow against the deal, not taken hom
 EXIT PROFIT PROJECTION (Year ${balloonYr} Balloon — ${staticCF ? 'Static CF Mode' : 'Current NOI Path'})
   [NOI: ${staticCF ? 'Day-1 held flat — Static CF mode, no growth applied' : (noiGrowthRate > 0 ? `Day-1 + ${P(noiGrowthRate)}/yr growth` : 'Day-1 held flat, no growth')}${hasProforma ? ' — proforma target NOT used here' : ''}. Phase payments apply on schedule. Appreciation-based exit value.]
 ══════════════════════════════════════
-Day-1 NOI: ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)${staticCF ? '  →  held flat (Static CF)' : noiGrowthRate > 0 ? `  →  growing at ${P(noiGrowthRate)}/yr` : '  (held flat)'}
+Day-1 ${isResidential ? 'Net Rental Income' : 'NOI'}: ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)${staticCF ? '  →  held flat (Static CF)' : noiGrowthRate > 0 ? `  →  growing at ${P(noiGrowthRate)}/yr` : '  (held flat)'}
 ${!staticCF && noiGrowthRate > 0 ? `NOI at Balloon (Year ${balloonYr}): ${D(bpNOIatYear(balloonYr))}/yr\n` : ''}Projected Property Value: ${D(exitPropVal)} (${P(appr)}/yr appreciation — ${pctOf(exitPropVal - arv, arv)} total gain since acquisition)
 Senior Loan Balance Remaining: ${D(exitSrBal)} (${pctOf(exitSrBal, exitPropVal)} of exit value)
 Seller Carry Balance Owed: ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, exitPropVal)} of exit value)
