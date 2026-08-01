@@ -4687,9 +4687,14 @@ function generateLOIReasoning(offerType, sellerData) {
   const l250 = loanSens(250000), l500 = loanSens(500000);
 
   // BRRRR context
-  const isBRRRR    = bridgeEnabled && loanType === 'hard_money';
-  const brgNetCash = _exitCache.brgRefiNetCash;
-  const stabMonths = g('stabilization_months');
+  const isBRRRR      = bridgeEnabled && loanType === 'hard_money';
+  const brgNetCash   = _exitCache.brgRefiNetCash;
+  const stabMonths   = g('stabilization_months');
+  const isHMorBridge = loanType === 'hard_money' || bridgeEnabled;
+  const pfNOIAnL     = g('noi_proforma') || 0;
+  const hasProformaL = pfNOIAnL > 0;
+  const exitTypeL    = (document.getElementById('exit_type') || {}).value || 'sale';
+  const isRefiExit   = exitTypeL === 'refi';
 
   // Market cap context
   const mktCapLow = 0.0625, mktCapHigh = 0.065;
@@ -4920,9 +4925,11 @@ ${unbankableSection}
 ${refiRiskSection}
 
 ${sep}
-${isCounter ? 'PART II' : 'PART I'} — SENIOR LENDING CONSTRAINTS & DSCR REALITY
+${isCounter ? 'PART II' : 'PART I'} — ${isHMorBridge ? 'HARD MONEY / BRIDGE STRUCTURE, RESERVES & EXIT PATH' : 'SENIOR LENDING CONSTRAINTS & DSCR REALITY'}
 ${sep}
-The single largest driver of what a buyer can offer is the amount of senior debt
+${(() => {
+  if (!isHMorBridge) {
+    return `The single largest driver of what a buyer can offer is the amount of senior debt
 the property's income can support. Debt Service Coverage Ratio (DSCR) is the
 primary underwriting test used by every commercial lender — bank, credit union,
 CMBS platform, or private fund. It measures how much income cushion exists above
@@ -4945,7 +4952,7 @@ ${col('Current Annual NOI (Day-1)', D(noiAn) + '/yr  (' + Dfmt(noiMo) + '/mo)')}
 ${col('DSCR Minimum Required', dscrReq.toFixed(2) + 'x  (entered lender requirement)')}
 ${col('Max Allowable Debt Service', Dfmt(maxDebtSvcMo) + '/mo  (NOI ÷ ' + dscrReq.toFixed(2) + ' ÷ 12)')}
 ${col('Our Senior Loan', D(maxLoan) + '  (' + P(actualLTV) + ' LTV — ' + bindingConstraint + ')')}
-${col('Rate / Type', P(srRate) + ' / ' + srAmort + '-yr' + (loanType === 'hard_money' ? ' Interest-Only' : ' amortizing P&I'))}
+${col('Rate / Type', P(srRate) + ' / ' + srAmort + '-yr amortizing P&I')}
 ${col('Monthly Debt Service (Senior)', Dfmt(effectiveSrPmt) + '/mo')}
 ${col('DSCR (Senior Only)', dscrSrOnly.toFixed(2) + 'x  ✓ meets lender minimum')}
 ${col('Seller Carry Payment', Dfmt(scMonthly) + '/mo' + (scMonthly === 0 ? '  (deferred — no additional debt service)' : ''))}
@@ -4963,7 +4970,125 @@ ${thin}
   ${thin}
   Our Offer           ${D(maxLoan).padEnd(16)}${Dfmt(effectiveSrPmt).padEnd(14)}${dscrSrOnly.toFixed(2)}x ✓     ${(netCF>=0?'+':'')+Dfmt(netCF)}/mo
   +$250K loan         ${D(l250.nl).padEnd(16)}${Dfmt(l250.np).padEnd(14)}${l250.dscr.toFixed(2)}x${l250.dscr < dscrReq ? ' ✗' : ' ✓'}     ${(l250.cf>=0?'+':'')+Dfmt(l250.cf)}/mo${l250.dscr < dscrReq ? '  ← LENDER DECLINES' : ''}
-  +$500K loan         ${D(l500.nl).padEnd(16)}${Dfmt(l500.np).padEnd(14)}${l500.dscr.toFixed(2)}x${l500.dscr < dscrReq ? ' ✗' : ' ✓'}     ${(l500.cf>=0?'+':'')+Dfmt(l500.cf)}/mo${l500.dscr < dscrReq ? '  ← LENDER DECLINES' : ''}
+  +$500K loan         ${D(l500.nl).padEnd(16)}${Dfmt(l500.np).padEnd(14)}${l500.dscr.toFixed(2)}x${l500.dscr < dscrReq ? ' ✗' : ' ✓'}     ${(l500.cf>=0?'+':'')+Dfmt(l500.cf)}/mo${l500.dscr < dscrReq ? '  ← LENDER DECLINES' : ''}`;
+  }
+
+  // ── HARD MONEY / BRIDGE PATH ──────────────────────────────────────
+  const reserves   = maxLoan > cac ? maxLoan - cac : 0;
+  const negCFmo    = netCF < 0 ? -netCF : 0;
+  const mosCovered = negCFmo > 0 && reserves > 0 ? Math.floor(reserves / negCFmo) : Infinity;
+  const permPmt    = _exitCache.brgPermPmtMo;
+  const hasPermRefi = bridgeEnabled && gb('bridge_refi_ltv') > 0;
+  const pfNOIMo    = pfNOIAnL > 0 ? pfNOIAnL / 12 : null;
+  const refiMo     = stabMonths || g('bridge_term_mo') || 18;
+
+  const hmLTC = g('hm_ltc'), hmARVpct = g('hm_arv_pct');
+  const constraintDesc = bindingConstraint === 'LTC' && hmLTC > 0
+    ? `LTC at ${hmLTC}% of project cost (${D(totalProjectCost)})`
+    : bindingConstraint === 'ARV %' && hmARVpct > 0
+    ? `ARV% at ${hmARVpct}% of after-repair value (${D(arv)})`
+    : `LTV at ${P(srLTV)} of as-is value (${D(asIsVal)})`;
+
+  const exitPath = (hasPermRefi || isBRRRR) ? 'brrrr'
+    : isRefiExit ? 'refi'
+    : 'sale';
+
+  const ln = [];
+
+  ln.push(`Hard money / bridge lenders approve loans on asset value — not income coverage.`);
+  ln.push(`The loan amount is determined by whichever constraint is most restrictive:`);
+  ln.push(`  Binding constraint: ${constraintDesc}  →  ${D(maxLoan)}`);
+  ln.push('');
+
+  ln.push(`LOAN STRUCTURE:`);
+  ln.push(col('  As-Is Value', D(asIsVal)));
+  if (useARV) ln.push(col('  After-Repair Value (ARV)', D(arv)));
+  ln.push(col('  Hard Money Loan', D(maxLoan) + '  (' + P(actualLTV) + ' of as-is)'));
+  ln.push(col('  Rate / Type', P(srRate) + ' / Interest-Only (no principal paydown)'));
+  ln.push(col('  Monthly I/O Payment', Dfmt(effectiveSrPmt) + '/mo'));
+  ln.push('');
+
+  ln.push(`CASH FLOW (current NOI vs. day-1 debt):`);
+  ln.push(col('  Current NOI', Dfmt(noiMo) + '/mo  (' + D(noiAn) + '/yr)'));
+  ln.push(col('  Less: HM Payment (I/O)', '−' + Dfmt(effectiveSrPmt) + '/mo'));
+  if (scMonthly > 0) ln.push(col('  Less: Seller Carry Payment', '−' + Dfmt(scMonthly) + '/mo'));
+  ln.push(thin);
+  ln.push(col('  Day-1 Net Cash Flow', (netCF >= 0 ? '+' : '') + Dfmt(netCF) + '/mo' +
+    (netCF < 0 ? '  ← negative CF serviced by reserves during hold' : '  ← positive from day one')));
+  if (netCF < 0) {
+    ln.push('');
+    ln.push(`Unlike a DSCR loan, negative day-1 cash flow is expected and acceptable in`);
+    ln.push(`a hard money structure — it is built into the deal and covered at closing.`);
+  }
+  ln.push('');
+
+  if (reserves > 0) {
+    ln.push(`RESERVE ANALYSIS:`);
+    ln.push(col('  HM Loan Proceeds', D(maxLoan)));
+    ln.push(col('  Less: Cash to Seller at Close', '−' + D(cac)));
+    ln.push(thin);
+    ln.push(col('  Available Reserves', D(reserves) + '  (closing costs + operating shortfall buffer)'));
+    if (negCFmo > 0 && isFinite(mosCovered)) {
+      ln.push(col('  Monthly CF Shortfall', Dfmt(negCFmo) + '/mo'));
+      ln.push(col('  Reserve Coverage', `~${mosCovered} months at current shortfall`));
+      if (stabMonths > 0) {
+        ln.push(mosCovered >= stabMonths
+          ? `  ✓ Reserves fully cover the ${stabMonths}-month stabilization runway.`
+          : `  ⚠ Buyer supplements reserves past Month ${mosCovered} via operations or capital injection.`);
+      }
+    } else if (negCFmo === 0) {
+      ln.push(`  Positive day-1 CF — reserves held for capex, contingency, or future deals.`);
+    }
+    ln.push('');
+  }
+
+  ln.push(`EXIT PATH — HOW YOUR SELLER NOTE GETS PAID:`);
+  if (exitPath === 'brrrr' && permPmt != null && permPmt > 0) {
+    const pfCFperm = (pfNOIMo || noiMo) - scMonthly - permPmt;
+    ln.push(`Bridge / HM loan is retired by a permanent DSCR loan at Month ${refiMo}.`);
+    ln.push(`Your seller carry note stays in place through balloon at Year ${scTerm}.`);
+    ln.push(col('  Perm Monthly Payment (est.)', Dfmt(permPmt) + '/mo'));
+    ln.push(col('  Stabilized CF After Perm Refi', (pfCFperm >= 0 ? '+' : '') + Dfmt(pfCFperm) + '/mo'));
+    ln.push(`  Your balloon of ${D(balloon)} is paid at Year ${scTerm} from a refi or sale.`);
+  } else if (exitPath === 'refi') {
+    const rfLTV = (g('exit_refi_ltv') || g('sr_ltv') || 75) / 100;
+    const apprR  = g('appreciation') / 100 || 0.03;
+    const exitV  = arv * Math.pow(1 + apprR, scTerm);
+    const rfAmt  = exitV * rfLTV;
+    const rfNet  = rfAmt - maxLoan - balloon;
+    ln.push(`At Year ${scTerm} balloon, buyer refinances at projected value to retire the HM`);
+    ln.push(`loan and pay your seller carry balloon.`);
+    ln.push(col('  Projected Exit Value (base)', D(exitV)));
+    ln.push(col('  Refi Loan (' + P(rfLTV) + ' LTV)', D(rfAmt)));
+    ln.push(col('  Less: HM Balance', '−' + D(maxLoan)));
+    ln.push(col('  Less: Seller Carry Balloon', '−' + D(balloon) + '  ← YOUR NOTE IS PAID HERE'));
+    ln.push(col('  Buyer Net After Refi (base)', (rfNet >= 0 ? '+' : '−') + D(Math.abs(rfNet))));
+  } else {
+    const saleCostPct = (g('exit_sale_costs') || 6) / 100;
+    const apprR  = g('appreciation') / 100 || 0.03;
+    const exitV  = arv * Math.pow(1 + apprR, scTerm);
+    const saleNt = exitV * (1 - saleCostPct);
+    const buyNt  = saleNt - maxLoan - balloon;
+    ln.push(`At Year ${scTerm} balloon, buyer sells the property to retire the HM loan and`);
+    ln.push(`pay your seller carry balloon.`);
+    ln.push(col('  Projected Sale Value (base)', D(exitV)));
+    ln.push(col('  Less: Sale Costs (' + P(saleCostPct) + ')', '−' + D(exitV * saleCostPct)));
+    ln.push(col('  Net Sale Proceeds', D(saleNt)));
+    ln.push(col('  Less: HM Balance at Exit', '−' + D(maxLoan)));
+    ln.push(col('  Less: Seller Carry Balloon', '−' + D(balloon) + '  ← YOUR NOTE IS PAID HERE'));
+    ln.push(col('  Buyer Net at Sale (base)', (buyNt >= 0 ? '+' : '−') + D(Math.abs(buyNt))));
+  }
+
+  if (pfNOIMo !== null && stabMonths > 0) {
+    ln.push('');
+    ln.push(`PROFORMA AT STABILIZATION (Month ${stabMonths}):`);
+    ln.push(col('  Target NOI', Dfmt(pfNOIMo) + '/mo  (' + D(pfNOIAnL) + '/yr)'));
+    const pfCFstab = pfNOIMo - scMonthly - effectiveSrPmt;
+    ln.push(col('  CF at Stabilization', (pfCFstab >= 0 ? '+' : '') + Dfmt(pfCFstab) + '/mo  (still on HM I/O)'));
+  }
+
+  return ln.join('\n');
+})()}
 
 ${sep}
 ${isCounter ? 'PART III' : 'PART II'} — CAP RATE & MARKET VALUE REALITY
