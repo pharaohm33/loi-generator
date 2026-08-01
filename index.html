@@ -4998,7 +4998,7 @@ ${col('  Balloon at Year ' + scTerm, D(balloon))}
 ${col('  Lien Position', '2nd position — secured by the real property')}
 ${col('  Property Value (As-Is)', D(asIsVal))}
 ${col('  Senior Loan Balance', D(maxLoan))}
-${col('  Equity Cushion Protecting Note', D(asIsVal - maxLoan) + '  (' + pctOf(asIsVal - maxLoan, asIsVal) + ' of value ahead of your note)')}
+${asIsVal - maxLoan > 0 ? col('  Equity Cushion Protecting Note', D(asIsVal - maxLoan) + '  (' + pctOf(asIsVal - maxLoan, asIsVal) + ' of value ahead of your note)') : ''}
 ${isBRRRR && brgNetCash != null ? `
   BRRRR Refi at Month ${stabMonths || g('bridge_term_mo') || 18}: bridge/HM loan retired — ${(brgNetCash>=0?'+':'')+D(brgNetCash)} net to buyer.` : ''}
 
@@ -5410,13 +5410,7 @@ ${col('  Your Carry Note (2nd Pos.)', D(carry))}
 ${col('  Total Debt on Property', D(calcMaxLoan + carry))}
 ${col('  Combined LTV (all debt)', P((calcMaxLoan + carry) / arv))}
 ${thin.slice(0,46)}
-${col('  Equity Cushion Protecting You', D(arv - calcMaxLoan - carry) + '  (' + P((arv-calcMaxLoan-carry)/arv) + ' of value)')}
-
-${arv > calcMaxLoan + carry
-  ? `The property would need to lose ${P((arv - calcMaxLoan - carry)/arv)} of its value before
-your note is at risk — a substantial equity buffer in any realistic scenario.`
-  : `NOTE: Combined debt is at or above current value — ensure the buyer has a
-clear path to value-add or appreciation to protect your note at balloon.`}
+${arv - calcMaxLoan - carry > 0 ? col('  Equity Cushion Protecting You', D(arv - calcMaxLoan - carry) + '  (' + P((arv-calcMaxLoan-carry)/arv) + ' of value)') + `\n\nThe property would need to lose ${P((arv - calcMaxLoan - carry)/arv)} of its value before your note is at risk — a substantial equity buffer in any realistic scenario.` : ''}
 
 Additional Protections:
   • Recorded deed of trust / mortgage — your lien is public record
