@@ -667,6 +667,16 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="prefix-wrap"><span>$</span><input type="number" id="arv" placeholder="0" step="1000"></div>
         </div>
       </div>
+      <div class="row cols-1">
+        <div class="field">
+          <label>Appraisal Contingency <span style="font-size:10px;color:#888;font-weight:400;">— affects LOI contingency clause</span></label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button id="appr-on"  onclick="setAppraisalContingency('on')"  style="padding:4px 12px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">On</button>
+            <button id="appr-off" onclick="setAppraisalContingency('off')" style="padding:4px 12px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">Off</button>
+            <input type="hidden" id="appraisal_contingency" value="on">
+          </div>
+        </div>
+      </div>
       <div class="row cols-2">
         <div class="field">
           <label>Rehab Budget (Total)</label>
@@ -913,6 +923,17 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   <div class="card">
     <div class="card-title">E) Closing Costs &amp; Fees</div>
     <div class="card-body">
+      <div class="row cols-1" style="margin-bottom:6px;">
+        <div class="field">
+          <label>Who Pays Closing Costs?</label>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <button id="cc-buyer"  onclick="setClosingCostParty('buyer')"  style="padding:4px 12px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Buyer Pays All</button>
+            <button id="cc-split"  onclick="setClosingCostParty('split')"  style="padding:4px 12px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">Split Evenly</button>
+            <button id="cc-seller" onclick="setClosingCostParty('seller')" style="padding:4px 12px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">Seller Pays All</button>
+            <input type="hidden" id="closing_cost_party" value="buyer">
+          </div>
+        </div>
+      </div>
       <div class="row cols-3">
         <div class="field">
           <label>1st Escrow Fee</label>
@@ -924,6 +945,11 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         </div>
         <div class="field">
           <label>Acq / Bird Dog Fee <span id="acq-dollar" style="font-weight:700;color:#15803d;margin-left:4px"></span></label>
+          <div style="display:flex;gap:4px;margin-bottom:4px;">
+            <button id="acq-pp"  onclick="setAcqFeeBasis('purchase_price')" style="padding:2px 8px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">% PP</button>
+            <button id="acq-cac" onclick="setAcqFeeBasis('at_closing')"     style="padding:2px 8px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:11px;font-weight:700;cursor:pointer;">% Cash@Close</button>
+            <input type="hidden" id="acq_fee_basis" value="purchase_price">
+          </div>
           <div class="suffix-wrap"><input type="number" id="acq_pct" placeholder="1" step="0.25"><span>%</span></div>
         </div>
       </div>
@@ -1673,6 +1699,9 @@ let mode = 'principal_only';
 let mode2 = 'interest_only';
 let loanType = 'dscr';
 let staticCF = false;
+let closingCostParty = 'buyer';     // 'buyer' | 'seller' | 'split'
+let appraisalContingency = 'on';    // 'on' | 'off'
+let acqFeeBasis = 'purchase_price'; // 'purchase_price' | 'at_closing'
 
 function setAgentFeeType(type) {
   document.getElementById('loi_agent_fee_type').value = type;
@@ -1680,6 +1709,40 @@ function setAgentFeeType(type) {
   document.getElementById('btn-fee-type-pct').style.color        = type === 'pct'  ? '#fff' : '#555';
   document.getElementById('btn-fee-type-flat').style.background  = type === 'flat' ? '#111' : '#f9fafb';
   document.getElementById('btn-fee-type-flat').style.color       = type === 'flat' ? '#fff' : '#555';
+}
+
+function setClosingCostParty(p) {
+  closingCostParty = p;
+  document.getElementById('closing_cost_party').value = p;
+  ['buyer','split','seller'].forEach(v => {
+    const el = document.getElementById('cc-' + v);
+    if (!el) return;
+    el.style.background = v === p ? '#111' : '#f9fafb';
+    el.style.color      = v === p ? '#fff' : '#555';
+  });
+  recalc();
+}
+
+function setAppraisalContingency(v) {
+  appraisalContingency = v;
+  document.getElementById('appraisal_contingency').value = v;
+  ['on','off'].forEach(id => {
+    const el = document.getElementById('appr-' + id);
+    if (!el) return;
+    el.style.background = id === v ? '#111' : '#f9fafb';
+    el.style.color      = id === v ? '#fff' : '#555';
+  });
+  recalc();
+}
+
+function setAcqFeeBasis(b) {
+  acqFeeBasis = b;
+  document.getElementById('acq_fee_basis').value = b;
+  const pp  = document.getElementById('acq-pp');
+  const cac = document.getElementById('acq-cac');
+  if (pp)  { pp.style.background  = b === 'purchase_price' ? '#111' : '#f9fafb'; pp.style.color  = b === 'purchase_price' ? '#fff' : '#555'; }
+  if (cac) { cac.style.background = b === 'at_closing'     ? '#111' : '#f9fafb'; cac.style.color = b === 'at_closing'     ? '#fff' : '#555'; }
+  recalc();
 }
 
 let bridgeEnabled = false;
@@ -2159,7 +2222,8 @@ function recalc() {
 
   const esc1   = pp * g('esc1_pct') / 100;  // 1st escrow: % of purchase price
   const esc2   = (pp - g('cash_at_closing')) * g('esc2_pct') / 100;  // 2nd escrow: % of seller carry (PP - cash to seller)
-  const acqFee = pp * g('acq_pct') / 100;  // acq fee: % of total purchase price
+  const acqFeeBasisAmt = acqFeeBasis === 'at_closing' ? cac : pp;
+  const acqFee = acqFeeBasisAmt * g('acq_pct') / 100;
   const pts    = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
@@ -2167,6 +2231,9 @@ function recalc() {
   const agentFeeType = (document.getElementById('loi_agent_fee_type') || {}).value || 'pct';
   const agentFee = agentFeeRaw > 0 ? (agentFeeType === 'pct' ? pp * agentFeeRaw / 100 : agentFeeRaw) : 0;
   const closing = esc1 + esc2 + acqFee + pts + broker + g('emd') + agentFee;
+  const sellerClosingShare = closingCostParty === 'seller' ? 1 : closingCostParty === 'split' ? 0.5 : 0;
+  const sellerClosingAmt   = Math.round(closing * sellerClosingShare);
+  const sellerNetAtClose   = cac - sellerClosingAmt;
   // TAF funds Closing 1 only; esc2 (2nd closing) is paid from seller carry waterfall at Closing 2
   const closing1 = closing - esc2;
   const tafPrin = Math.max(0, (asIsVal - maxLoan) + closing1 - g('buyer_cash') - rehabOOP);
@@ -2671,6 +2738,9 @@ function recalc() {
         brgRefiNetCash: brgParams ? brgParams.refiNetCash : null,
         scRefiPaydown:  brgParams ? brgParams.scRefiPaydown : 0,
         balloonYr,
+        totalClosing: closing,
+        sellerClosingAmt,
+        sellerNetAtClose,
       };
     }
 
@@ -3531,7 +3601,7 @@ The Acquisition Correspondent will bring the buyer to closing on the property. U
 
 Circumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.
 
-The Acquisition Correspondent’s fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing. If it becomes apparent that the Acquisition Correspondent is not on track to be paid before closing, it is the Acquisition Correspondent’s duty to disclose this to Seller, and Seller’s duty to respond to such communication in a timely manner.
+The Acquisition Correspondent's fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing. If it becomes apparent that the Acquisition Correspondent is not on track to be paid before closing, it is the Acquisition Correspondent's duty to disclose this to Seller, and Seller's duty to respond to such communication in a timely manner.
 
 ${H('Non-Exclusive Nature:')}
 Seller may entertain other offers until final purchase and sales agreement is in place with end buyer. At point of signing purchase and sales agreement, seller may not entertain other offers and honor the closing timeline set in purchase and sales agreement.
@@ -3580,7 +3650,16 @@ Property: ${esc(addr)}${units ? ' - ' + units + ' Units' : ''}
 Purchase Price: ${esc(D(pp))}
 
 ${H('SELLER RECEIVES:')}
-Seller Cash at Closing: ${esc(D(cac))}
+${(() => {
+  const loiSellerAmt  = _exitCache.sellerClosingAmt  || 0;
+  const loiSellerNet  = _exitCache.sellerNetAtClose  != null ? _exitCache.sellerNetAtClose : cac;
+  if (closingCostParty === 'seller' && loiSellerAmt > 0) {
+    return `Gross Cash at Closing: ${esc(D(cac))}\nLess: Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet Cash to Seller at Closing: ${esc(D(loiSellerNet))}`;
+  } else if (closingCostParty === 'split' && loiSellerAmt > 0) {
+    return `Seller Cash at Closing: ${esc(D(cac))}\nLess: 50% Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(loiSellerNet))}`;
+  }
+  return `Seller Cash at Closing: ${esc(D(cac))}`;
+})()}
 ${sellerCarryHeader}
 ${getAgentFeeLine(pp) ? '\n' + getAgentFeeLine(pp) : ''}
 
@@ -3590,11 +3669,16 @@ ${pmtBlock}
 ${narr}${loiPaydownClause}
 
 ${H('SELLER PROTECTION BY SENIOR EQUITY INTEREST:')}
-Your position is documented as a Senior Equity Interest, giving you first-priority claim to all cash flow and proceeds from operations, refinance, or sale — ahead of all buyer equity. If the buyer defaults on the note, the operating agreement allows you to take over the buyer’s interest in the property without foreclosure.
+Your position is documented as a Senior Equity Interest, giving you first-priority claim to all cash flow and proceeds from operations, refinance, or sale — ahead of all buyer equity. If the buyer defaults on the note, the operating agreement allows you to take over the buyer's interest in the property without foreclosure.
 
 ${H('TIMELINE:')}
 Closing: Within 45-60 days of signed purchase and sales agreement.
-Buyer contingency for senior loan and appraisal at agreed upon total purchase price
+${appraisalContingency === 'on'
+  ? 'Buyer contingency for senior loan and appraisal at agreed upon total purchase price.'
+  : 'Buyer contingency for senior loan only — offer is not contingent on appraisal.'}
+${closingCostParty === 'buyer'   ? 'Buyer responsible for all closing costs and transaction fees.'
+: closingCostParty === 'seller'  ? 'Seller to credit buyer for all closing costs and transaction fees at closing.'
+: 'Closing costs split equally — each party responsible for 50% of total transaction fees.'}
 
 ${bottomBlock}`;
 
@@ -3763,7 +3847,9 @@ ${H('DUE DILIGENCE & CLOSING:')}
 Closing: Within 30 days of signed Purchase and Sale Agreement.
 Due diligence period: Buyer requests a reasonable inspection and review period.
 Buyer contingency: Subject to final verification of existing loan terms, payoff statement, and title review.
-Buyer to pay all closing costs.
+${closingCostParty === 'buyer'  ? 'Buyer to pay all closing costs.'
+: closingCostParty === 'seller' ? 'Seller to credit buyer for all closing costs at closing.'
+: 'Closing costs split equally between buyer and seller.'}
 
 ${H('GENERAL TERMS:')}
 This letter is non-binding and represents a good-faith summary of proposed terms. Neither party is obligated to proceed until a final Purchase and Sale Agreement is executed by both parties.
@@ -3954,7 +4040,9 @@ ${H('DUE DILIGENCE & CLOSING:')}
 Closing: Within 30 days of signed Purchase and Sale Agreement.
 Due diligence period: Buyer requests a reasonable inspection and review period.
 Buyer contingency: Subject to final verification of existing loan terms, payoff statement, and title review.
-Buyer to pay all closing costs.
+${closingCostParty === 'buyer'  ? 'Buyer to pay all closing costs.'
+: closingCostParty === 'seller' ? 'Seller to credit buyer for all closing costs at closing.'
+: 'Closing costs split equally between buyer and seller.'}
 
 ${H('GENERAL TERMS:')}
 This letter is non-binding and represents a good-faith summary of proposed terms. Neither party is obligated to proceed until a final Purchase and Sale Agreement is executed by both parties.
@@ -4071,7 +4159,8 @@ function generateBuyerPresentation() {
 
   const esc1 = pp * g('esc1_pct') / 100;
   const esc2 = (pp - g('cash_at_closing')) * g('esc2_pct') / 100;
-  const acqFee = pp * g('acq_pct') / 100;
+  const acqFeeBasisAmtBP = acqFeeBasis === 'at_closing' ? cac : pp;
+  const acqFee = acqFeeBasisAmtBP * g('acq_pct') / 100;
   const pts = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
@@ -4079,6 +4168,8 @@ function generateBuyerPresentation() {
   const loiAgentFeeType = (document.getElementById('loi_agent_fee_type') || {}).value || 'pct';
   const loiAgentFee = loiAgentFeeRaw > 0 ? (loiAgentFeeType === 'pct' ? pp * loiAgentFeeRaw / 100 : loiAgentFeeRaw) : 0;
   const closing = esc1 + esc2 + acqFee + pts + broker + g('emd') + loiAgentFee;
+  const bpSellerClosingShare = closingCostParty === 'seller' ? 1 : closingCostParty === 'split' ? 0.5 : 0;
+  const bpSellerClosingAmt   = Math.round(closing * bpSellerClosingShare);
   const closing1 = closing - esc2;
   const tafPrin = Math.max(0, (asIsVal - maxLoan) + closing1 - g('buyer_cash') - rehabOOP);
   const tafFee = tafPrin * g('taf_pct') / 100;
@@ -4351,12 +4442,17 @@ CASH TO CLOSE — BUYER POSITION
 Senior Loan Proceeds: +${D(maxLoan)} (${pctOf(maxLoan, pp)} of purchase price)
 + Buyer Cash In: +${D(g('buyer_cash'))}
 − Cash to Seller: −${D(cac)} (${pctOf(cac, pp)} of purchase price)
-− Closing Costs: −${D(closing)} (${pctOf(closing, pp)} of purchase price)
+${closingCostParty === 'buyer'
+  ? `− Closing Costs: −${D(closing)} (${pctOf(closing, pp)} of purchase price)`
+  : closingCostParty === 'seller'
+  ? `− Total Closing Costs:   −${D(closing)}\n+ Seller Closing Credit: +${D(bpSellerClosingAmt)}  (seller pays all)\n= Net Buyer Closing Cost: −${D(closing - bpSellerClosingAmt)}`
+  : `− Total Closing Costs:   −${D(closing)}\n+ Seller Closing Credit: +${D(bpSellerClosingAmt)}  (seller pays 50%)\n= Net Buyer Closing Cost: −${D(closing - bpSellerClosingAmt)}`}
 − TAF Fee: −${D(tafFee)} (${pctOf(tafFee, tafPrin)} of TAF principal)
 − Rehab Out-of-Pocket: −${D(rehabOOP)}
 ${'─'.repeat(40)}
 ${buyerNet >= 0 ? 'CASH BACK TO BUYER' : 'CASH NEEDED FROM BUYER'}: ${buyerNet >= 0 ? '+' : ''}${D(buyerNet)} (${pctOf(Math.abs(buyerNet), pp)} of purchase price)
 ${buyerNet >= 0 ? (parkEscrow ? '(Held in escrow against the deal, not taken home)' : '(Returned to buyer at closing)') : '(Buyer must bring this amount to close)'}
+${closingCostParty !== 'buyer' ? `Note: Seller closing credit of ${D(bpSellerClosingAmt)} reduces seller\'s net at closing to ${D(cac - bpSellerClosingAmt)}.` : ''}
 ══════════════════════════════════════
 EXIT PROFIT PROJECTION (Year ${balloonYr} Balloon — ${staticCF ? 'Static CF Mode' : 'Current NOI Path'})
   [NOI: ${staticCF ? 'Day-1 held flat — Static CF mode, no growth applied' : (noiGrowthRate > 0 ? `Day-1 + ${P(noiGrowthRate)}/yr growth` : 'Day-1 held flat, no growth')}${hasProforma ? ' — proforma target NOT used here' : ''}. Phase payments apply on schedule. Appreciation-based exit value.]
@@ -4914,7 +5010,7 @@ ${isCounter ? `  ${''.padEnd(28)}${'Seller Proposal'.padEnd(22)}Our Counter-Offe
   ${'Day-1 Buyer Net CF:'.padEnd(28)}${Dfmt(noiMo-sSrPmt-sCarryPmt).padEnd(22)}${(netCF>=0?'+':'')+Dfmt(netCF)}/mo` :
 `${col('Purchase Price', D(pp) + (units > 0 ? '  (' + D(perUnit) + '/unit)' : ''))}
 ${col('Net Cash to Seller at Closing', D(cac) + '  (' + pctOf(cac, pp) + ' of purchase price)')}
-${maxLoan > cac ? col('  ↳ Senior Loan Proceeds', D(maxLoan) + '  — diff of ' + D(maxLoan - cac) + ' covers buyer closing costs & reserves') : ''}
+${maxLoan > cac ? col('  ↳ Senior Loan Proceeds', D(maxLoan) + '  — diff of ' + D(maxLoan - cac) + (closingCostParty === 'seller' ? ' covers reserves (seller credits buyer closing costs)' : closingCostParty === 'split' ? ' covers 50% closing costs + reserves' : ' covers buyer closing costs & reserves')) : ''}
 ${col('Seller Carryback Note', D(carry) + ' at ' + P(scRate) + ' — ' + scTerm + '-yr balloon')}
 ${col('Balloon Payment (Year ' + scTerm + ')', D(balloon))}
 ${col('Total Seller Receipts', D(totalReceipts) + '  (' + D(cac) + ' cash + ' + D(balloon) + ' balloon)')}
@@ -5140,13 +5236,28 @@ ${sep}
 ${col('Net Cash at Closing', D(cac))}
 ${maxLoan > cac ? `${col('  Senior Loan Proceeds', D(maxLoan))}
 ${col('  Less: Cash to Seller', '−' + D(cac))}
-${col('  Remaining Equity (' + D(maxLoan - cac) + ')', 'covers buyer closing costs, lender reserves & operating capital')}
-  NOTE: This difference is NOT buyer profit at closing. Lenders require cash
+${col('  Remaining Equity (' + D(maxLoan - cac) + ')', closingCostParty === 'seller'
+  ? 'covers lender reserves & operating capital (seller credits buyer closing costs)'
+  : closingCostParty === 'split'
+  ? 'covers 50% of closing costs (buyer share) + lender reserves & operating capital'
+  : 'covers buyer closing costs, lender reserves & operating capital')}
+${closingCostParty === 'seller'
+  ? `  NOTE: Seller has agreed to credit buyer for all closing costs at close.
+  The remaining equity above funds lender-required cash reserves (typically
+  3–6 months of debt service = ${D(Math.round(totalDebtMo * 3))}–${D(Math.round(totalDebtMo * 6))}), a structural requirement
+  for loan approval — without them, the lender will not fund.
+  This equity position enables a successful exit at Year ${scTerm}.`
+  : closingCostParty === 'split'
+  ? `  NOTE: Seller credits buyer for 50% of closing costs. The remaining equity
+  covers the buyer's share of closing costs plus lender-required cash reserves
+  (typically 3–6 months = ${D(Math.round(totalDebtMo * 3))}–${D(Math.round(totalDebtMo * 6))}), a structural requirement for loan
+  approval. This equity enables a successful exit at Year ${scTerm}.`
+  : `  NOTE: This difference is NOT buyer profit at closing. Lenders require cash
   reserves (typically 3–6 months of debt service = ${D(Math.round(totalDebtMo * 3))}–${D(Math.round(totalDebtMo * 6))}), plus loan
   origination, title, escrow, legal, and due diligence costs that must be
   funded at close. These are a structural requirement of the senior loan
   approval — without them, the lender will not fund and the deal cannot close.
-  This equity position is what enables a successful exit at Year ${scTerm}.
+  This equity position is what enables a successful exit at Year ${scTerm}.`}
 ` : ''}${scMonthly > 0 ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(scMonthly*scTerm*12)) : '  Monthly Carry Payments:   $0 (deferred to balloon — no waiting for checks)'}
 ${col('Balloon at Year ' + scTerm, D(balloon))}
 ${thin}
@@ -5472,7 +5583,7 @@ ${sep}
 ${col('Property', propLine || propSubtype)}
 ${col('Purchase Price', D(pp) + (arv > 0 && Math.abs(pp-arv) < arv*0.05 ? '  (at appraised value)' : arv > 0 ? '  (ARV/Comp: '+D(arv)+')' : ''))}
 ${col('Cash to Seller at Closing', D(cac))}
-${calcMaxLoan > cac ? col('  ↳ Senior Loan Proceeds', D(calcMaxLoan) + '  — diff of ' + D(calcMaxLoan - cac) + ' covers closing costs & reserves') : ''}
+${calcMaxLoan > cac ? col('  ↳ Senior Loan Proceeds', D(calcMaxLoan) + '  — diff of ' + D(calcMaxLoan - cac) + (closingCostParty === 'seller' ? ' covers reserves (seller credits buyer closing costs)' : closingCostParty === 'split' ? ' covers 50% closing costs + reserves' : ' covers closing costs & reserves')) : ''}
 ${col('Seller Carry Note', D(carry) + ' at ' + P(scRate) + (scRate===0?' (0% — pure principal)':'') + ' — ' + scTerm + '-yr balloon')}
 ${scMonthly > 0 ? col('Monthly Payment to Seller', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(scMonthly*scTerm*12) + ' over term') : col('Monthly Payment', '$0 deferred — full amount at balloon')}
 ${col('Balloon at Year ' + scTerm, D(balloon))}
@@ -5503,14 +5614,18 @@ OUR SELLER-FINANCING OFFER:
 ${col('  Cash at Closing', D(cac))}
 ${calcMaxLoan > cac ? (isHM
   ? `  Hard Money Loan: ${D(calcMaxLoan)} (sized on as-is value)
-  The ${D(calcMaxLoan - cac)} above your cash at close funds buyer closing
-  costs, title/escrow/legal fees, and operating reserves that cover the
-  hold period while the property${hasProformaR ? ' ramps to stabilized performance' : ' is positioned for exit'}.
+  The ${D(calcMaxLoan - cac)} above your cash at close funds ${closingCostParty === 'seller'
+    ? `operating reserves that cover the hold period.\n  Buyer closing costs are separately credited by seller at close.`
+    : closingCostParty === 'split'
+    ? `50% of buyer closing costs, title/escrow/legal fees, and operating\n  reserves that cover the hold period while the property${hasProformaR ? ' ramps to stabilized performance' : ' is positioned for exit'}.`
+    : `buyer closing costs, title/escrow/legal fees, and operating reserves that cover the\n  hold period while the property${hasProformaR ? ' ramps to stabilized performance' : ' is positioned for exit'}.`}
 `
   : `  Senior Loan: ${D(calcMaxLoan)} — the ${D(calcMaxLoan - cac)} difference between loan proceeds
-  and cash to seller covers buyer closing costs, lender-required reserves
-  (typically 3–6 months debt service), and title/escrow/legal fees. This
-  equity is a structural requirement for loan approval — not buyer profit.
+  and cash to seller covers ${closingCostParty === 'seller'
+    ? `lender-required reserves (typically 3–6 months debt service) and\n  title/escrow/legal fees. Buyer closing costs are credited by seller at close.`
+    : closingCostParty === 'split'
+    ? `50% of buyer closing costs, lender-required reserves\n  (typically 3–6 months debt service), and title/escrow/legal fees. Seller\n  credits the remaining 50% of closing costs at close.`
+    : `buyer closing costs, lender-required reserves\n  (typically 3–6 months debt service), and title/escrow/legal fees. This\n  equity is a structural requirement for loan approval — not buyer profit.`}
 `) : ''}${scMonthly > 0 ? col('  Monthly Income', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' months') : '  Monthly Income:       $0 deferred (lump sum at balloon)'}
 ${col('  Balloon at Year ' + scTerm, D(balloon))}
 ${thin.slice(0,46)}
@@ -5821,6 +5936,7 @@ const FIELDS = [
   'ac_name','ac_phone','ac_email1','ac_email2','buyer_company',
   'sub_mortgage_balance','sub_mortgage_rate','sub_mortgage_pmt','sub_servicer','sub_cash_to_seller',
   'loi_agent_fee','loi_agent_fee_type',
+  'closing_cost_party','appraisal_contingency','acq_fee_basis',
   // Residential fields
   'res_beds','res_baths','res_rent','res_vacancy','res_arv','res_comp',
   'res_taxes','res_insurance','res_maint_amt','res_maint_pct'
@@ -5865,6 +5981,9 @@ function loadFromURL() {
   if (p.has('ph2_bridge') && p.get('ph2_bridge') === '1') { if (!bridgeEnabled) toggleBridge(); }
   if (p.has('exit_type')) onExitTypeChange();
   if (p.has('loi_agent_fee_type')) setAgentFeeType(p.get('loi_agent_fee_type'));
+  if (p.has('closing_cost_party')) setClosingCostParty(p.get('closing_cost_party'));
+  if (p.has('appraisal_contingency')) setAppraisalContingency(p.get('appraisal_contingency'));
+  if (p.has('acq_fee_basis')) setAcqFeeBasis(p.get('acq_fee_basis'));
   if (p.has('prop_type')) onPropTypeChange();
   if (p.has('res_maint_amt') && p.get('res_maint_amt')) onResMaintInput('amt');
   else if (p.has('res_maint_pct') && p.get('res_maint_pct')) onResMaintInput('pct');
