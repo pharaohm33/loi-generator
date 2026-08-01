@@ -4597,6 +4597,9 @@ function generateLOIReasoning(offerType, sellerData) {
   const asIsVal = g('as_is_value') || pp;
   const arvRaw  = g('arv');
   const arv     = arvRaw > 0 ? arvRaw : asIsVal;
+  const useARV  = arvRaw > 0 && arv > asIsVal;
+  const propValDisplay      = useARV ? arv : asIsVal;
+  const propValDisplayLabel = useARV ? 'After-Repair Value (ARV)' : 'Property Value (As-Is)';
 
   const noiDirectAn = g('noi_direct');
   const usingDirect = noiDirectAn > 0;
@@ -4969,7 +4972,7 @@ appraised value is below the purchase price, the loan is curtailed to the
 appraised value regardless of the contract price.
 
 ${col('Current Annual NOI', D(noiAn) + '/yr')}
-${capRate > 0 ? col('Market Cap Rate', P(capRate)) + '\n' + col('Cap-Rate Implied Value', D(impliedVal)) + '\n' : ''}${asIsVal > 0 ? col('As-Is Appraised Value', D(asIsVal) + '  (' + P(asIsCapRate) + ' cap)') + '\n' : ''}${isCounter ? col('Seller Asking Price', D(sPrice) + '  (' + P(sPrice>0?noiAn/sPrice:0) + ' cap — ' + (sPrice > impliedVal && impliedVal > 0 ? D(sPrice-impliedVal) + ' above market' : 'at or below market') + ')') + '\n' : ''}${col('Our Counter-Offer', D(pp) + '  (' + P(offerCap) + ' cap on in-place NOI)')}
+${capRate > 0 ? col('Market Cap Rate', P(capRate)) + '\n' + col('Cap-Rate Implied Value', D(impliedVal)) + '\n' : ''}${propValDisplay > 0 ? col(useARV ? 'After-Repair Value (ARV)' : 'As-Is Appraised Value', D(propValDisplay) + (asIsCapRate > 0 ? '  (' + P(asIsCapRate) + ' cap)' : '')) + '\n' : ''}${isCounter ? col('Seller Asking Price', D(sPrice) + '  (' + P(sPrice>0?noiAn/sPrice:0) + ' cap — ' + (sPrice > impliedVal && impliedVal > 0 ? D(sPrice-impliedVal) + ' above market' : 'at or below market') + ')') + '\n' : ''}${col('Our Counter-Offer', D(pp) + '  (' + P(offerCap) + ' cap on in-place NOI)')}
 ${impliedVal > 0 ? `
 Our offer at ${P(offerCap)} is ${offerCap < capRate ? 'above market-implied value — we are paying a premium\npossible only because the seller carry structure bridges what lenders will\nfund and what is needed to reach the agreed price.' : 'supported by the property\'s income at market cap rates.'}\n` : ''}${isCounter && impliedVal > 0 && sPrice > impliedVal ? `The seller's asking price of ${D(sPrice)} implies a ${P(noiAn/sPrice)} cap rate — ${D(sPrice-impliedVal)}
 above market-implied value at ${P(capRate)}. The third-party appraisal required
@@ -4996,9 +4999,9 @@ ${col('  Interest Rate', P(scRate) + (scRate === 0 ? '  (0% — every balloon do
 ${col('  Monthly Payment', Dfmt(scMonthly) + '/mo' + (scMonthly === 0 ? '  (no payments — full amount due at balloon)' : ''))}
 ${col('  Balloon at Year ' + scTerm, D(balloon))}
 ${col('  Lien Position', '2nd position — secured by the real property')}
-${col('  Property Value (As-Is)', D(asIsVal))}
+${col('  ' + propValDisplayLabel, D(propValDisplay))}
 ${col('  Senior Loan Balance', D(maxLoan))}
-${asIsVal - maxLoan > 0 ? col('  Equity Cushion Protecting Note', D(asIsVal - maxLoan) + '  (' + pctOf(asIsVal - maxLoan, asIsVal) + ' of value ahead of your note)') : ''}
+${propValDisplay - maxLoan > 0 ? col('  Equity Cushion Protecting Note', D(propValDisplay - maxLoan) + '  (' + pctOf(propValDisplay - maxLoan, propValDisplay) + ' of value ahead of your note)') : ''}
 ${isBRRRR && brgNetCash != null ? `
   BRRRR Refi at Month ${stabMonths || g('bridge_term_mo') || 18}: bridge/HM loan retired — ${(brgNetCash>=0?'+':'')+D(brgNetCash)} net to buyer.` : ''}
 
@@ -5019,7 +5022,7 @@ ${col('  Remaining Equity (' + D(maxLoan - cac) + ')', 'covers buyer closing cos
 ${col('Balloon at Year ' + scTerm, D(balloon))}
 ${thin}
 ${col('TOTAL SELLER RECEIPTS', D(totalReceipts))}
-${asIsVal > 0 ? col('  vs. All-Cash at As-Is Value', sign(totalReceipts - asIsVal) + '  (' + (totalReceipts > asIsVal ? 'MORE' : 'LESS') + ' than as-is all-cash sale)') : ''}
+${propValDisplay > 0 ? col('  vs. All-Cash at ' + (useARV ? 'ARV' : 'As-Is Value'), sign(totalReceipts - propValDisplay) + '  (' + (totalReceipts > propValDisplay ? 'MORE' : 'LESS') + ' than ' + (useARV ? 'ARV' : 'as-is') + ' all-cash sale)') : ''}
 ${impliedVal > 0 ? col('  vs. Cap-Rate Implied Value', sign(totalReceipts - impliedVal) + '  (' + (totalReceipts > impliedVal ? 'MORE' : 'LESS') + ' than market-implied value)') : ''}
 ${isCounter ? col('  vs. Seller Asking Total', sign(totalReceipts - sTotalReceipts) + '  compared to seller\'s proposed total of ' + D(sTotalReceipts)) : ''}
 
@@ -5046,7 +5049,7 @@ that cannot be overcome by goodwill, creative language, or desire alone:
    ${impliedVal > 0
      ? `At a ${P(capRate)} market cap rate, this property's income supports ${D(impliedVal)}.
    Our offer of ${D(pp)} is ${pp > impliedVal ? D(pp-impliedVal) + ' above income-supported value — achievable\n   only because the carry structure provides gap financing the lender cannot.' : 'at or within income-supported value — this is an aggressive but fair offer.'}`
-     : `The as-is appraised value of ${D(asIsVal)} reflects the market's view of this
+     : `The ${useARV ? 'after-repair value (ARV) of ' + D(arv) : 'as-is appraised value of ' + D(asIsVal)} reflects the market's view of this
    property at current income levels. Our offer reflects a fair acquisition basis.`}
 
 ${sep}
@@ -5154,9 +5157,12 @@ function generateResidentialLOIReasoning(offerType, sellerData) {
   const pp   = g('purchase_price');
   const cac  = g('cash_at_closing');
   const carry = pp - cac;
-  const arvRaw = g('arv') || g('res_arv') || g('as_is_value') || pp;
-  const arv   = arvRaw > 0 ? arvRaw : pp;
-  const comp  = g('res_comp') || arv;
+  const arvRaw    = g('arv') || g('res_arv') || g('as_is_value') || pp;
+  const arv       = arvRaw > 0 ? arvRaw : pp;
+  const comp      = g('res_comp') || arv;
+  const resAsIsVal = g('as_is_value') || pp;
+  const resUseARV  = (g('arv') > 0 || g('res_arv') > 0) && arv > resAsIsVal;
+  const resPropValLabel = resUseARV ? 'After-Repair Value (ARV)' : 'Current Market Value (As-Is)';
   const resRent = g('res_rent') || 0;
 
   const scRate  = g('sc_rate') / 100;
@@ -5404,7 +5410,7 @@ PART IV — YOUR SECURITY POSITION
 ${sep}
 As a note holder, you are secured by the property through a recorded lien.
 
-${col('  Property Value (ARV / Comp)', D(arv))}
+${col('  ' + resPropValLabel, D(arv))}
 ${calcMaxLoan > 0 ? col('  Any Senior Loan (1st Pos.)', D(calcMaxLoan) + '  (' + P(calcMaxLoan/arv) + ' LTV)') : '  Senior Loan:          None — you hold the ONLY lien'}
 ${col('  Your Carry Note (2nd Pos.)', D(carry))}
 ${col('  Total Debt on Property', D(calcMaxLoan + carry))}
