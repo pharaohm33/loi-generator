@@ -5231,21 +5231,6 @@ function generateResidentialLOIReasoning(offerType, sellerData) {
   const traditionalNet = arv * (1 - agentCommission - sellerClosingPct);
   const ourAdvantage   = totalReceipts - traditionalNet;
 
-  // DTI context for conventional buyer
-  const convRate30 = 0.075; // approximate 30-yr conventional
-  const convAmort  = 30;
-  const convDown   = 0.20;  // 20% down
-  const convLoan   = arv * (1 - convDown);
-  const convPmt    = pmtPI(convRate30, convAmort, convLoan);
-  const convNetToSeller = arv * (1 - agentCommission - sellerClosingPct);
-
-  // FHA buyer
-  const fhaDown = 0.035;
-  const fhaRate = 0.075;
-  const fhaLoan = arv * (1 - fhaDown);
-  const fhaPmt  = pmtPI(fhaRate, convAmort, fhaLoan);
-  const minIncomeConv = convPmt * 12 / 0.43; // 43% max DTI
-  const minIncomeFHA  = fhaPmt  * 12 / 0.57; // 57% max DTI back-end
 
   // Seller data for counter mode
   let sPrice=0, sCarry=0, sCarryRate=0, sCarryTerm=0, sCarryPmt=0,
@@ -5356,32 +5341,7 @@ ${col('  Risk', 'You hold 2nd lien on property you already know')}
 ${col('  Your Net Advantage', (ourAdvantage >= 0 ? '+' : '') + D(ourAdvantage) + ' MORE than a traditional listing')}
 
 ${sep}
-PART II — WHAT CONVENTIONAL BUYERS ACTUALLY OFFER YOU
-${sep}
-A conventional buyer needs bank financing. Here is what that reality looks like:
-
-CONVENTIONAL BUYER (20% DOWN, 30-YR, ~${P(convRate30)}):
-${col('  Loan Amount', D(convLoan) + '  (' + P(1-convDown) + ' of ARV)')}
-${col('  Monthly Payment', Dfmt(convPmt) + '/mo')}
-${col('  Minimum Buyer Income Required', D(minIncomeConv) + '/yr  (43% max DTI rule)')}
-${col('  Net to Seller After Commission', D(convNetToSeller) + '  (same as traditional — one-time)')}
-
-FHA BUYER (3.5% DOWN, ~${P(fhaRate)}):
-${col('  Loan Amount', D(fhaLoan))}
-${col('  Monthly Payment', Dfmt(fhaPmt) + '/mo + MIP')}
-${col('  Minimum Buyer Income Required', D(minIncomeFHA) + '/yr  (57% max back-end DTI)')}
-${col('  Net to Seller After Commission', D(convNetToSeller) + '  (same — one-time lump sum)')}
-
-${col('Both paths give you', D(convNetToSeller) + ' today and NOTHING more — ever.')}
-${col('Our offer gives you', D(totalReceipts) + ' total — ' + D(ourAdvantage) + ' MORE.')}
-
-Why can't a financed buyer pay more? Their bank controls the purchase price
-through the appraisal. If the appraised value is ${D(arv)}, the bank will not
-lend above that regardless of what the buyer offers. The only way to capture
-value above appraised value is through seller financing.
-
-${sep}
-PART III — YOUR MONTHLY INCOME & INVESTMENT YIELD
+PART II — YOUR MONTHLY INCOME & INVESTMENT YIELD
 ${sep}
 ${scRate > 0
   ? `Your seller carry note of ${D(carry)} at ${P(scRate)} generates:
@@ -5415,7 +5375,7 @@ The buyer will use rental income to service the carry note — you can see the
 income covers the obligations${resNOIMo - scMonthly - (srPmt||0) >= 0 ? ', with positive cash flow giving confidence in balloon payoff at Year ' + scTerm + '.' : '. Note: cash flow is tight — buyer is relying on appreciation and principal paydown for the balloon.'}
 ` : ''}
 ${sep}
-PART IV — YOUR SECURITY POSITION
+PART III — YOUR SECURITY POSITION
 ${sep}
 As a note holder, you are secured by the property through a recorded lien.
 
@@ -5434,7 +5394,7 @@ Additional Protections:
   • Recommend requiring property/casualty insurance naming you as loss payee
 
 ${sep}
-PART V — FOUR REASONS SELLER FINANCING BEATS A TRADITIONAL SALE
+PART IV — FOUR REASONS SELLER FINANCING BEATS A TRADITIONAL SALE
 ${sep}
 1. MORE TOTAL MONEY — ${D(totalReceipts)} vs. ${D(traditionalNet)} net from a
    traditional financed sale. That's ${D(Math.abs(ourAdvantage))} ${ourAdvantage >= 0 ? 'more in your pocket' : 'less (review structure)'}.
@@ -5474,7 +5434,7 @@ within the following structural realities:
    for a seller-financed deal where we take on the execution risk.
 
 ${sep}
-${isCounter ? 'PART VI' : 'PART V'} — SALE EXIT PLAN, MARKET CONTINGENCY & BUYER TRANSPARENCY
+PART V — SALE EXIT PLAN, MARKET CONTINGENCY & BUYER TRANSPARENCY
 ${sep}
 ${(() => {
   const resAppr       = g('appreciation') / 100 || 0.03;
