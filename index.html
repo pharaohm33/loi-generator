@@ -5333,7 +5333,7 @@ ${col('  Timeline to Close', '30–90 days (pending buyer financing approval)')}
 ${col('  Risk', 'Buyer financing may fall through — back to market')}
 
 OUR SELLER-FINANCING OFFER:
-${col('  Cash at Closing', D(cac) + '  (no agent, no repair credits)')}
+${col('  Cash at Closing', D(cac))}
 ${calcMaxLoan > cac ? `  Senior Loan: ${D(calcMaxLoan)} — the ${D(calcMaxLoan - cac)} difference between loan proceeds
   and cash to seller covers buyer closing costs, lender-required reserves
   (typically 3–6 months debt service), and title/escrow/legal fees. This
@@ -5427,9 +5427,8 @@ Additional Protections:
 ${sep}
 PART V — FOUR REASONS SELLER FINANCING BEATS A TRADITIONAL SALE
 ${sep}
-1. MORE TOTAL MONEY — ${D(totalReceipts)} vs. ${D(traditionalNet)} from a listing.
-   That's ${D(Math.abs(ourAdvantage))} ${ourAdvantage >= 0 ? 'more' : 'less (review structure)'} — and it goes straight to you,
-   not to real estate agents.
+1. MORE TOTAL MONEY — ${D(totalReceipts)} vs. ${D(traditionalNet)} net from a
+   traditional financed sale. That's ${D(Math.abs(ourAdvantage))} ${ourAdvantage >= 0 ? 'more in your pocket' : 'less (review structure)'}.
 
 2. SPEED & CERTAINTY — No bank underwriting, no 30-day financing contingency,
    no risk of the deal falling through because a buyer's loan was denied.
