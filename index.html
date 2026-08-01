@@ -5022,25 +5022,20 @@ ${thin}
   }
   ln.push('');
 
-  if (reserves > 0) {
-    ln.push(`RESERVE ANALYSIS:`);
-    ln.push(col('  HM Loan Proceeds', D(maxLoan)));
-    ln.push(col('  Less: Cash to Seller at Close', '−' + D(cac)));
-    ln.push(thin);
-    ln.push(col('  Available Reserves', D(reserves) + '  (closing costs + operating shortfall buffer)'));
-    if (negCFmo > 0 && isFinite(mosCovered)) {
-      ln.push(col('  Monthly CF Shortfall', Dfmt(negCFmo) + '/mo'));
-      ln.push(col('  Reserve Coverage', `~${mosCovered} months at current shortfall`));
-      if (stabMonths > 0) {
-        ln.push(mosCovered >= stabMonths
-          ? `  ✓ Reserves fully cover the ${stabMonths}-month stabilization runway.`
-          : `  ⚠ Buyer supplements reserves past Month ${mosCovered} via operations or capital injection.`);
-      }
-    } else if (negCFmo === 0) {
-      ln.push(`  Positive day-1 CF — reserves held for capex, contingency, or future deals.`);
+  ln.push(`RESERVE ANALYSIS:`);
+  if (netCF < 0) {
+    const resCoverageLabel = stabMonths > 0 ? `${stabMonths}+ months` : '12+ months';
+    ln.push(`Closing proceeds include reserves structured to cover the monthly cash flow`);
+    ln.push(`shortfall during the hold period.`);
+    ln.push(col('  Monthly CF Shortfall', Dfmt(negCFmo) + '/mo  (day-1, pre-stabilization)'));
+    ln.push(col('  Reserve Coverage', resCoverageLabel + ' to reach stabilization'));
+    if (stabMonths > 0 && pfNOIMo !== null) {
+      ln.push(`  At Month ${stabMonths}, proforma NOI of ${Dfmt(pfNOIMo)}/mo covers all obligations.`);
     }
-    ln.push('');
+  } else {
+    ln.push(`Day-1 cash flow is positive — reserves available for capex and contingency.`);
   }
+  ln.push('');
 
   ln.push(`EXIT PATH — HOW YOUR SELLER NOTE GETS PAID:`);
   if (exitPath === 'brrrr' && permPmt != null && permPmt > 0) {
