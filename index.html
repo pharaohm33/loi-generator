@@ -5079,12 +5079,13 @@ ${thin}
     ln.push(col('  Buyer Net at Sale (base)', (buyNt >= 0 ? '+' : '−') + D(Math.abs(buyNt))));
   }
 
-  if (pfNOIMo !== null && stabMonths > 0) {
+  // Show proforma block only for non-BRRRR paths (BRRRR already showed stabilized CF above)
+  if (pfNOIMo !== null && stabMonths > 0 && exitPath !== 'brrrr') {
     ln.push('');
     ln.push(`PROFORMA AT STABILIZATION (Month ${stabMonths}):`);
     ln.push(col('  Target NOI', Dfmt(pfNOIMo) + '/mo  (' + D(pfNOIAnL) + '/yr)'));
     const pfCFstab = pfNOIMo - scMonthly - effectiveSrPmt;
-    ln.push(col('  CF at Stabilization', (pfCFstab >= 0 ? '+' : '') + Dfmt(pfCFstab) + '/mo  (still on HM I/O)'));
+    ln.push(col('  CF at Stabilization (on HM I/O)', (pfCFstab >= 0 ? '+' : '') + Dfmt(pfCFstab) + '/mo'));
   }
 
   return ln.join('\n');
