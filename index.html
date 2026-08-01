@@ -947,11 +947,11 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <label>Acq / Bird Dog Fee <span id="acq-dollar" style="font-weight:700;color:#15803d;margin-left:4px"></span></label>
           <div style="display:flex;gap:4px;margin-bottom:4px;">
             <button id="acq-pp"  onclick="setAcqFeeBasis('purchase_price')" style="padding:2px 8px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">% PP</button>
-            <button id="acq-cac" onclick="setAcqFeeBasis('at_closing')"     style="padding:2px 8px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:11px;font-weight:700;cursor:pointer;">% Buyer Net</button>
+            <button id="acq-cac" onclick="setAcqFeeBasis('at_closing')"     style="padding:2px 8px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:11px;font-weight:700;cursor:pointer;">% Total Net Cash</button>
             <input type="hidden" id="acq_fee_basis" value="purchase_price">
           </div>
           <div class="suffix-wrap"><input type="number" id="acq_pct" placeholder="1" step="0.25"><span>%</span></div>
-          <div id="acq-basis-hint" style="font-size:10px;color:#888;margin-top:2px;display:none;">% of buyer&apos;s net cash at close (assuming $0 acq fee) — 50% = even split.</div>
+          <div id="acq-basis-hint" style="font-size:10px;color:#888;margin-top:2px;display:none;">% of total net cash at close — 50% = even split between parties.</div>
         </div>
       </div>
       <div class="row cols-2">
@@ -2231,14 +2231,18 @@ function recalc() {
   const agentFeeRaw = g('loi_agent_fee') || 0;
   const agentFeeType = (document.getElementById('loi_agent_fee_type') || {}).value || 'pct';
   const agentFee = agentFeeRaw > 0 ? (agentFeeType === 'pct' ? pp * agentFeeRaw / 100 : agentFeeRaw) : 0;
-  // Acq fee basis: % of PP, or % of buyer's net-at-close assuming $0 acq fee
+  // Acq fee basis: % of PP, or % of total net cash (buyer's net-at-close with $0 acq fee)
   let acqFee;
   if (acqFeeBasis === 'at_closing') {
     const closingNoAcq  = esc1 + esc2 + pts + broker + g('emd') + agentFee;
     const tafPrinNoAcq  = Math.max(0, (asIsVal - maxLoan) + (closingNoAcq - esc2) - g('buyer_cash') - rehabOOP);
     const tafFeeNoAcq   = tafPrinNoAcq * g('taf_pct') / 100;
     const buyerNetNoAcq = maxLoan + g('buyer_cash') - cac - closingNoAcq - tafFeeNoAcq - rehabOOP;
-    acqFee = Math.max(0, buyerNetNoAcq) * g('acq_pct') / 100;
+    // When TAF is already triggered, acqFee increases tafPrin 1:1 and tafFee by acqFee*t.
+    // Solve acqFee = p*B0/(1+p*t) for an exact split (eliminates the TAF feedback loop).
+    const p = g('acq_pct') / 100;
+    const t = tafPrinNoAcq > 0 ? g('taf_pct') / 100 : 0;
+    acqFee = Math.max(0, buyerNetNoAcq) * p / (1 + p * t);
   } else {
     acqFee = pp * g('acq_pct') / 100;
   }
@@ -4183,7 +4187,9 @@ function generateBuyerPresentation() {
     const tafPrinNoAcq  = Math.max(0, (asIsVal - maxLoan) + (closingNoAcq - esc2) - g('buyer_cash') - rehabOOP);
     const tafFeeNoAcq   = tafPrinNoAcq * g('taf_pct') / 100;
     const buyerNetNoAcq = maxLoan + g('buyer_cash') - cac - closingNoAcq - tafFeeNoAcq - rehabOOP;
-    acqFee = Math.max(0, buyerNetNoAcq) * g('acq_pct') / 100;
+    const bpP = g('acq_pct') / 100;
+    const bpT = tafPrinNoAcq > 0 ? g('taf_pct') / 100 : 0;
+    acqFee = Math.max(0, buyerNetNoAcq) * bpP / (1 + bpP * bpT);
   } else {
     acqFee = pp * g('acq_pct') / 100;
   }
