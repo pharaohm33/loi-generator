@@ -5287,11 +5287,10 @@ ${isCounter
 reviewed your proposed terms and present below a detailed comparison showing
 why our structure delivers superior results — and why the terms we propose are
 the highest executable offer given current market conditions.`
-  : `We appreciate your openness to a seller-financed structure. Most sellers have
-never seen this approach clearly explained. This document shows — dollar by
-dollar — why seller financing puts more money in your pocket than a traditional
-listing, while still giving you a fast, clean close without the uncertainty of
-a financed buyer who might not qualify.`}
+  : `Our acquisition team has completed a full underwriting of ${addr || 'this property'}.
+The following analysis explains, line by line, why the offer is structured as
+presented and why the terms represent the highest executable offer the
+property's value and seller carry structure can support.`}
 
 ${sep}
 EXECUTIVE OFFER SUMMARY
@@ -5313,8 +5312,8 @@ ${compTable}
 ${sep}
 PART I — TRADITIONAL SALE VS. SELLER FINANCING: THE REAL NUMBERS
 ${sep}
-Most sellers assume a traditional listing with a real estate agent is the best
-path. Here is what that actually looks like versus our offer:
+The following comparison shows what a traditional listing actually returns
+versus our seller-financing structure on a total-receipts basis:
 
 TRADITIONAL LISTING PATH:
 ${col('  Listing Price (Optimistic)', D(arv))}
@@ -5464,42 +5463,77 @@ ${(() => {
   const noteOK      = (n) => n >= 0 ? '✓ SELLER NOTE PAID IN FULL' : '⚠ SHORTFALL: ' + D(Math.min(balloon, -n));
   const sgn         = (n) => (n >= 0 ? '+' : '−') + D(n);
 
+  // Refinance viability at balloon year
+  const resRefiLTV   = srLTV > 0 ? srLTV : 0.75;
+  const refiProcBase = projValBase * resRefiLTV;
+  const canRefi      = refiProcBase >= totalDebtR;
+  const refiGap      = totalDebtR - refiProcBase;
+  const refiNet      = refiProcBase - totalDebtR;
+
+  const exitWord = canRefi ? 'refinance' : 'sale';
+
+  const transparencyText = isTightR
+    ? `  This is a tight-margin deal. Our total projected profit at Year ${scTerm}
+  base-case ${exitWord} is ${sgn(canRefi ? refiNet : netBase)} after paying off your note
+  and all debt — a thin spread. There is no room to pay more. We are at the
+  ceiling of what this deal will support.`
+    : totalBuyerInR === 0
+      ? `  This deal is structured with no cash out of pocket from the buyer — your
+  seller financing covered the full acquisition. Our total profit at Year ${scTerm}
+  base-case ${exitWord} is ${sgn(canRefi ? refiNet : netBase)} after paying off your
+  note and all debt. That profit depends entirely on the property performing
+  as projected.`
+      : `  Our total profit at Year ${scTerm} base-case ${exitWord} is
+  ${sgn(canRefi ? refiNet : netBase)} after paying off your note and all senior
+  debt. We view this as a fair return for acquiring, managing, and bearing
+  market risk during the hold.`;
+
   return [
     col('  Projected Value at Year ' + scTerm + ' (base @ +' + (resAppr*100).toFixed(1) + '%/yr)', D(projValBase)),
     col('  Projected Value — Flat Market (+0%/yr)', D(flatVal) + '  (no appreciation assumed)'),
     col('  Projected Value — Down 10%', D(dn10Val)),
     col('  Projected Value — Down 20%', D(dn20Val)),
     '',
-    'SALE EXIT AT YEAR ' + scTerm + ' — WHAT GETS PAID AND WHAT BUYER NETS:',
+    canRefi
+      ? [
+          'REFINANCE EXIT AT YEAR ' + scTerm + ' — PRIMARY (VIABLE AT BASE-CASE VALUE):',
+          col('  Projected Value', D(projValBase)),
+          col('  Max Refi Loan (' + (resRefiLTV*100).toFixed(0) + '% LTV)', D(refiProcBase)),
+          srBalRes > 0 ? col('  Less: Retire Senior Loan Balance', '−' + D(srBalRes)) : '',
+          col('  Less: Seller Carry Balloon (to you)', '−' + D(balloon) + '  ← YOUR NOTE IS PAID HERE'),
+          thin,
+          col('  Buyer Net After Refi (base)', sgn(refiNet)),
+          '  Refinance is viable at projected value — your note retires in full without a sale.',
+          '',
+          'SALE EXIT AT YEAR ' + scTerm + ' — ALTERNATIVE:',
+        ].filter(Boolean).join('\n')
+      : [
+          'REFINANCE VIABILITY CHECK (Year ' + scTerm + '):',
+          col('  Max Refi Loan (' + (resRefiLTV*100).toFixed(0) + '% LTV of ' + D(projValBase) + ')', D(refiProcBase)),
+          col('  Total Debt at Maturity', D(totalDebtR)),
+          col('  Refinance Shortfall', D(refiGap) + '  ← SALE IS REQUIRED EXIT'),
+          '  At base-case appreciation, refinance proceeds fall short of retiring all',
+          '  debt. Sale is the primary path to satisfy the balloon.',
+          '',
+          'SALE EXIT AT YEAR ' + scTerm + ' — PRIMARY:',
+        ].filter(Boolean).join('\n'),
     col('  Projected Sale Price (base)', D(projValBase)),
     col('  Less: Sale Transaction Costs (' + (resExitCosts*100).toFixed(0) + '%)', '−' + D(projValBase * resExitCosts)),
     col('  Net Sale Proceeds (base)', D(projValBase * (1 - resExitCosts))),
     srBalRes > 0 ? col('  Less: Est. Senior Loan Balance', '−' + D(srBalRes)) : '',
     col('  Less: Seller Carry Balloon (to you)', '−' + D(balloon) + '  ← YOUR NOTE IS PAID HERE'),
     thin,
-    col('  BUYER TOTAL PROFIT AT EXIT (base)', sgn(netBase) + '  after all debt paid'),
+    col('  BUYER TOTAL PROFIT AT SALE (base)', sgn(netBase) + '  after all debt paid'),
     totalBuyerInR > 0 ? col('  Buyer Cash Invested', D(totalBuyerInR) + (rehabOOPRes > 0 ? '  (down payment + rehab OOP)' : '')) : '  Buyer Cash Invested:    $0  (infinite return — seller financing covered full price)',
     '',
-    'MARKET CONTINGENCY — YOUR NOTE COVERAGE UNDER STRESS:',
+    'MARKET CONTINGENCY — YOUR NOTE COVERAGE UNDER STRESS (SALE):',
     col('  Break-Even Property Value', D(breakEvenV) + '  — ' + beDir),
     col('  Flat Market (+0%): buyer net', sgn(netFlat) + '  —  ' + noteOK(netFlat)),
     col('  Down 10%: buyer net', sgn(netDn10) + '  —  ' + noteOK(netDn10)),
     col('  Down 20%: buyer net', sgn(netDn20) + '  —  ' + noteOK(netDn20)),
     '',
     'BUYER TRANSPARENCY — WHAT WE PLAN TO MAKE ON THIS DEAL:',
-    isTightR
-      ? `  This is a tight-margin deal. Our total projected profit at Year ${scTerm}
-  base-case sale is ${sgn(netBase)} after paying off your note and all debt — a
-  thin spread. There is no room to pay more. We are at the ceiling of what
-  this deal will support.`
-      : totalBuyerInR === 0
-        ? `  This deal is structured with no cash out of pocket from the buyer — your
-  seller financing covered the full acquisition. Our total profit at Year ${scTerm}
-  base-case sale is ${sgn(netBase)} after paying off your note and all debt. That
-  profit depends entirely on the property performing as projected.`
-        : `  Our total profit at Year ${scTerm} base-case sale is ${sgn(netBase)} after
-  paying off your note and all senior debt. We view this as a fair return for
-  acquiring, managing, and bearing market risk during the hold.`,
+    transparencyText,
   ].filter(l => l !== undefined).join('\n');
 })()}
 
