@@ -5103,18 +5103,15 @@ ${(() => {
   ${(projSaleNet >= 0 ? '+' : '−') + D(projSaleNet)} after paying off your note and all debt — a thin
   spread over ${scTerm} years. There is no room to pay more. We are at the ceiling
   of what this deal will support. If the property performs as projected, we
-  each win. If it underperforms, we bear the downside — your note is paid
-  in full at the balloon date regardless.`
+  each win. If it underperforms, we bear the downside.`
       : totalBuyerIn === 0
         ? `  This deal is structured with no cash out of pocket from the buyer — your
   seller financing covered the full acquisition. Our total profit at Year ${scTerm}
   base-case sale is ${(projSaleNet >= 0 ? '+' : '−') + D(projSaleNet)} after paying off your note and all debt.
-  That profit is entirely dependent on the property performing as projected.
-  Your note is secured by the property and paid in full at balloon.`
+  That profit is entirely dependent on the property performing as projected.`
         : `  Our total profit at Year ${scTerm} base-case sale is ${(projSaleNet >= 0 ? '+' : '−') + D(projSaleNet)} after
   paying off your note and all senior debt. We view this as a fair return for
-  acquiring, managing, and bearing market risk during the hold. Your note is
-  paid in full at balloon regardless of our ultimate profit or loss.`,
+  acquiring, managing, and bearing market risk during the hold.`,
   ].join('\n');
 })()}
 
@@ -5530,18 +5527,15 @@ ${(() => {
       ? `  This is a tight-margin deal. Our total projected profit at Year ${scTerm}
   base-case sale is ${sgn(netBase)} after paying off your note and all debt — a
   thin spread. There is no room to pay more. We are at the ceiling of what
-  this deal will support. Your note is paid in full at balloon regardless
-  of whether our profit is strong or thin.`
+  this deal will support.`
       : totalBuyerInR === 0
         ? `  This deal is structured with no cash out of pocket from the buyer — your
   seller financing covered the full acquisition. Our total profit at Year ${scTerm}
   base-case sale is ${sgn(netBase)} after paying off your note and all debt. That
-  profit depends entirely on the property performing. Your note is secured
-  by the property and paid in full at balloon.`
+  profit depends entirely on the property performing as projected.`
         : `  Our total profit at Year ${scTerm} base-case sale is ${sgn(netBase)} after
   paying off your note and all senior debt. We view this as a fair return for
-  acquiring, managing, and bearing market risk during the hold. Your note is
-  paid in full at balloon regardless of our ultimate profit or loss.`,
+  acquiring, managing, and bearing market risk during the hold.`,
   ].filter(l => l !== undefined).join('\n');
 })()}
 
