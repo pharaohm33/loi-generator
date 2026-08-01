@@ -113,6 +113,7 @@ body {
 .row:last-child { margin-bottom: 0; }
 .row.cols-2 { grid-template-columns: 1fr 1fr; }
 .row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.row.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
 .row.cols-1 { grid-template-columns: 1fr; }
 
 .field { display: flex; flex-direction: column; gap: 5px; }
@@ -498,7 +499,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       </div>
       <!-- Residential-only fields -->
       <div id="res-fields" style="display:none;">
-        <div class="row cols-3">
+        <div class="row cols-4">
           <div class="field">
             <label>Bedrooms</label>
             <input type="number" id="res_beds" placeholder="3" min="0">
@@ -509,7 +510,12 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           </div>
           <div class="field">
             <label>Market Rent / mo ($)</label>
-            <input type="number" id="res_rent" placeholder="e.g. 2200">
+            <input type="number" id="res_rent" placeholder="e.g. 2200" oninput="onResMaintInput('amt');onResMaintInput('pct')">
+          </div>
+          <div class="field">
+            <label>Vacancy Rate (%)</label>
+            <div class="suffix-wrap"><input type="number" id="res_vacancy" placeholder="5" min="0" max="50" step="0.5"><span>%</span></div>
+            <div style="font-size:10px;color:#6b7280;margin-top:2px;">blank = 5% default</div>
           </div>
         </div>
         <div class="row cols-2">
@@ -2043,7 +2049,8 @@ function recalc() {
   const isResidential = (document.getElementById('prop_type') || {}).value === 'residential';
   const resGrossRentAn = g('res_rent') * 12;
   if (isResidential && resGrossRentAn > 0 && !usingDirectNOI) {
-    const _resVac   = resGrossRentAn * 0.05;
+    const _resVacPct = g('res_vacancy') || 5;
+    const _resVac   = resGrossRentAn * _resVacPct / 100;
     const _resTax   = g('res_taxes')    || 0;
     const _resIns   = g('res_insurance') || 0;
     const _resMtAmt = g('res_maint_amt') || 0;
@@ -3999,7 +4006,8 @@ function generateBuyerPresentation() {
   const bpResMaintAmt  = g('res_maint_amt') || 0;
   const bpResMaintPct  = g('res_maint_pct') || 0;
   const bpResMaintAn   = bpResMaintAmt > 0 ? bpResMaintAmt : (bpResMaintPct > 0 ? bpResGrossRentAn * bpResMaintPct / 100 : 0);
-  const bpResVacAn     = bpResGrossRentAn * 0.05;
+  const bpResVacPct    = g('res_vacancy') || 5;
+  const bpResVacAn     = bpResGrossRentAn * bpResVacPct / 100;
   const bpResExpAn     = bpResVacAn + bpResTaxesAn + bpResInsAn + bpResMaintAn;
   if (isResidential && bpResGrossRentAn > 0 && !usingDirectNOI) {
     noiAn = bpResGrossRentAn - bpResExpAn;
@@ -4266,7 +4274,7 @@ As-Is Market Value: ${D(asIsVal)} (${pctOf(asIsVal, pp)} of purchase price)
 ${arvRaw > 0 ? `After Repair Value (ARV): ${D(arv)} (${pctOf(arv, pp)} of purchase price)\n` : ''}${isResidential && bpResGrossRentAn > 0 ? `
 RENTAL INCOME & EXPENSE SUMMARY:
   Gross Rent:                 ${Dfmt(g('res_rent'))}/mo  (${D(bpResGrossRentAn)}/yr)
-  Less: Vacancy (~5%):       −${Dfmt(bpResVacAn/12)}/mo  (−${D(bpResVacAn)}/yr)
+  Less: Vacancy (${bpResVacPct}%):       −${Dfmt(bpResVacAn/12)}/mo  (−${D(bpResVacAn)}/yr)
 ${bpResTaxesAn > 0  ? `  Less: Property Taxes:     −${Dfmt(bpResTaxesAn/12)}/mo  (−${D(bpResTaxesAn)}/yr)\n` : ''}${bpResInsAn > 0   ? `  Less: Insurance:          −${Dfmt(bpResInsAn/12)}/mo  (−${D(bpResInsAn)}/yr)\n` : ''}${bpResMaintAn > 0 ? `  Less: Maintenance${bpResMaintPct > 0 ? ' ('+bpResMaintPct+'% of rent)' : ''}:  −${Dfmt(bpResMaintAn/12)}/mo  (−${D(bpResMaintAn)}/yr)\n` : ''}  ${'─'.repeat(38)}
   Net Operating Income:       ${Dfmt(noiMo)}/mo  (${D(noiAn)}/yr)
 ` : `${asIsCapRate > 0 ? `As-Is Cap Rate: ${P(asIsCapRate)} (NOI ÷ As-Is Value)\n` : ''}${impliedVal > 0 ? `Cap Rate Implied Valuation: ${D(impliedVal)} (at ${P(capRate)} market cap on ${D(noiAn)} NOI)\n` : ''}NOI (Annual, Day-1): ${D(noiAn)}
@@ -4508,7 +4516,6 @@ function onResMaintInput(source) {
   const amtEl = document.getElementById('res_maint_amt');
   const pctEl = document.getElementById('res_maint_pct');
   const hint  = document.getElementById('res-maint-hint');
-  const arv   = g('res_arv') || g('arv') || g('as_is_value') || 0;
   const rentAn = (g('res_rent') || 0) * 12;
   if (source === 'amt') {
     pctEl.value = '';
@@ -5077,7 +5084,7 @@ ${(() => {
   const breakEvenDir = breakEvenVal > arv ? `property must APPRECIATE +${breakEvenChg}% from as-is value` : `property can fall ${Math.abs(+breakEvenChg)}% before your note is at risk`;
 
   // Note coverage check per scenario
-  const noteCovers = (saleNet) => saleNet + totalDebtAtEx >= sellerOwed ? '✓ SELLER NOTE PAID IN FULL' : '⚠ SHORTFALL: ' + D(sellerOwed - (saleNet + totalDebtAtEx - srBalBalloon));
+  const noteCovers = (saleNet) => saleNet >= 0 ? '✓ SELLER NOTE PAID IN FULL' : '⚠ SHORTFALL: ' + D(Math.min(sellerOwed, -saleNet));
 
   return [
     col('  Projected Value at Year ' + scTerm + ' (base @ +' + (apprRate*100).toFixed(1) + '%/yr)', D(projVal)),
@@ -5190,8 +5197,9 @@ function generateResidentialLOIReasoning(offerType, sellerData) {
   const resMaintPct  = g('res_maint_pct') || 0;
   const resMaintAn   = resMaintAmt > 0 ? resMaintAmt : (resMaintPct > 0 ? resGrossRentAn * resMaintPct / 100 : 0);
   const resExpensesAn = resTaxesAn + resInsAn + resMaintAn;
-  // NOI for residential: gross rent − vacancy (~5%) − taxes − insurance − maintenance
-  const resVacancyAn  = resGrossRentAn * 0.05;
+  // NOI for residential: gross rent − vacancy − taxes − insurance − maintenance
+  const resVacPct     = g('res_vacancy') || 5;
+  const resVacancyAn  = resGrossRentAn * resVacPct / 100;
   const resNOIAn      = resGrossRentAn - resVacancyAn - resExpensesAn;
   const resNOIMo      = resNOIAn / 12;
 
@@ -5394,7 +5402,7 @@ by keeping the buyer's debt service manageable without a bank.`}
 ${resRent > 0 ? `
 RENTAL INCOME & EXPENSE ANALYSIS:
 ${col('  Gross Rent', Dfmt(resRent) + '/mo  (' + D(resGrossRentAn) + '/yr)')}
-${col('  Less: Vacancy (~5%)', '−' + Dfmt(resVacancyAn/12) + '/mo  (−' + D(resVacancyAn) + '/yr)')}
+${col('  Less: Vacancy (' + resVacPct + '%)', '−' + Dfmt(resVacancyAn/12) + '/mo  (−' + D(resVacancyAn) + '/yr)')}
 ${resTaxesAn > 0  ? col('  Less: Property Taxes', '−' + Dfmt(resTaxesAn/12) + '/mo  (−' + D(resTaxesAn) + '/yr)') : '  Property Taxes:               (not entered)'}
 ${resInsAn > 0    ? col('  Less: Insurance', '−' + Dfmt(resInsAn/12) + '/mo  (−' + D(resInsAn) + '/yr)') : '  Insurance:                    (not entered)'}
 ${resMaintAn > 0  ? col('  Less: Maintenance' + (resMaintPct > 0 ? ' (' + resMaintPct + '% of rent)' : ''), '−' + Dfmt(resMaintAn/12) + '/mo  (−' + D(resMaintAn) + '/yr)') : '  Maintenance:                  (not entered)'}
@@ -5480,8 +5488,9 @@ ${(() => {
 
   // Senior loan remaining balance at balloon (amortizing)
   const srBalRes = (() => {
-    if (calcMaxLoan <= 0 || convRate30 <= 0) return calcMaxLoan;
-    const rm = convRate30/12, n = convAmort*12, k = Math.min(scTerm*12, n);
+    if (calcMaxLoan <= 0) return 0;
+    if (srRate <= 0 || srAmort <= 0) return Math.max(calcMaxLoan - srPmt * scTerm * 12, 0);
+    const rm = srRate/12, n = srAmort*12, k = Math.min(scTerm*12, n);
     if (k >= n) return 0;
     return calcMaxLoan * (Math.pow(1+rm,n) - Math.pow(1+rm,k)) / (Math.pow(1+rm,n) - 1);
   })();
@@ -5497,7 +5506,7 @@ ${(() => {
     ? `property must appreciate +${bePct}% to cover all debt`
     : `property can decline ${Math.abs(+bePct)}% before note is at risk`;
   const isTightR    = netBase > 0 && netBase < 30000;
-  const noteOK      = (n) => n + totalDebtR >= balloon ? '✓ SELLER NOTE PAID IN FULL' : '⚠ SHORTFALL: ' + D(balloon - (n + totalDebtR));
+  const noteOK      = (n) => n >= 0 ? '✓ SELLER NOTE PAID IN FULL' : '⚠ SHORTFALL: ' + D(Math.min(balloon, -n));
   const sgn         = (n) => (n >= 0 ? '+' : '−') + D(n);
 
   return [
@@ -5598,7 +5607,7 @@ const FIELDS = [
   'sub_mortgage_balance','sub_mortgage_rate','sub_mortgage_pmt','sub_servicer','sub_cash_to_seller',
   'loi_agent_fee','loi_agent_fee_type',
   // Residential fields
-  'res_beds','res_baths','res_rent','res_arv','res_comp',
+  'res_beds','res_baths','res_rent','res_vacancy','res_arv','res_comp',
   'res_taxes','res_insurance','res_maint_amt','res_maint_pct'
 ];
 
