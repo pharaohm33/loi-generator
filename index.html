@@ -5114,7 +5114,7 @@ ${sep}
 The carry note is not a negotiating concession or a sign of buyer weakness.
 It is the mathematical bridge between two realities:
 
-  Reality 1: The lender will fund ${D(maxLoan)} — no more, no less.
+  Reality 1: The lender will fund ${D(maxLoan)} at ${P(isHMorBridge ? actualLTV : srLTV)} LTV on current as-is value.
   Reality 2: The agreed purchase price is ${D(pp)}.
   Gap:       ${D(carry)}  ← this gap IS the seller carry note.
 
