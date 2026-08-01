@@ -5323,8 +5323,8 @@ ${col('  Less: Seller Closing Costs (~2%)',  '–' + D(arv * 0.02))}
 ${col('  Less: Inspection / Repair Credits',  '–$X  (typical $5,000–$25,000 range)')}
 ${thin.slice(0,46)}
 ${col('  Net Cash to Seller (One-Time)', D(traditionalNet))}
-${col('  Timeline to Close', '30–90 days (pending buyer financing approval)')}
-${col('  Risk', 'Buyer financing may fall through — back to market')}
+${col('  Timeline to Close', '30–90 days + financing contingency period')}
+${col('  Risk', 'Appraisal, inspection credits, and buyer qualification — multiple failure points')}
 
 OUR SELLER-FINANCING OFFER:
 ${col('  Cash at Closing', D(cac))}
@@ -5336,7 +5336,6 @@ ${calcMaxLoan > cac ? `  Senior Loan: ${D(calcMaxLoan)} — the ${D(calcMaxLoan 
 ${col('  Balloon at Year ' + scTerm, D(balloon))}
 ${thin.slice(0,46)}
 ${col('  TOTAL RECEIPTS', D(totalReceipts) + '  over ' + scTerm + ' years')}
-${col('  Timeline to Close', '7–21 days — no bank approval required')}
 ${col('  Risk', 'You hold 2nd lien on property you already know')}
 ${col('  Your Net Advantage', (ourAdvantage >= 0 ? '+' : '') + D(ourAdvantage) + ' MORE than a traditional listing')}
 
