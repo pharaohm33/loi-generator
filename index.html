@@ -532,7 +532,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <div class="prefix-wrap"><span>$</span><input type="number" id="res_insurance" placeholder="e.g. 1200" step="100"></div>
           </div>
           <div class="field">
-            <label>Maintenance ($/yr or % of value)</label>
+            <label>Maintenance ($/yr or % of rent)</label>
             <div style="display:flex;gap:6px;align-items:center;">
               <div class="prefix-wrap" style="flex:1"><span>$</span><input type="number" id="res_maint_amt" placeholder="e.g. 2400" step="100" oninput="onResMaintInput('amt')"></div>
               <span style="color:#6b7280;font-size:12px;">or</span>
@@ -2048,7 +2048,7 @@ function recalc() {
     const _resIns   = g('res_insurance') || 0;
     const _resMtAmt = g('res_maint_amt') || 0;
     const _resMtPct = g('res_maint_pct') || 0;
-    const _resMt    = _resMtAmt > 0 ? _resMtAmt : (_resMtPct > 0 ? (arvRaw > 0 ? arvRaw : asIsVal) * _resMtPct / 100 : 0);
+    const _resMt    = _resMtAmt > 0 ? _resMtAmt : (_resMtPct > 0 ? resGrossRentAn * _resMtPct / 100 : 0);
     noiAn = resGrossRentAn - _resVac - _resTax - _resIns - _resMt;
     noiMo = noiAn / 12;
   }
@@ -3998,7 +3998,7 @@ function generateBuyerPresentation() {
   const bpResInsAn     = g('res_insurance') || 0;
   const bpResMaintAmt  = g('res_maint_amt') || 0;
   const bpResMaintPct  = g('res_maint_pct') || 0;
-  const bpResMaintAn   = bpResMaintAmt > 0 ? bpResMaintAmt : (bpResMaintPct > 0 ? (arvRaw > 0 ? arvRaw : asIsVal) * bpResMaintPct / 100 : 0);
+  const bpResMaintAn   = bpResMaintAmt > 0 ? bpResMaintAmt : (bpResMaintPct > 0 ? bpResGrossRentAn * bpResMaintPct / 100 : 0);
   const bpResVacAn     = bpResGrossRentAn * 0.05;
   const bpResExpAn     = bpResVacAn + bpResTaxesAn + bpResInsAn + bpResMaintAn;
   if (isResidential && bpResGrossRentAn > 0 && !usingDirectNOI) {
@@ -4267,7 +4267,7 @@ ${arvRaw > 0 ? `After Repair Value (ARV): ${D(arv)} (${pctOf(arv, pp)} of purcha
 RENTAL INCOME & EXPENSE SUMMARY:
   Gross Rent:                 ${Dfmt(g('res_rent'))}/mo  (${D(bpResGrossRentAn)}/yr)
   Less: Vacancy (~5%):       −${Dfmt(bpResVacAn/12)}/mo  (−${D(bpResVacAn)}/yr)
-${bpResTaxesAn > 0  ? `  Less: Property Taxes:     −${Dfmt(bpResTaxesAn/12)}/mo  (−${D(bpResTaxesAn)}/yr)\n` : ''}${bpResInsAn > 0   ? `  Less: Insurance:          −${Dfmt(bpResInsAn/12)}/mo  (−${D(bpResInsAn)}/yr)\n` : ''}${bpResMaintAn > 0 ? `  Less: Maintenance${bpResMaintPct > 0 ? ' ('+bpResMaintPct+'% of value)' : ''}:  −${Dfmt(bpResMaintAn/12)}/mo  (−${D(bpResMaintAn)}/yr)\n` : ''}  ${'─'.repeat(38)}
+${bpResTaxesAn > 0  ? `  Less: Property Taxes:     −${Dfmt(bpResTaxesAn/12)}/mo  (−${D(bpResTaxesAn)}/yr)\n` : ''}${bpResInsAn > 0   ? `  Less: Insurance:          −${Dfmt(bpResInsAn/12)}/mo  (−${D(bpResInsAn)}/yr)\n` : ''}${bpResMaintAn > 0 ? `  Less: Maintenance${bpResMaintPct > 0 ? ' ('+bpResMaintPct+'% of rent)' : ''}:  −${Dfmt(bpResMaintAn/12)}/mo  (−${D(bpResMaintAn)}/yr)\n` : ''}  ${'─'.repeat(38)}
   Net Operating Income:       ${Dfmt(noiMo)}/mo  (${D(noiAn)}/yr)
 ` : `${asIsCapRate > 0 ? `As-Is Cap Rate: ${P(asIsCapRate)} (NOI ÷ As-Is Value)\n` : ''}${impliedVal > 0 ? `Cap Rate Implied Valuation: ${D(impliedVal)} (at ${P(capRate)} market cap on ${D(noiAn)} NOI)\n` : ''}NOI (Annual, Day-1): ${D(noiAn)}
 `}Cash to Seller at Closing: ${D(cac)} (${pctOf(cac, pp)} of purchase price)
@@ -4509,14 +4509,15 @@ function onResMaintInput(source) {
   const pctEl = document.getElementById('res_maint_pct');
   const hint  = document.getElementById('res-maint-hint');
   const arv   = g('res_arv') || g('arv') || g('as_is_value') || 0;
+  const rentAn = (g('res_rent') || 0) * 12;
   if (source === 'amt') {
     pctEl.value = '';
     const amt = parseFloat(amtEl.value) || 0;
-    hint.textContent = arv > 0 && amt > 0 ? '≈ ' + ((amt / arv) * 100).toFixed(2) + '% of value/yr' : '';
+    hint.textContent = rentAn > 0 && amt > 0 ? '≈ ' + ((amt / rentAn) * 100).toFixed(1) + '% of annual rent' : '';
   } else {
     amtEl.value = '';
     const pct = parseFloat(pctEl.value) || 0;
-    const derived = arv > 0 ? arv * pct / 100 : 0;
+    const derived = rentAn > 0 ? rentAn * pct / 100 : 0;
     hint.textContent = derived > 0 ? '≈ $' + Math.round(derived).toLocaleString() + '/yr' : '';
   }
 }
@@ -5184,11 +5185,11 @@ function generateResidentialLOIReasoning(offerType, sellerData) {
   // Residential expenses
   const resTaxesAn   = g('res_taxes')    || 0;
   const resInsAn     = g('res_insurance') || 0;
+  const resGrossRentAn = resRent * 12;
   const resMaintAmt  = g('res_maint_amt') || 0;
   const resMaintPct  = g('res_maint_pct') || 0;
-  const resMaintAn   = resMaintAmt > 0 ? resMaintAmt : (resMaintPct > 0 ? arv * resMaintPct / 100 : 0);
+  const resMaintAn   = resMaintAmt > 0 ? resMaintAmt : (resMaintPct > 0 ? resGrossRentAn * resMaintPct / 100 : 0);
   const resExpensesAn = resTaxesAn + resInsAn + resMaintAn;
-  const resGrossRentAn = resRent * 12;
   // NOI for residential: gross rent − vacancy (~5%) − taxes − insurance − maintenance
   const resVacancyAn  = resGrossRentAn * 0.05;
   const resNOIAn      = resGrossRentAn - resVacancyAn - resExpensesAn;
@@ -5396,7 +5397,7 @@ ${col('  Gross Rent', Dfmt(resRent) + '/mo  (' + D(resGrossRentAn) + '/yr)')}
 ${col('  Less: Vacancy (~5%)', '−' + Dfmt(resVacancyAn/12) + '/mo  (−' + D(resVacancyAn) + '/yr)')}
 ${resTaxesAn > 0  ? col('  Less: Property Taxes', '−' + Dfmt(resTaxesAn/12) + '/mo  (−' + D(resTaxesAn) + '/yr)') : '  Property Taxes:               (not entered)'}
 ${resInsAn > 0    ? col('  Less: Insurance', '−' + Dfmt(resInsAn/12) + '/mo  (−' + D(resInsAn) + '/yr)') : '  Insurance:                    (not entered)'}
-${resMaintAn > 0  ? col('  Less: Maintenance' + (resMaintPct > 0 ? ' (' + resMaintPct + '% of value)' : ''), '−' + Dfmt(resMaintAn/12) + '/mo  (−' + D(resMaintAn) + '/yr)') : '  Maintenance:                  (not entered)'}
+${resMaintAn > 0  ? col('  Less: Maintenance' + (resMaintPct > 0 ? ' (' + resMaintPct + '% of rent)' : ''), '−' + Dfmt(resMaintAn/12) + '/mo  (−' + D(resMaintAn) + '/yr)') : '  Maintenance:                  (not entered)'}
 ${thin.slice(0,46)}
 ${col('  Net Operating Income (NOI)', Dfmt(resNOIMo) + '/mo  (' + D(resNOIAn) + '/yr)')}
 ${scMonthly > 0 ? col('  Less: Seller Carry Payment', '−' + Dfmt(scMonthly) + '/mo') : ''}
