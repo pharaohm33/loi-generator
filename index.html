@@ -5161,7 +5161,39 @@ ${sep}
 This offer is not a negotiating position. It reflects three hard structural ceilings
 that cannot be overcome by goodwill, creative language, or desire alone:
 
-1. DSCR CEILING — LENDER WILL NOT FUND MORE
+${isHMorBridge ? (() => {
+  const exitSeniorCap = (() => {
+    const a = g('appreciation')/100, ev = arv * Math.pow(1+a, scTerm);
+    // At exit, perm loan sized by DSCR (stabilized NOI) or LTV — take min
+    const pfNOIexit = pfNOIAnL > 0 ? pfNOIAnL : noiAn * Math.pow(1+(g('noi_growth')/100||0), scTerm);
+    const r = srRate/12, n = srAmort*12;
+    const byLTV2 = ev * srLTV;
+    const byDSCR2 = (r > 0 && n > 0) ? (pfNOIexit/12/dscrReq)*(1-Math.pow(1+r,-n))/r : byLTV2;
+    return Math.min(byLTV2, isFinite(byDSCR2) ? byDSCR2 : byLTV2);
+  })();
+  return `1. LTV CEILING — LENDER FUNDS ON AS-IS VALUE, NOT INCOME
+   At ${P(srLTV)} LTV on the current as-is value of ${D(asIsVal)}, the lender will
+   fund ${D(maxLoan)}. The appraisal — not the purchase price — determines the
+   loan amount. We cannot offer more cash than the appraisal will support.
+
+2. BALLOON RISK CEILING — HIGHER CARRY = HIGHER MATURITY RISK
+   Every dollar added to the carry increases the Year-${scTerm} balloon.
+   At exit, the buyer must retire both the senior loan balance and your
+   carry balloon. At ${P(g('appreciation')/100||0.03)}/yr appreciation and stabilized NOI,
+   the property can support approximately ${D(exitSeniorCap)} in senior debt at
+   Year ${scTerm}. The current carry balloon of ${D(balloon)} is sized to stay within
+   what the exit can realistically support.
+
+3. AS-IS VALUE ANCHOR — THE APPRAISAL SETS THE FLOOR
+   ${useARV
+     ? `The lender sizes today's loan on as-is value (${D(asIsVal)}). The upside to
+   ARV (${D(arv)}) is the buyer's execution risk — it is not a guaranteed number
+   at closing. Our offer of ${D(pp)} is based on reaching that ARV through the
+   business plan, which the buyer bears responsibility for.`
+     : `The current as-is appraised value of ${D(asIsVal)} is the basis for both the
+   lender's loan and the exit. Our offer of ${D(pp)} reflects a fair acquisition
+   basis at current income levels.`}`;
+})() : `1. DSCR CEILING — LENDER WILL NOT FUND MORE
    Maximum loan at ${dscrReq.toFixed(2)}x DSCR / ${P(srRate)} / ${srAmort}-yr amort: ${D(maxLoan)}.
    Every dollar above this requires more NOI — which does not exist today.
    This ceiling is enforced by the lender's underwriting model, not by us.
@@ -5179,7 +5211,7 @@ that cannot be overcome by goodwill, creative language, or desire alone:
      ? `At a ${P(capRate)} market cap rate, this property's income supports ${D(impliedVal)}.
    Our offer of ${D(pp)} is ${pp > impliedVal ? D(pp-impliedVal) + ' above income-supported value — achievable\n   only because the carry structure provides gap financing the lender cannot.' : 'at or within income-supported value — this is an aggressive but fair offer.'}`
      : `The ${useARV ? 'after-repair value (ARV) of ' + D(arv) : 'as-is appraised value of ' + D(asIsVal)} reflects the market's view of this
-   property at current income levels. Our offer reflects a fair acquisition basis.`}
+   property at current income levels. Our offer reflects a fair acquisition basis.`}`}
 
 ${sep}
 ${isCounter ? 'PART VII' : 'PART VI'} — SALE EXIT PLAN, MARKET CONTINGENCY & BUYER TRANSPARENCY
