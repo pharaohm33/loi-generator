@@ -947,10 +947,11 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <label>Acq / Bird Dog Fee <span id="acq-dollar" style="font-weight:700;color:#15803d;margin-left:4px"></span></label>
           <div style="display:flex;gap:4px;margin-bottom:4px;">
             <button id="acq-pp"  onclick="setAcqFeeBasis('purchase_price')" style="padding:2px 8px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">% PP</button>
-            <button id="acq-cac" onclick="setAcqFeeBasis('at_closing')"     style="padding:2px 8px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:11px;font-weight:700;cursor:pointer;">% Cash@Close</button>
+            <button id="acq-cac" onclick="setAcqFeeBasis('at_closing')"     style="padding:2px 8px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:11px;font-weight:700;cursor:pointer;">% Buyer Net</button>
             <input type="hidden" id="acq_fee_basis" value="purchase_price">
           </div>
           <div class="suffix-wrap"><input type="number" id="acq_pct" placeholder="1" step="0.25"><span>%</span></div>
+          <div id="acq-basis-hint" style="font-size:10px;color:#888;margin-top:2px;display:none;">% of buyer&apos;s net cash at close (assuming $0 acq fee) — 50% = even split.</div>
         </div>
       </div>
       <div class="row cols-2">
@@ -1738,10 +1739,12 @@ function setAppraisalContingency(v) {
 function setAcqFeeBasis(b) {
   acqFeeBasis = b;
   document.getElementById('acq_fee_basis').value = b;
-  const pp  = document.getElementById('acq-pp');
-  const cac = document.getElementById('acq-cac');
-  if (pp)  { pp.style.background  = b === 'purchase_price' ? '#111' : '#f9fafb'; pp.style.color  = b === 'purchase_price' ? '#fff' : '#555'; }
-  if (cac) { cac.style.background = b === 'at_closing'     ? '#111' : '#f9fafb'; cac.style.color = b === 'at_closing'     ? '#fff' : '#555'; }
+  const ppBtn  = document.getElementById('acq-pp');
+  const cacBtn = document.getElementById('acq-cac');
+  const hint   = document.getElementById('acq-basis-hint');
+  if (ppBtn)  { ppBtn.style.background  = b === 'purchase_price' ? '#111' : '#f9fafb'; ppBtn.style.color  = b === 'purchase_price' ? '#fff' : '#555'; }
+  if (cacBtn) { cacBtn.style.background = b === 'at_closing'     ? '#111' : '#f9fafb'; cacBtn.style.color = b === 'at_closing'     ? '#fff' : '#555'; }
+  if (hint)   hint.style.display = b === 'at_closing' ? 'block' : 'none';
   recalc();
 }
 
@@ -2222,14 +2225,23 @@ function recalc() {
 
   const esc1   = pp * g('esc1_pct') / 100;  // 1st escrow: % of purchase price
   const esc2   = (pp - g('cash_at_closing')) * g('esc2_pct') / 100;  // 2nd escrow: % of seller carry (PP - cash to seller)
-  const acqFeeBasisAmt = acqFeeBasis === 'at_closing' ? cac : pp;
-  const acqFee = acqFeeBasisAmt * g('acq_pct') / 100;
   const pts    = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
   const agentFeeRaw = g('loi_agent_fee') || 0;
   const agentFeeType = (document.getElementById('loi_agent_fee_type') || {}).value || 'pct';
   const agentFee = agentFeeRaw > 0 ? (agentFeeType === 'pct' ? pp * agentFeeRaw / 100 : agentFeeRaw) : 0;
+  // Acq fee basis: % of PP, or % of buyer's net-at-close assuming $0 acq fee
+  let acqFee;
+  if (acqFeeBasis === 'at_closing') {
+    const closingNoAcq  = esc1 + esc2 + pts + broker + g('emd') + agentFee;
+    const tafPrinNoAcq  = Math.max(0, (asIsVal - maxLoan) + (closingNoAcq - esc2) - g('buyer_cash') - rehabOOP);
+    const tafFeeNoAcq   = tafPrinNoAcq * g('taf_pct') / 100;
+    const buyerNetNoAcq = maxLoan + g('buyer_cash') - cac - closingNoAcq - tafFeeNoAcq - rehabOOP;
+    acqFee = Math.max(0, buyerNetNoAcq) * g('acq_pct') / 100;
+  } else {
+    acqFee = pp * g('acq_pct') / 100;
+  }
   const closing = esc1 + esc2 + acqFee + pts + broker + g('emd') + agentFee;
   const sellerClosingShare = closingCostParty === 'seller' ? 1 : closingCostParty === 'split' ? 0.5 : 0;
   const sellerClosingAmt   = Math.round(closing * sellerClosingShare);
@@ -4159,14 +4171,22 @@ function generateBuyerPresentation() {
 
   const esc1 = pp * g('esc1_pct') / 100;
   const esc2 = (pp - g('cash_at_closing')) * g('esc2_pct') / 100;
-  const acqFeeBasisAmtBP = acqFeeBasis === 'at_closing' ? cac : pp;
-  const acqFee = acqFeeBasisAmtBP * g('acq_pct') / 100;
   const pts = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
   const loiAgentFeeRaw = g('loi_agent_fee') || 0;
   const loiAgentFeeType = (document.getElementById('loi_agent_fee_type') || {}).value || 'pct';
   const loiAgentFee = loiAgentFeeRaw > 0 ? (loiAgentFeeType === 'pct' ? pp * loiAgentFeeRaw / 100 : loiAgentFeeRaw) : 0;
+  let acqFee;
+  if (acqFeeBasis === 'at_closing') {
+    const closingNoAcq  = esc1 + esc2 + pts + broker + g('emd') + loiAgentFee;
+    const tafPrinNoAcq  = Math.max(0, (asIsVal - maxLoan) + (closingNoAcq - esc2) - g('buyer_cash') - rehabOOP);
+    const tafFeeNoAcq   = tafPrinNoAcq * g('taf_pct') / 100;
+    const buyerNetNoAcq = maxLoan + g('buyer_cash') - cac - closingNoAcq - tafFeeNoAcq - rehabOOP;
+    acqFee = Math.max(0, buyerNetNoAcq) * g('acq_pct') / 100;
+  } else {
+    acqFee = pp * g('acq_pct') / 100;
+  }
   const closing = esc1 + esc2 + acqFee + pts + broker + g('emd') + loiAgentFee;
   const bpSellerClosingShare = closingCostParty === 'seller' ? 1 : closingCostParty === 'split' ? 0.5 : 0;
   const bpSellerClosingAmt   = Math.round(closing * bpSellerClosingShare);
