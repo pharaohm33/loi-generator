@@ -1291,6 +1291,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="sum-row"><span class="lbl">− Closing Costs</span><span class="val" id="s-out-closing">—</span></div>
       <div class="sum-row"><span class="lbl">− TAF Fee</span><span class="val" id="s-out-taf">—</span></div>
       <div class="sum-row"><span class="lbl">− Rehab Out-of-Pocket</span><span class="val" id="s-out-rehab">—</span></div>
+      <div class="sum-row" id="s-out-prepay-row" style="display:none"><span class="lbl">− Interest Pre-Pay to Seller</span><span class="val" id="s-out-prepay">—</span></div>
     </div>
     <div class="sum-total" id="cashback-total-row">
       <span id="cashback-label">Buyer Net at Close</span>
@@ -2273,9 +2274,9 @@ function recalc() {
   const tafFee  = tafPrin * g('taf_pct') / 100;
   const basis   = pp + closing + tafFee;
 
-  // Buyer net at close: inflows − outflows
+  // Buyer net at close: inflows − outflows (prepay is a direct cash outflow from buyer)
   const totalInflows  = maxLoan + g('buyer_cash');
-  const totalOutflows = cac + closing + tafFee + rehabOOP;
+  const totalOutflows = cac + closing + tafFee + rehabOOP + interestPrepayAtClose;
   const buyerNet      = totalInflows - totalOutflows;
   const parkEscrow    = document.getElementById('park_escrow').value === 'Y';
   const cashTobuyer   = parkEscrow ? 0 : Math.max(buyerNet, 0);
@@ -2412,6 +2413,11 @@ function recalc() {
   set('s-out-closing', fm(closing));
   set('s-out-taf',     fm(tafFee));
   set('s-out-rehab',   fm(rehabOOP));
+  const prepayDisplayRow = document.getElementById('s-out-prepay-row');
+  if (prepayDisplayRow) {
+    prepayDisplayRow.style.display = interestPrepayAtClose > 0 ? '' : 'none';
+    if (interestPrepayAtClose > 0) set('s-out-prepay', fm(interestPrepayAtClose));
+  }
 
   const cbEl    = document.getElementById('s-cashback');
   const cbRow   = document.getElementById('cashback-total-row');
