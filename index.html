@@ -3305,8 +3305,9 @@ Total seller receipts are ${esc(D(totalReceipts))}.`;
 Months 1–${months}: ${esc(D(scMonthly))}/month
 Total Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
 Interest accrues at ${esc(P(scRate))} simple interest on the declining balance — due at balloon
-Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))} (remaining principal + accrued interest)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Accrued Interest at Balloon: ${esc(D(finIncome))}
+Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (remaining principal + ${esc(D(finIncome))} accrued interest)
+Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
       narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -3314,11 +3315,11 @@ During the ${scTerm}-year term, buyer will make monthly principal-reduction paym
 
 Interest accrues separately at ${esc(P(scRate))} simple interest on the declining principal balance and is not paid monthly — it is due in full at the balloon.
 
-At the end of year ${scTerm}, buyer will pay the remaining principal balance plus all accrued interest through a balloon payment of approximately ${esc(D(balloon))}.
+At the end of year ${scTerm}, buyer will pay the remaining principal balance plus ${esc(D(finIncome))} in accrued interest through a balloon payment of ${esc(D(balloon))}.
 
 ${finIncome <= 0
   ? `Total seller receipts equal the full ${esc(D(pp))} purchase price.`
-  : `Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`}`;
+  : `Total seller receipts are ${esc(D(totalReceipts))} — the full ${esc(D(pp))} purchase price plus ${esc(D(finIncome))} in accrued interest at ${esc(P(scRate))} simple interest.`}`;
     }
 
   } else if (mode === 'interest_only') {
