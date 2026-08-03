@@ -791,6 +791,15 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="prefix-wrap"><span>$</span><input type="number" id="monthly_principal" placeholder="0" step="500"></div>
         </div>
       </div>
+      <!-- Interest Pre-Pay at Close — shown only for principal_only mode with rate > 0 -->
+      <div id="interest-prepay-row" class="row cols-1" style="display:none">
+        <div class="field loi">
+          <label><span class="loi-dot"></span> Interest Pre-Pay to Seller at Close <span class="loi-tag">→ LOI</span>
+            <span style="font-size:10px;color:#888;font-weight:400;display:block;">Buyer pre-pays accrued interest at closing — reduces balloon by same amount</span>
+          </label>
+          <div class="prefix-wrap"><span>$</span><input type="number" id="interest_prepay_at_close" placeholder="0" step="1000" oninput="recalc()"></div>
+        </div>
+      </div>
       <!-- P&I: seller carry amortization period -->
       <div id="sc-amort-row" class="row cols-1" style="display:none">
         <div class="field loi">
@@ -1703,6 +1712,7 @@ let staticCF = false;
 let closingCostParty = 'buyer';     // 'buyer' | 'seller' | 'split'
 let appraisalContingency = 'on';    // 'on' | 'off'
 let acqFeeBasis = 'purchase_price'; // 'purchase_price' | 'at_closing'
+let interestPrepayAtClose = 0;
 
 function setAgentFeeType(type) {
   document.getElementById('loi_agent_fee_type').value = type;
@@ -2208,6 +2218,13 @@ function recalc() {
   const totalReceipts = cac + totalPmts + balloon;
   const finIncome = totalReceipts - pp;
 
+  // Interest pre-pay at close — only applies for principal_only mode with a rate
+  const _totalAccruedDeferred = (ph1Result.accruedDeferred || 0) + (ph2Result ? ph2Result.accruedDeferred || 0 : 0);
+  const _rawPrepay = (mode === 'principal_only' && scRate > 0) ? g('interest_prepay_at_close') : 0;
+  interestPrepayAtClose = Math.min(_rawPrepay, Math.round(_totalAccruedDeferred));
+  const _prepayRow = document.getElementById('interest-prepay-row');
+  if (_prepayRow) _prepayRow.style.display = (mode === 'principal_only' && scRate > 0) ? '' : 'none';
+
   // Helper: SC monthly payment at a given year (switches at phase boundary)
   function scMonthlyAtYear(yr) {
     if (!ph2Enabled || yr <= ph1Years) return scMonthly;
@@ -2237,7 +2254,7 @@ function recalc() {
     const closingNoAcq  = esc1 + esc2 + pts + broker + g('emd') + agentFee;
     const tafPrinNoAcq  = Math.max(0, (asIsVal - maxLoan) + (closingNoAcq - esc2) - g('buyer_cash') - rehabOOP);
     const tafFeeNoAcq   = tafPrinNoAcq * g('taf_pct') / 100;
-    const buyerNetNoAcq = maxLoan + g('buyer_cash') - cac - closingNoAcq - tafFeeNoAcq - rehabOOP;
+    const buyerNetNoAcq = maxLoan + g('buyer_cash') - cac - closingNoAcq - tafFeeNoAcq - rehabOOP - interestPrepayAtClose;
     // When TAF is already triggered, acqFee increases tafPrin 1:1 and tafFee by acqFee*t.
     // Solve acqFee = p*B0/(1+p*t) for an exact split (eliminates the TAF feedback loop).
     const p = g('acq_pct') / 100;
@@ -2249,7 +2266,7 @@ function recalc() {
   const closing = esc1 + esc2 + acqFee + pts + broker + g('emd') + agentFee;
   const sellerClosingShare = closingCostParty === 'seller' ? 1 : closingCostParty === 'split' ? 0.5 : 0;
   const sellerClosingAmt   = Math.round(closing * sellerClosingShare);
-  const sellerNetAtClose   = cac - sellerClosingAmt;
+  const sellerNetAtClose   = cac - sellerClosingAmt + interestPrepayAtClose;
   // TAF funds Closing 1 only; esc2 (2nd closing) is paid from seller carry waterfall at Closing 2
   const closing1 = closing - esc2;
   const tafPrin = Math.max(0, (asIsVal - maxLoan) + closing1 - g('buyer_cash') - rehabOOP);
@@ -2725,26 +2742,32 @@ function recalc() {
     const pfRefiWithCF = pfRefi + pfCumCF;
 
     if (isBalloon) {
-      balloonSaleSurplus  = saleSurplus; balloonRefiSurplus = refiSurplus; balloonCumCF = cumCF;
+      // Net seller owed at balloon: subtract interest pre-paid at closing
+      const sellerOweNet     = Math.max(0, sellerOwe - interestPrepayAtClose);
+      const saleSurplusNet   = salePct - srBal - sellerOweNet;
+      const refiSurplusNet   = refiProc - srBal - sellerOweNet;
+      const pfSaleNet_adj    = pfImplied * (1 - saleClosingPct) - srBal - sellerOweNet;
+      const pfRefiNet_adj    = refiProceeds(pfImplied, pfNOIyr) - srBal - sellerOweNet;
+      balloonSaleSurplus  = saleSurplusNet; balloonRefiSurplus = refiSurplusNet; balloonCumCF = cumCF;
       balloonStaticCumCF  = staticCumCFAccum; balloonPfCumCF = pfCumCF;
       balloonPfNOI        = pfNOIyr;
-      balloonPfSaleWithCF = pfSaleWithCF;
-      balloonPfRefiWithCF = pfRefiWithCF;
+      balloonPfSaleWithCF = pfSaleNet_adj + pfCumCF;
+      balloonPfRefiWithCF = pfRefiNet_adj + pfCumCF;
       // Cache for generateBuyerPresentation to use the exact same computed values
       _exitCache = {
         exitPropVal: propVal,
         exitSrBal: srBal,
-        exitSellerOwed: sellerOwe,
+        exitSellerOwed: sellerOweNet,
         cumCF,
-        saleNet: saleSurplus,
-        saleNetWithCF: saleCF,
-        refiNet: refiSurplus,
-        refiNetWithCF: refiCF,
+        saleNet: saleSurplusNet,
+        saleNetWithCF: saleSurplusNet + cumCF,
+        refiNet: refiSurplusNet,
+        refiNetWithCF: refiSurplusNet + cumCF,
         pfCumCF,
-        pfSaleNet: pfSale,
-        pfSaleWithCF,
-        pfRefiNet: pfRefi,
-        pfRefiWithCF,
+        pfSaleNet: pfSaleNet_adj,
+        pfSaleWithCF: pfSaleNet_adj + pfCumCF,
+        pfRefiNet: pfRefiNet_adj,
+        pfRefiWithCF: pfRefiNet_adj + pfCumCF,
         pfNOIatBalloon: pfNOIyr,
         totalDebtMo,
         dispDayOneDebt,
@@ -2757,6 +2780,7 @@ function recalc() {
         totalClosing: closing,
         sellerClosingAmt,
         sellerNetAtClose,
+        interestPrepayAtClose,
       };
     }
 
@@ -3300,25 +3324,32 @@ At the end of year ${scTerm}, buyer will pay the remaining principal balance thr
 Total seller receipts are ${esc(D(totalReceipts))}.`;
     } else {
       // Principal-only mode with interest accruing to balloon
+      const loiRemBal   = Math.round(loiPh1.balAtEnd);
+      const loiAccrued  = Math.round(loiPh1.accruedDeferred);
+      const netAccrued  = loiAccrued - interestPrepayAtClose;
+      const netBalloon  = balloon - interestPrepayAtClose;
       pmtBlock =
 `Monthly Principal-Reduction Payments:
 Months 1–${months}: ${esc(D(scMonthly))}/month
-Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))} — reduces ${esc(D(carry))} carry to ${esc(D(Math.round(loiPh1.balAtEnd)))} remaining balance
-Accrued Interest at Balloon: ${esc(D(Math.round(loiPh1.accruedDeferred)))} (${esc(P(scRate))} simple interest on declining balance — due at balloon)
-Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (${esc(D(Math.round(loiPh1.balAtEnd)))} remaining principal + ${esc(D(Math.round(loiPh1.accruedDeferred)))} accrued interest)
+Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))} — reduces ${esc(D(carry))} carry to ${esc(D(loiRemBal))} remaining balance${interestPrepayAtClose > 0 ? `
+Interest Pre-Paid at Closing: ${esc(D(interestPrepayAtClose))} (paid at close — reduces balloon by same amount)` : ''}
+${interestPrepayAtClose > 0 ? 'Remaining ' : ''}Accrued Interest at Balloon: ${esc(D(netAccrued))} (${esc(P(scRate))} simple interest on declining balance — due at balloon)
+Balloon Payment at Year ${scTerm}: ${esc(D(netBalloon))} (${esc(D(loiRemBal))} remaining principal + ${esc(D(netAccrued))} accrued interest)
 Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
       narr =
-`The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
+`The seller receives ${esc(D(cac))}${interestPrepayAtClose > 0 ? ` plus a ${esc(D(interestPrepayAtClose))} interest pre-payment` : ''} at closing and carries back ${esc(D(carry))}.
 
 During the ${scTerm}-year term, buyer will make monthly principal-reduction payments of ${esc(D(scMonthly))}/month, totaling ${esc(D(totalPmts))}. These payments reduce the outstanding balance directly.
+${interestPrepayAtClose > 0 ? `
+Buyer also pre-pays ${esc(D(interestPrepayAtClose))} in accrued interest at closing, reducing the outstanding interest obligation at the balloon by the same amount.
+` : ''}
+Interest accrues separately at ${esc(P(scRate))} simple interest on the declining principal balance and is not paid monthly — the remaining ${esc(D(netAccrued))} is due in full at the balloon.
 
-Interest accrues separately at ${esc(P(scRate))} simple interest on the declining principal balance and is not paid monthly — it is due in full at the balloon.
-
-At the end of year ${scTerm}, buyer will pay the remaining principal balance plus ${esc(D(finIncome))} in accrued interest through a balloon payment of ${esc(D(balloon))}.
+At the end of year ${scTerm}, buyer will pay the remaining principal balance plus ${esc(D(netAccrued))} in accrued interest through a balloon payment of ${esc(D(netBalloon))}.
 
 ${finIncome <= 0
   ? `Total seller receipts equal the full ${esc(D(pp))} purchase price.`
-  : `Total seller receipts are ${esc(D(totalReceipts))} — the full ${esc(D(pp))} purchase price plus ${esc(D(finIncome))} in accrued interest at ${esc(P(scRate))} simple interest.`}`;
+  : `Total seller receipts are ${esc(D(totalReceipts))} — the full ${esc(D(pp))} purchase price plus ${esc(D(finIncome))} in total accrued interest at ${esc(P(scRate))} simple interest.`}`;
     }
 
   } else if (mode === 'interest_only') {
@@ -3672,13 +3703,15 @@ Purchase Price: ${esc(D(pp))}
 ${H('SELLER RECEIVES:')}
 ${(() => {
   const loiSellerAmt  = _exitCache.sellerClosingAmt  || 0;
-  const loiSellerNet  = _exitCache.sellerNetAtClose  != null ? _exitCache.sellerNetAtClose : cac;
+  const loiSellerNet  = _exitCache.sellerNetAtClose  != null ? _exitCache.sellerNetAtClose : cac + interestPrepayAtClose;
+  const prepayLine    = interestPrepayAtClose > 0 ? `\n+ Interest Pre-Pay from Buyer: +${esc(D(interestPrepayAtClose))}` : '';
+  const prepayNetLine = interestPrepayAtClose > 0 ? `\n= Total to Seller at Closing: ${esc(D(loiSellerNet))}` : '';
   if (closingCostParty === 'seller' && loiSellerAmt > 0) {
-    return `Gross Cash at Closing: ${esc(D(cac))}\nLess: Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet Cash to Seller at Closing: ${esc(D(loiSellerNet))}`;
+    return `Gross Cash at Closing: ${esc(D(cac))}\nLess: Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}${prepayLine}\nNet to Seller at Closing: ${esc(D(loiSellerNet))}`;
   } else if (closingCostParty === 'split' && loiSellerAmt > 0) {
-    return `Seller Cash at Closing: ${esc(D(cac))}\nLess: 50% Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(loiSellerNet))}`;
+    return `Seller Cash at Closing: ${esc(D(cac))}\nLess: 50% Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}${prepayLine}\nNet to Seller at Closing: ${esc(D(loiSellerNet))}`;
   }
-  return `Seller Cash at Closing: ${esc(D(cac))}`;
+  return `Seller Cash at Closing: ${esc(D(cac))}${prepayLine}${prepayNetLine}`;
 })()}
 ${sellerCarryHeader}
 ${getAgentFeeLine(pp) ? '\n' + getAgentFeeLine(pp) : ''}
@@ -4190,7 +4223,7 @@ function generateBuyerPresentation() {
     const closingNoAcq  = esc1 + esc2 + pts + broker + g('emd') + loiAgentFee;
     const tafPrinNoAcq  = Math.max(0, (asIsVal - maxLoan) + (closingNoAcq - esc2) - g('buyer_cash') - rehabOOP);
     const tafFeeNoAcq   = tafPrinNoAcq * g('taf_pct') / 100;
-    const buyerNetNoAcq = maxLoan + g('buyer_cash') - cac - closingNoAcq - tafFeeNoAcq - rehabOOP;
+    const buyerNetNoAcq = maxLoan + g('buyer_cash') - cac - closingNoAcq - tafFeeNoAcq - rehabOOP - interestPrepayAtClose;
     const bpP = g('acq_pct') / 100;
     const bpT = tafPrinNoAcq > 0 ? g('taf_pct') / 100 : 0;
     acqFee = Math.max(0, buyerNetNoAcq) * bpP / (1 + bpP * bpT);
@@ -4205,7 +4238,7 @@ function generateBuyerPresentation() {
   const tafFee = tafPrin * g('taf_pct') / 100;
 
   const totalInflows  = maxLoan + g('buyer_cash');
-  const totalOutflows = cac + closing + tafFee + rehabOOP;
+  const totalOutflows = cac + closing + tafFee + rehabOOP + interestPrepayAtClose;
   const buyerNet = totalInflows - totalOutflows;
   const parkEscrow = document.getElementById('park_escrow').value === 'Y';
 
@@ -4478,11 +4511,12 @@ ${closingCostParty === 'buyer'
   ? `− Total Closing Costs:   −${D(closing)}\n+ Seller Closing Credit: +${D(bpSellerClosingAmt)}  (seller pays all)\n= Net Buyer Closing Cost: −${D(closing - bpSellerClosingAmt)}`
   : `− Total Closing Costs:   −${D(closing)}\n+ Seller Closing Credit: +${D(bpSellerClosingAmt)}  (seller pays 50%)\n= Net Buyer Closing Cost: −${D(closing - bpSellerClosingAmt)}`}
 − TAF Fee: −${D(tafFee)} (${pctOf(tafFee, tafPrin)} of TAF principal)
-− Rehab Out-of-Pocket: −${D(rehabOOP)}
+− Rehab Out-of-Pocket: −${D(rehabOOP)}${interestPrepayAtClose > 0 ? `
+− Interest Pre-Pay to Seller at Close: −${D(interestPrepayAtClose)}` : ''}
 ${'─'.repeat(40)}
 ${buyerNet >= 0 ? 'CASH BACK TO BUYER' : 'CASH NEEDED FROM BUYER'}: ${buyerNet >= 0 ? '+' : ''}${D(buyerNet)} (${pctOf(Math.abs(buyerNet), pp)} of purchase price)
 ${buyerNet >= 0 ? (parkEscrow ? '(Held in escrow against the deal, not taken home)' : '(Returned to buyer at closing)') : '(Buyer must bring this amount to close)'}
-${closingCostParty !== 'buyer' ? `Note: Seller closing credit of ${D(bpSellerClosingAmt)} reduces seller\'s net at closing to ${D(cac - bpSellerClosingAmt)}.` : ''}
+${closingCostParty !== 'buyer' ? `Note: Seller closing credit of ${D(bpSellerClosingAmt)} reduces seller\'s net at closing to ${D(cac - bpSellerClosingAmt + interestPrepayAtClose)}${interestPrepayAtClose > 0 ? ' (includes ' + D(interestPrepayAtClose) + ' interest pre-pay)' : ''}.` : ''}
 ══════════════════════════════════════
 EXIT PROFIT PROJECTION (Year ${balloonYr} Balloon — ${staticCF ? 'Static CF Mode' : 'Current NOI Path'})
   [NOI: ${staticCF ? 'Day-1 held flat — Static CF mode, no growth applied' : (noiGrowthRate > 0 ? `Day-1 + ${P(noiGrowthRate)}/yr growth` : 'Day-1 held flat, no growth')}${hasProforma ? ' — proforma target NOT used here' : ''}. Phase payments apply on schedule. Appreciation-based exit value.]
@@ -5047,7 +5081,7 @@ ${col('Net Cash to Seller at Closing', D(cac) + '  (' + pctOf(cac, pp) + ' of pu
 ${maxLoan > cac ? col('  ↳ Senior Loan Proceeds', D(maxLoan) + '  — diff of ' + D(maxLoan - cac) + (closingCostParty === 'seller' ? ' covers reserves (seller credits buyer closing costs)' : closingCostParty === 'split' ? ' covers 50% closing costs + reserves' : ' covers buyer closing costs & reserves')) : ''}
 ${col('Seller Carryback Note', D(carry) + ' at ' + P(scRate) + ' — ' + scTerm + '-yr balloon')}
 ${col('Balloon Payment (Year ' + scTerm + ')', D(balloon))}
-${col('Total Seller Receipts', D(totalReceipts) + '  (' + D(cac) + ' cash' + (loiTotalPmts > 0 ? ' + ' + D(loiTotalPmts) + ' payments' : '') + ' + ' + D(balloon) + ' balloon)')}
+${col('Total Seller Receipts', D(totalReceipts) + '  (' + (interestPrepayAtClose > 0 ? D(cac + interestPrepayAtClose) + ' at close' : D(cac) + ' cash') + (loiTotalPmts > 0 ? ' + ' + D(loiTotalPmts) + ' payments' : '') + ' + ' + D(balloon - interestPrepayAtClose) + ' balloon)')}
 ${col('Senior DSCR', dscrSrOnly.toFixed(2) + 'x  /  All-Debt DSCR: ' + dscrAllDebt.toFixed(2) + 'x')}
 ${col('Day-1 Net Cash Flow (Buyer)', (netCF >= 0 ? '+' : '') + Dfmt(netCF) + '/mo' + (units > 0 ? '  (' + Dfmt(netCF/units) + '/unit)' : ''))}`}
 ${comparisonTable}
@@ -5267,7 +5301,9 @@ ${isBRRRR && brgNetCash != null ? `
 ${sep}
 ${isCounter ? 'PART V' : 'PART IV'} — TOTAL SELLER PROCEEDS: WHAT YOU ACTUALLY RECEIVE
 ${sep}
-${col('Net Cash at Closing', D(cac))}
+${col('Net Cash at Closing', D(cac))}${interestPrepayAtClose > 0 ? `
+${col('  + Interest Pre-Pay from Buyer', '+' + D(interestPrepayAtClose) + '  (pre-pays portion of accrued interest at closing)')}
+${col('  = Total to Seller at Closing', D(cac + interestPrepayAtClose))}` : ''}
 ${maxLoan > cac ? `${col('  Senior Loan Proceeds', D(maxLoan))}
 ${col('  Less: Cash to Seller', '−' + D(cac))}
 ${col('  Remaining Equity (' + D(maxLoan - cac) + ')', closingCostParty === 'seller'
@@ -5292,7 +5328,7 @@ ${closingCostParty === 'seller'
   funded at close. These are a structural requirement of the senior loan
   approval — without them, the lender will not fund and the deal cannot close.
   This equity position is what enables a successful exit at Year ${scTerm}.`}
-` : ''}${mode === 'principal_only' ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(loiTotalPmts) + ' — reduces ' + D(carry) + ' carry to ' + D(loiRemPrin) + ' remaining') + '\n' + col('  Accrued Interest at Balloon', D(loiAccruedInterest) + '  (' + P(scRate) + ' simple interest on declining balance)') + '\n' + col('Balloon at Year ' + scTerm, D(balloon) + '  (' + D(loiRemPrin) + ' remaining principal + ' + D(loiAccruedInterest) + ' accrued interest)') : scMonthly > 0 ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(loiTotalPmts)) + '\n' + col('Balloon at Year ' + scTerm, D(balloon)) : '  Monthly Carry Payments:   $0 (deferred to balloon — no waiting for checks)\n' + col('Balloon at Year ' + scTerm, D(balloon))}
+` : ''}${mode === 'principal_only' ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(loiTotalPmts) + ' — reduces ' + D(carry) + ' carry to ' + D(loiRemPrin) + ' remaining') + '\n' + (interestPrepayAtClose > 0 ? col('  Interest Pre-Paid at Closing', D(interestPrepayAtClose) + '  (reduces balloon by same amount)') + '\n' : '') + col('  ' + (interestPrepayAtClose > 0 ? 'Remaining ' : '') + 'Accrued Interest at Balloon', D(loiAccruedInterest - interestPrepayAtClose) + '  (' + P(scRate) + ' simple interest on declining balance)') + '\n' + col('Balloon at Year ' + scTerm, D(balloon - interestPrepayAtClose) + '  (' + D(loiRemPrin) + ' remaining principal + ' + D(loiAccruedInterest - interestPrepayAtClose) + ' accrued interest)') : scMonthly > 0 ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(loiTotalPmts)) + '\n' + col('Balloon at Year ' + scTerm, D(balloon)) : '  Monthly Carry Payments:   $0 (deferred to balloon — no waiting for checks)\n' + col('Balloon at Year ' + scTerm, D(balloon))}
 ${thin}
 ${col('TOTAL SELLER RECEIPTS', D(totalReceipts))}
 ${propValDisplay > 0 ? col('  vs. All-Cash at ' + (useARV ? 'ARV' : 'As-Is Value'), sign(totalReceipts - propValDisplay) + '  (' + (totalReceipts > propValDisplay ? 'MORE' : 'LESS') + ' than ' + (useARV ? 'ARV' : 'as-is') + ' all-cash sale)') : ''}
@@ -5663,8 +5699,8 @@ ${calcMaxLoan > cac ? (isHM
     : closingCostParty === 'split'
     ? `50% of buyer closing costs, lender-required reserves\n  (typically 3–6 months debt service), and title/escrow/legal fees. Seller\n  credits the remaining 50% of closing costs at close.`
     : `buyer closing costs, lender-required reserves\n  (typically 3–6 months debt service), and title/escrow/legal fees. This\n  equity is a structural requirement for loan approval — not buyer profit.`}
-`) : ''}${scMonthly > 0 ? col('  Monthly Income', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' months' + (mode === 'principal_only' && scRate > 0 ? ' — reduces ' + D(carry) + ' carry to ' + D(resRemPrin) + ' remaining' : '')) : '  Monthly Income:       $0 deferred (lump sum at balloon)'}
-${col('  Balloon at Year ' + scTerm, D(balloon) + (mode === 'principal_only' && scRate > 0 ? '  (' + D(resRemPrin) + ' remaining principal + ' + D(resAccruedInterest) + ' accrued interest)' : ''))}
+`) : ''}${interestPrepayAtClose > 0 ? col('  Interest Pre-Pay at Close', '+' + D(interestPrepayAtClose) + '  (pre-pays accrued interest at closing)') + '\n' : ''}${scMonthly > 0 ? col('  Monthly Income', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' months' + (mode === 'principal_only' && scRate > 0 ? ' — reduces ' + D(carry) + ' carry to ' + D(resRemPrin) + ' remaining' : '')) : '  Monthly Income:       $0 deferred (lump sum at balloon)'}
+${col('  Balloon at Year ' + scTerm, D(balloon - interestPrepayAtClose) + (mode === 'principal_only' && scRate > 0 ? '  (' + D(resRemPrin) + ' remaining principal + ' + D(resAccruedInterest - interestPrepayAtClose) + ' accrued interest)' : ''))}
 ${thin.slice(0,46)}
 ${col('  TOTAL RECEIPTS', D(totalReceipts) + '  over ' + scTerm + ' years')}
 ${col('  Risk', 'You hold senior equity and/or 2nd lien on property you already know')}
@@ -5681,11 +5717,15 @@ ${col('  Monthly Principal Payments', Dfmt(scMonthly) + '/mo  (directly reduces 
 ${col('  Total Principal Collected', D(resTotalPmts) + '  over ' + scTerm + ' years')}
 ${thin.slice(0,46)}
 ${col('  Interest Accrual Rate', P(scRate) + ' simple interest on the declining balance')}
-${col('  Total Accrued Interest at Balloon', D(resAccruedInterest) + '  (collected all at once in Year ' + scTerm + ')')}
-${col('  Balloon Payment at Year ' + scTerm, D(balloon) + '  (' + D(resRemPrin) + ' remaining principal + ' + D(resAccruedInterest) + ' accrued interest)')}
+${interestPrepayAtClose > 0 ? col('  Interest Pre-Paid at Closing', D(interestPrepayAtClose) + '  (received at close — reduces balloon by same amount)') + '\n' : ''}${col('  ' + (interestPrepayAtClose > 0 ? 'Remaining ' : '') + 'Accrued Interest at Balloon', D(resAccruedInterest - interestPrepayAtClose) + '  (collected at Year ' + scTerm + (interestPrepayAtClose > 0 ? ' — net of pre-paid' : '') + ')')}
+${col('  Balloon Payment at Year ' + scTerm, D(balloon - interestPrepayAtClose) + '  (' + D(resRemPrin) + ' remaining principal + ' + D(resAccruedInterest - interestPrepayAtClose) + ' accrued interest)')}
 
-Your interest is not paid monthly — it accumulates on the declining balance
-and is paid in full at the balloon. This is standard seller note practice.
+${interestPrepayAtClose > 0
+  ? `Buyer pre-pays ${D(interestPrepayAtClose)} in interest at closing — this reduces your balloon
+by the same amount, while the remaining ${D(resAccruedInterest - interestPrepayAtClose)} continues to
+accrue and is due in full at Year ${scTerm}. This is standard seller note practice.`
+  : `Your interest is not paid monthly — it accumulates on the declining balance
+and is paid in full at the balloon. This is standard seller note practice.`}
 Your ${P(scRate)} note is fully secured by real property you already know.`
   : scRate > 0
   ? `Your seller carry note of ${D(carry)} at ${P(scRate)} generates:
@@ -5977,7 +6017,7 @@ const FIELDS = [
   'purchase_price','cash_at_closing','as_is_value','arv','rehab','rehab_draw_pct',
   'sr_rate','sr_amort','sr_term','sr_ltv','sr_dscr','sr_points',
   'hm_ltc','hm_arv_pct','hm_rehab_pct','hm_rehab_months',
-  'sc_rate','sc_term','monthly_principal','sc_amort_yrs','sc_defer_months','sc_deferred_rate',
+  'sc_rate','sc_term','monthly_principal','sc_amort_yrs','sc_defer_months','sc_deferred_rate','interest_prepay_at_close',
   'ph1_years','ph2_rate','ph2_monthly_principal','ph2_sc_amort_yrs','ph2_defer_months','ph2_deferred_rate',
   'esc1_pct','esc2_pct','acq_pct','broker_pct','emd',
   'taf_pct','buyer_cash','park_escrow','rehab_oop',
