@@ -4995,7 +4995,7 @@ ${sep}
   ${row('Loan Rate / Type',      P(sSrRate) + (sLoan===sPrice*0.6?' (est.)':''), P(srRate) + (loanType==='hard_money'?' I/O':' amort.'))}
   ${row('1st-Loan Debt Service', sSrPmtLabel,                                    oSrPmtLabel)}
   ${row('Net Cash to Seller',    D(sCash),                                       D(cac))}
-  ${row('Seller Carry (2nd)',    D(sCarry) + '; ' + P(sCarryRate) + '; ' + sCarryTerm + 'yr', D(carry) + '; ' + P(scRate) + '; ' + scTerm + 'yr')}
+  ${row('Seller Carry (Equity/2nd)',    D(sCarry) + '; ' + P(sCarryRate) + '; ' + sCarryTerm + 'yr', D(carry) + '; ' + P(scRate) + '; ' + scTerm + 'yr')}
   ${row('Carry Monthly Pmt',     sCarryPmt > 0 ? Dfmt(sCarryPmt)+'/mo' : '$0 deferred', scMonthly > 0 ? Dfmt(scMonthly)+'/mo' : '$0 deferred')}
   ${row('Balloon at Maturity',   D(sBalloon) + ' (Yr ' + sCarryTerm + ')',       D(balloon) + ' (Yr ' + scTerm + ')')}
   ${row('Total Combination',     D(sCombination),                                D(maxLoan + carry))}
@@ -5256,7 +5256,7 @@ ${col('  Principal', D(carry))}
 ${col('  Interest Rate', P(scRate) + (scRate === 0 ? '  (0% — every balloon dollar is pure principal back to you)' : ''))}
 ${col('  Monthly Payment', Dfmt(scMonthly) + '/mo' + (scMonthly === 0 ? '  (no payments — full amount due at balloon)' : mode === 'principal_only' ? '  (principal only — interest accrues to balloon)' : ''))}
 ${col('  Balloon at Year ' + scTerm, D(balloon))}
-${col('  Lien Position', '2nd position — secured by the real property')}
+${col('  Lien Position', 'equity and/or 2nd position — secured by the real property')}
 ${col('  ' + propValDisplayLabel, D(propValDisplay))}
 ${col('  Senior Loan Balance', D(maxLoan))}
 ${propValDisplay - maxLoan > 0 ? col('  Equity Cushion Protecting Note', D(propValDisplay - maxLoan) + '  (' + pctOf(propValDisplay - maxLoan, propValDisplay) + ' of value ahead of your note)') : ''}
@@ -5665,7 +5665,7 @@ ${calcMaxLoan > cac ? (isHM
 ${col('  Balloon at Year ' + scTerm, D(balloon) + (mode === 'principal_only' && scRate > 0 ? '  (' + D(resRemPrin) + ' remaining principal + ' + D(resAccruedInterest) + ' accrued interest)' : ''))}
 ${thin.slice(0,46)}
 ${col('  TOTAL RECEIPTS', D(totalReceipts) + '  over ' + scTerm + ' years')}
-${col('  Risk', 'You hold 2nd lien on property you already know')}
+${col('  Risk', 'You hold equity and/or 2nd lien on property you already know')}
 ${col('  Your Net Advantage', (ourAdvantage >= 0 ? '+' : '') + D(ourAdvantage) + ' MORE than a traditional listing')}
 
 ${sep}
@@ -5740,7 +5740,7 @@ As a note holder, you are secured by the property through a recorded lien.
 
 ${col('  ' + resPropValLabel, D(arv))}
 ${calcMaxLoan > 0 ? col('  Any Senior Loan (1st Pos.)', D(calcMaxLoan) + '  (' + P(calcMaxLoan/arv) + ' LTV)') : '  Senior Loan:          None — you hold the ONLY lien'}
-${col('  Your Carry Note (2nd Pos.)', D(carry))}
+${col('  Your Carry Note (Equity/2nd Pos.)', D(carry))}
 ${col('  Total Debt on Property', D(calcMaxLoan + carry))}
 ${col('  Combined LTV (all debt)', P((calcMaxLoan + carry) / arv))}
 ${thin.slice(0,46)}
