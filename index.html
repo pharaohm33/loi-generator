@@ -3565,13 +3565,17 @@ Period 2 (Yrs ${loiPh1Yrs+1}–${scTerm}): ${ph2RateLabel}
 ${blendedLine}`)
     : poDeferredRate > 0
       ? `Principal Only + ${esc(P(poDeferredRate))} Deferred Simple Interest (accrues on declining balance → balloon)`
-      : (zeroInterest ? 'Principal Only Seller Carryback' : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
+      : (zeroInterest ? 'Principal Only Seller Carryback'
+        : mode === 'principal_only'
+        ? `Interest Rate: ${esc(P(scRate))} simple interest (accrues on declining balance — due at balloon)`
+        : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
   const ioRate  = g('sc_rate');
   const defRate = g('sc_deferred_rate');
   // Mode display names — use "Principal Only" instead of "Deferred-Simple" when rate is 0
   const modeNameFor = (m, r) => {
     if (m === 'principal_only' && r === 0) return 'Principal Only';
-    return { principal_only:'Deferred-Simple', interest_only:'Interest-Only', pi:'P&I Amortizing',
+    if (m === 'principal_only') return 'Principal Only (interest accrues to balloon)';
+    return { interest_only:'Interest-Only', pi:'P&I Amortizing',
       deferred_exit:'Deferred-To-Exit', deferred_then_pay:'Deferred-Then-Pay', io_deferred:'IO + Deferred Simple' }[m] || m;
   };
   const paymentTypeLabel = ph2Active
@@ -5476,9 +5480,11 @@ function generateResidentialLOIReasoning(offerType, sellerData) {
   const bpPh1  = calcPhase(carry, scRate, bpPh1Yrs, mode, bpPh1Extra);
   const bpPh1End = bpPh1.balAtEnd + bpPh1.accruedDeferred;
   const bpPh2  = (ph2Enabled && bpPh2Yrs > 0) ? calcPhase(bpPh1End, bpPh2Rate, bpPh2Yrs, mode2, bpPh2Extra) : null;
-  const scMonthly = bpPh1.monthly;
-  const balloon   = bpPh2 ? bpPh2.balloon : bpPh1.balloon;
-  const totalReceipts = cac + (scMonthly * scTerm * 12) + balloon;
+  const scMonthly    = bpPh1.monthly;
+  const balloon      = bpPh2 ? bpPh2.balloon : bpPh1.balloon;
+  const resTotalPmts = bpPh1.totalPmts + (bpPh2 ? bpPh2.totalPmts : 0);
+  const resAccruedInterest = mode === 'principal_only' && scRate > 0 ? Math.round(balloon - (carry - resTotalPmts)) : 0;
+  const totalReceipts = cac + resTotalPmts + balloon;
 
   // Residential expenses
   const resTaxesAn   = g('res_taxes')    || 0;
@@ -5612,8 +5618,8 @@ ${col('Purchase Price', D(pp) + (arv > 0 && Math.abs(pp-arv) < arv*0.05 ? '  (at
 ${col('Cash to Seller at Closing', D(cac))}
 ${calcMaxLoan > cac ? col('  ↳ Senior Loan Proceeds', D(calcMaxLoan) + '  — diff of ' + D(calcMaxLoan - cac) + (closingCostParty === 'seller' ? ' covers reserves (seller credits buyer closing costs)' : closingCostParty === 'split' ? ' covers 50% closing costs + reserves' : ' covers closing costs & reserves')) : ''}
 ${col('Seller Carry Note', D(carry) + ' at ' + P(scRate) + (scRate===0?' (0% — pure principal)':'') + ' — ' + scTerm + '-yr balloon')}
-${scMonthly > 0 ? col('Monthly Payment to Seller', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(scMonthly*scTerm*12) + ' over term') : col('Monthly Payment', '$0 deferred — full amount at balloon')}
-${col('Balloon at Year ' + scTerm, D(balloon))}
+${scMonthly > 0 ? col('Monthly Payment to Seller', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(resTotalPmts) + ' over term' + (mode === 'principal_only' && scRate > 0 ? '  (principal only — interest accrues to balloon)' : '')) : col('Monthly Payment', '$0 deferred — full amount at balloon')}
+${col('Balloon at Year ' + scTerm, D(balloon) + (mode === 'principal_only' && scRate > 0 ? '  (remaining principal + ' + D(resAccruedInterest) + ' accrued interest)' : ''))}
 ${thin}
 ${col('TOTAL SELLER RECEIPTS', D(totalReceipts))}
 ${thin}
@@ -5653,8 +5659,8 @@ ${calcMaxLoan > cac ? (isHM
     : closingCostParty === 'split'
     ? `50% of buyer closing costs, lender-required reserves\n  (typically 3–6 months debt service), and title/escrow/legal fees. Seller\n  credits the remaining 50% of closing costs at close.`
     : `buyer closing costs, lender-required reserves\n  (typically 3–6 months debt service), and title/escrow/legal fees. This\n  equity is a structural requirement for loan approval — not buyer profit.`}
-`) : ''}${scMonthly > 0 ? col('  Monthly Income', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' months') : '  Monthly Income:       $0 deferred (lump sum at balloon)'}
-${col('  Balloon at Year ' + scTerm, D(balloon))}
+`) : ''}${scMonthly > 0 ? col('  Monthly Income', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' months' + (mode === 'principal_only' && scRate > 0 ? '  (principal only — interest accrues to balloon)' : '')) : '  Monthly Income:       $0 deferred (lump sum at balloon)'}
+${col('  Balloon at Year ' + scTerm, D(balloon) + (mode === 'principal_only' && scRate > 0 ? '  (remaining principal + ' + D(resAccruedInterest) + ' accrued interest)' : ''))}
 ${thin.slice(0,46)}
 ${col('  TOTAL RECEIPTS', D(totalReceipts) + '  over ' + scTerm + ' years')}
 ${col('  Risk', 'You hold 2nd lien on property you already know')}
@@ -5663,7 +5669,21 @@ ${col('  Your Net Advantage', (ourAdvantage >= 0 ? '+' : '') + D(ourAdvantage) +
 ${sep}
 PART II — YOUR MONTHLY INCOME & INVESTMENT YIELD
 ${sep}
-${scRate > 0
+${mode === 'principal_only' && scRate > 0
+  ? `Your seller carry note of ${D(carry)} at ${P(scRate)} works on a principal-first,
+interest-at-balloon structure. Here is exactly what you receive:
+
+${col('  Monthly Principal Payments', Dfmt(scMonthly) + '/mo  (directly reduces your note balance)')}
+${col('  Total Principal Collected', D(resTotalPmts) + '  over ' + scTerm + ' years')}
+${thin.slice(0,46)}
+${col('  Interest Accrual Rate', P(scRate) + ' simple interest on the declining balance')}
+${col('  Total Accrued Interest at Balloon', D(resAccruedInterest) + '  (collected all at once in Year ' + scTerm + ')')}
+${col('  Balloon Payment at Year ' + scTerm, D(balloon) + '  (remaining principal + all accrued interest)')}
+
+Your interest is not paid monthly — it accumulates on the declining balance
+and is paid in full at the balloon. This is standard seller note practice.
+Your ${P(scRate)} note is fully secured by real property you already know.`
+  : scRate > 0
   ? `Your seller carry note of ${D(carry)} at ${P(scRate)} generates:
 
 ${col('  Monthly Interest Income', Dfmt(carry * scRate / 12) + '/mo')}
