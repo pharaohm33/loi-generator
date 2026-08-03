@@ -4794,7 +4794,8 @@ function generateLOIReasoning(offerType, sellerData) {
   const dscrSrOnly    = effectiveSrPmt > 0 ? noiAn / (effectiveSrPmt * 12) : 0;
   const dscrAllDebt   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
   const maxDebtSvcMo  = dscrReq > 0 ? noiAn / dscrReq / 12 : 0;
-  const totalReceipts  = cac + balloon;
+  const loiTotalPmts   = bpPh1.totalPmts + (bpPh2 ? bpPh2.totalPmts : 0);
+  const totalReceipts  = cac + loiTotalPmts + balloon;
   const perUnit        = units > 0 ? pp / units : 0;
   const apprRate       = g('appreciation') / 100;
   const saleClosingPct = (g('exit_sale_costs') || 6) / 100;
@@ -5039,7 +5040,7 @@ ${col('Net Cash to Seller at Closing', D(cac) + '  (' + pctOf(cac, pp) + ' of pu
 ${maxLoan > cac ? col('  ↳ Senior Loan Proceeds', D(maxLoan) + '  — diff of ' + D(maxLoan - cac) + (closingCostParty === 'seller' ? ' covers reserves (seller credits buyer closing costs)' : closingCostParty === 'split' ? ' covers 50% closing costs + reserves' : ' covers buyer closing costs & reserves')) : ''}
 ${col('Seller Carryback Note', D(carry) + ' at ' + P(scRate) + ' — ' + scTerm + '-yr balloon')}
 ${col('Balloon Payment (Year ' + scTerm + ')', D(balloon))}
-${col('Total Seller Receipts', D(totalReceipts) + '  (' + D(cac) + ' cash + ' + D(balloon) + ' balloon)')}
+${col('Total Seller Receipts', D(totalReceipts) + '  (' + D(cac) + ' cash' + (loiTotalPmts > 0 ? ' + ' + D(loiTotalPmts) + ' payments' : '') + ' + ' + D(balloon) + ' balloon)')}
 ${col('Senior DSCR', dscrSrOnly.toFixed(2) + 'x  /  All-Debt DSCR: ' + dscrAllDebt.toFixed(2) + 'x')}
 ${col('Day-1 Net Cash Flow (Buyer)', (netCF >= 0 ? '+' : '') + Dfmt(netCF) + '/mo' + (units > 0 ? '  (' + Dfmt(netCF/units) + '/unit)' : ''))}`}
 ${comparisonTable}
@@ -5247,7 +5248,7 @@ offer ${D(carry)} more — bringing the total to ${D(pp)}.
 Carry Structure:
 ${col('  Principal', D(carry))}
 ${col('  Interest Rate', P(scRate) + (scRate === 0 ? '  (0% — every balloon dollar is pure principal back to you)' : ''))}
-${col('  Monthly Payment', Dfmt(scMonthly) + '/mo' + (scMonthly === 0 ? '  (no payments — full amount due at balloon)' : ''))}
+${col('  Monthly Payment', Dfmt(scMonthly) + '/mo' + (scMonthly === 0 ? '  (no payments — full amount due at balloon)' : mode === 'principal_only' ? '  (principal only — interest accrues to balloon)' : ''))}
 ${col('  Balloon at Year ' + scTerm, D(balloon))}
 ${col('  Lien Position', '2nd position — secured by the real property')}
 ${col('  ' + propValDisplayLabel, D(propValDisplay))}
@@ -5284,8 +5285,8 @@ ${closingCostParty === 'seller'
   funded at close. These are a structural requirement of the senior loan
   approval — without them, the lender will not fund and the deal cannot close.
   This equity position is what enables a successful exit at Year ${scTerm}.`}
-` : ''}${scMonthly > 0 ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(scMonthly*scTerm*12)) : '  Monthly Carry Payments:   $0 (deferred to balloon — no waiting for checks)'}
-${col('Balloon at Year ' + scTerm, D(balloon))}
+` : ''}${scMonthly > 0 ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(loiTotalPmts)) : '  Monthly Carry Payments:   $0 (deferred to balloon — no waiting for checks)'}
+${mode === 'principal_only' ? col('  Interest Accrual', P(scRate) + ' simple interest on declining balance — due at balloon') + '\n' + col('Balloon at Year ' + scTerm, D(balloon) + '  (remaining principal + accrued interest)') : col('Balloon at Year ' + scTerm, D(balloon))}
 ${thin}
 ${col('TOTAL SELLER RECEIPTS', D(totalReceipts))}
 ${propValDisplay > 0 ? col('  vs. All-Cash at ' + (useARV ? 'ARV' : 'As-Is Value'), sign(totalReceipts - propValDisplay) + '  (' + (totalReceipts > propValDisplay ? 'MORE' : 'LESS') + ' than ' + (useARV ? 'ARV' : 'as-is') + ' all-cash sale)') : ''}
