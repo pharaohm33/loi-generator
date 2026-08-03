@@ -6057,14 +6057,16 @@ function shareCalc() {
 }
 
 function loadFromURL() {
+  if (!location.search) return; // no URL params — nothing to load
   const p = new URLSearchParams(location.search);
-  if (!p.has('purchase_price') && !p.has('address')) return; // nothing to load
+  // Apply field values first (inputs, selects)
   FIELDS.forEach(id => {
     if (p.has(id)) {
       const el = document.getElementById(id);
       if (el) el.value = p.get(id);
     }
   });
+  // Apply global-state setters (update globals + button/UI state)
   if (p.has('mode')) setMode(p.get('mode'));
   if (p.has('loan_type')) setLoanType(p.get('loan_type'));
   if (p.has('ph2_enabled') && p.get('ph2_enabled') === '1') { if (!ph2Enabled) togglePh2(); }
