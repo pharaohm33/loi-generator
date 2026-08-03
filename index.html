@@ -4724,6 +4724,7 @@ function generateLOIReasoning(offerType, sellerData) {
   const acName  = s('ac_name');
   const acPhone = s('ac_phone');
   const acEmail = s('ac_email1') || s('ac_email2');
+  const acBuyerCo = s('buyer_company');
 
   const pp      = g('purchase_price');
   const cac     = g('cash_at_closing');
@@ -5011,7 +5012,7 @@ ${sep}
 ${addr}${units ? ' — ' + units + '-Unit Multifamily' : ''}
 Date: ${today}
 ${thin}
-Prepared by:    ${acName}${acPhone ? '  |  ' + acPhone : ''}${acEmail ? '  |  ' + acEmail : ''}
+Prepared by:    ${acName}${acBuyerCo ? '  |  ' + acBuyerCo : ''}${acPhone ? '  |  ' + acPhone : ''}${acEmail ? '  |  ' + acEmail : ''}
 Prepared for:   ${sellerName}
 Subject:        ${isCounter
   ? 'Counter-Proposal & Structural Underwriting Analysis'
@@ -5453,6 +5454,7 @@ function generateResidentialLOIReasoning(offerType, sellerData) {
 
   const addr   = s('address');
   const acName = s('ac_name'), acPhone = s('ac_phone'), acEmail = s('ac_email1') || s('ac_email2');
+  const acBuyerCo = s('buyer_company');
   const beds   = g('res_beds') || 0, baths = g('res_baths') || 0, sqft = g('sqft') || 0;
   const propClass = (document.getElementById('prop_class') || {}).value || '';
   const propSubtype = { sfr:'Single Family Residence', duplex:'Duplex', triplex:'Triplex',
@@ -5595,7 +5597,7 @@ ${sep}
 `${isCounter ? 'COUNTER-PROPOSAL & SELLER FINANCING ANALYSIS' : 'SELLER FINANCING ANALYSIS & LOI REASONING'}
 ${addr ? addr + '\n' : ''}${propLine ? propLine + '\n' : ''}Date: ${today}
 ${thin}
-Prepared by:    ${acName}${acPhone ? '  |  ' + acPhone : ''}${acEmail ? '  |  ' + acEmail : ''}
+Prepared by:    ${acName}${acBuyerCo ? '  |  ' + acBuyerCo : ''}${acPhone ? '  |  ' + acPhone : ''}${acEmail ? '  |  ' + acEmail : ''}
 Prepared for:   ${sellerName}
 Subject:        ${isCounter
   ? 'Why Our Offer Outperforms a Traditional Sale — Seller Financing Analysis'
