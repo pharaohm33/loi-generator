@@ -2219,10 +2219,10 @@ function recalc() {
   const totalReceipts = cac + totalPmts + balloon;
   const finIncome = totalReceipts - pp;
 
-  // Interest pre-pay at close — only applies for principal_only mode with a rate
-  const _totalAccruedDeferred = (ph1Result.accruedDeferred || 0) + (ph2Result ? ph2Result.accruedDeferred || 0 : 0);
+  // Interest pre-pay at close — buyer pays seller extra cash at closing, reducing the balloon by same amount
+  // Cap at full balloon (not just accrued interest) so any portion of the outstanding balance can be pre-paid
   const _rawPrepay = (mode === 'principal_only' && scRate > 0) ? g('interest_prepay_at_close') : 0;
-  interestPrepayAtClose = Math.min(_rawPrepay, Math.round(_totalAccruedDeferred));
+  interestPrepayAtClose = Math.min(Math.max(0, _rawPrepay), Math.round(balloon));
   const _prepayRow = document.getElementById('interest-prepay-row');
   if (_prepayRow) _prepayRow.style.display = (mode === 'principal_only' && scRate > 0) ? '' : 'none';
 
