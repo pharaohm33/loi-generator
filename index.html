@@ -4799,7 +4799,8 @@ function generateLOIReasoning(offerType, sellerData) {
   const dscrSrOnly    = effectiveSrPmt > 0 ? noiAn / (effectiveSrPmt * 12) : 0;
   const dscrAllDebt   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
   const maxDebtSvcMo  = dscrReq > 0 ? noiAn / dscrReq / 12 : 0;
-  const loiTotalPmts   = bpPh1.totalPmts + (bpPh2 ? bpPh2.totalPmts : 0);
+  const loiTotalPmts      = bpPh1.totalPmts + (bpPh2 ? bpPh2.totalPmts : 0);
+  const loiAccruedInterest = mode === 'principal_only' ? Math.round(balloon - (carry - loiTotalPmts)) : 0;
   const totalReceipts  = cac + loiTotalPmts + balloon;
   const perUnit        = units > 0 ? pp / units : 0;
   const apprRate       = g('appreciation') / 100;
@@ -5291,7 +5292,7 @@ ${closingCostParty === 'seller'
   approval — without them, the lender will not fund and the deal cannot close.
   This equity position is what enables a successful exit at Year ${scTerm}.`}
 ` : ''}${scMonthly > 0 ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(loiTotalPmts)) : '  Monthly Carry Payments:   $0 (deferred to balloon — no waiting for checks)'}
-${mode === 'principal_only' ? col('  Interest Accrual', P(scRate) + ' simple interest on declining balance — due at balloon') + '\n' + col('Balloon at Year ' + scTerm, D(balloon) + '  (remaining principal + accrued interest)') : col('Balloon at Year ' + scTerm, D(balloon))}
+${mode === 'principal_only' ? col('  Interest Accrual', P(scRate) + ' simple interest on declining balance — ' + D(loiAccruedInterest) + ' due at balloon') + '\n' + col('Balloon at Year ' + scTerm, D(balloon) + '  (remaining principal + ' + D(loiAccruedInterest) + ' accrued interest)') : col('Balloon at Year ' + scTerm, D(balloon))}
 ${thin}
 ${col('TOTAL SELLER RECEIPTS', D(totalReceipts))}
 ${propValDisplay > 0 ? col('  vs. All-Cash at ' + (useARV ? 'ARV' : 'As-Is Value'), sign(totalReceipts - propValDisplay) + '  (' + (totalReceipts > propValDisplay ? 'MORE' : 'LESS') + ' than ' + (useARV ? 'ARV' : 'as-is') + ' all-cash sale)') : ''}
