@@ -3303,10 +3303,9 @@ Total seller receipts are ${esc(D(totalReceipts))}.`;
       pmtBlock =
 `Monthly Principal-Reduction Payments:
 Months 1–${months}: ${esc(D(scMonthly))}/month
-Total Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
-Interest accrues at ${esc(P(scRate))} simple interest on the declining balance — due at balloon
-Accrued Interest at Balloon: ${esc(D(finIncome))}
-Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (remaining principal + ${esc(D(finIncome))} accrued interest)
+Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))} — reduces ${esc(D(carry))} carry to ${esc(D(Math.round(loiPh1.balAtEnd)))} remaining balance
+Accrued Interest at Balloon: ${esc(D(Math.round(loiPh1.accruedDeferred)))} (${esc(P(scRate))} simple interest on declining balance — due at balloon)
+Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (${esc(D(Math.round(loiPh1.balAtEnd)))} remaining principal + ${esc(D(Math.round(loiPh1.accruedDeferred)))} accrued interest)
 Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
       narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
@@ -4800,7 +4799,8 @@ function generateLOIReasoning(offerType, sellerData) {
   const dscrAllDebt   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
   const maxDebtSvcMo  = dscrReq > 0 ? noiAn / dscrReq / 12 : 0;
   const loiTotalPmts      = bpPh1.totalPmts + (bpPh2 ? bpPh2.totalPmts : 0);
-  const loiAccruedInterest = mode === 'principal_only' ? Math.round(balloon - (carry - loiTotalPmts)) : 0;
+  const loiRemPrin         = mode === 'principal_only' ? Math.round(bpPh1.balAtEnd) : 0;
+  const loiAccruedInterest = mode === 'principal_only' ? Math.round(bpPh1.accruedDeferred) : 0;
   const totalReceipts  = cac + loiTotalPmts + balloon;
   const perUnit        = units > 0 ? pp / units : 0;
   const apprRate       = g('appreciation') / 100;
@@ -5291,8 +5291,7 @@ ${closingCostParty === 'seller'
   funded at close. These are a structural requirement of the senior loan
   approval — without them, the lender will not fund and the deal cannot close.
   This equity position is what enables a successful exit at Year ${scTerm}.`}
-` : ''}${scMonthly > 0 ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(loiTotalPmts)) : '  Monthly Carry Payments:   $0 (deferred to balloon — no waiting for checks)'}
-${mode === 'principal_only' ? col('  Interest Accrual', P(scRate) + ' simple interest on declining balance — ' + D(loiAccruedInterest) + ' due at balloon') + '\n' + col('Balloon at Year ' + scTerm, D(balloon) + '  (remaining principal + ' + D(loiAccruedInterest) + ' accrued interest)') : col('Balloon at Year ' + scTerm, D(balloon))}
+` : ''}${mode === 'principal_only' ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(loiTotalPmts) + ' — reduces ' + D(carry) + ' carry to ' + D(loiRemPrin) + ' remaining') + '\n' + col('  Accrued Interest at Balloon', D(loiAccruedInterest) + '  (' + P(scRate) + ' simple interest on declining balance)') + '\n' + col('Balloon at Year ' + scTerm, D(balloon) + '  (' + D(loiRemPrin) + ' remaining principal + ' + D(loiAccruedInterest) + ' accrued interest)') : scMonthly > 0 ? col('Monthly Carry Payments', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(loiTotalPmts)) + '\n' + col('Balloon at Year ' + scTerm, D(balloon)) : '  Monthly Carry Payments:   $0 (deferred to balloon — no waiting for checks)\n' + col('Balloon at Year ' + scTerm, D(balloon))}
 ${thin}
 ${col('TOTAL SELLER RECEIPTS', D(totalReceipts))}
 ${propValDisplay > 0 ? col('  vs. All-Cash at ' + (useARV ? 'ARV' : 'As-Is Value'), sign(totalReceipts - propValDisplay) + '  (' + (totalReceipts > propValDisplay ? 'MORE' : 'LESS') + ' than ' + (useARV ? 'ARV' : 'as-is') + ' all-cash sale)') : ''}
@@ -5484,8 +5483,9 @@ function generateResidentialLOIReasoning(offerType, sellerData) {
   const bpPh2  = (ph2Enabled && bpPh2Yrs > 0) ? calcPhase(bpPh1End, bpPh2Rate, bpPh2Yrs, mode2, bpPh2Extra) : null;
   const scMonthly    = bpPh1.monthly;
   const balloon      = bpPh2 ? bpPh2.balloon : bpPh1.balloon;
-  const resTotalPmts = bpPh1.totalPmts + (bpPh2 ? bpPh2.totalPmts : 0);
-  const resAccruedInterest = mode === 'principal_only' && scRate > 0 ? Math.round(balloon - (carry - resTotalPmts)) : 0;
+  const resTotalPmts       = bpPh1.totalPmts + (bpPh2 ? bpPh2.totalPmts : 0);
+  const resRemPrin         = mode === 'principal_only' ? Math.round(bpPh1.balAtEnd) : 0;
+  const resAccruedInterest = mode === 'principal_only' ? Math.round(bpPh1.accruedDeferred) : 0;
   const totalReceipts = cac + resTotalPmts + balloon;
 
   // Residential expenses
@@ -5620,8 +5620,8 @@ ${col('Purchase Price', D(pp) + (arv > 0 && Math.abs(pp-arv) < arv*0.05 ? '  (at
 ${col('Cash to Seller at Closing', D(cac))}
 ${calcMaxLoan > cac ? col('  ↳ Senior Loan Proceeds', D(calcMaxLoan) + '  — diff of ' + D(calcMaxLoan - cac) + (closingCostParty === 'seller' ? ' covers reserves (seller credits buyer closing costs)' : closingCostParty === 'split' ? ' covers 50% closing costs + reserves' : ' covers closing costs & reserves')) : ''}
 ${col('Seller Carry Note', D(carry) + ' at ' + P(scRate) + (scRate===0?' (0% — pure principal)':'') + ' — ' + scTerm + '-yr balloon')}
-${scMonthly > 0 ? col('Monthly Payment to Seller', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(resTotalPmts) + ' over term' + (mode === 'principal_only' && scRate > 0 ? '  (principal only — interest accrues to balloon)' : '')) : col('Monthly Payment', '$0 deferred — full amount at balloon')}
-${col('Balloon at Year ' + scTerm, D(balloon) + (mode === 'principal_only' && scRate > 0 ? '  (remaining principal + ' + D(resAccruedInterest) + ' accrued interest)' : ''))}
+${scMonthly > 0 ? col('Monthly Payment to Seller', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' mo = ' + D(resTotalPmts) + (mode === 'principal_only' && scRate > 0 ? ' — reduces ' + D(carry) + ' carry to ' + D(resRemPrin) + ' remaining' : ' over term')) : col('Monthly Payment', '$0 deferred — full amount at balloon')}
+${col('Balloon at Year ' + scTerm, D(balloon) + (mode === 'principal_only' && scRate > 0 ? '  (' + D(resRemPrin) + ' remaining principal + ' + D(resAccruedInterest) + ' accrued interest)' : ''))}
 ${thin}
 ${col('TOTAL SELLER RECEIPTS', D(totalReceipts))}
 ${thin}
@@ -5661,8 +5661,8 @@ ${calcMaxLoan > cac ? (isHM
     : closingCostParty === 'split'
     ? `50% of buyer closing costs, lender-required reserves\n  (typically 3–6 months debt service), and title/escrow/legal fees. Seller\n  credits the remaining 50% of closing costs at close.`
     : `buyer closing costs, lender-required reserves\n  (typically 3–6 months debt service), and title/escrow/legal fees. This\n  equity is a structural requirement for loan approval — not buyer profit.`}
-`) : ''}${scMonthly > 0 ? col('  Monthly Income', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' months' + (mode === 'principal_only' && scRate > 0 ? '  (principal only — interest accrues to balloon)' : '')) : '  Monthly Income:       $0 deferred (lump sum at balloon)'}
-${col('  Balloon at Year ' + scTerm, D(balloon) + (mode === 'principal_only' && scRate > 0 ? '  (remaining principal + ' + D(resAccruedInterest) + ' accrued interest)' : ''))}
+`) : ''}${scMonthly > 0 ? col('  Monthly Income', Dfmt(scMonthly) + '/mo × ' + (scTerm*12) + ' months' + (mode === 'principal_only' && scRate > 0 ? ' — reduces ' + D(carry) + ' carry to ' + D(resRemPrin) + ' remaining' : '')) : '  Monthly Income:       $0 deferred (lump sum at balloon)'}
+${col('  Balloon at Year ' + scTerm, D(balloon) + (mode === 'principal_only' && scRate > 0 ? '  (' + D(resRemPrin) + ' remaining principal + ' + D(resAccruedInterest) + ' accrued interest)' : ''))}
 ${thin.slice(0,46)}
 ${col('  TOTAL RECEIPTS', D(totalReceipts) + '  over ' + scTerm + ' years')}
 ${col('  Risk', 'You hold 2nd lien on property you already know')}
@@ -5680,7 +5680,7 @@ ${col('  Total Principal Collected', D(resTotalPmts) + '  over ' + scTerm + ' ye
 ${thin.slice(0,46)}
 ${col('  Interest Accrual Rate', P(scRate) + ' simple interest on the declining balance')}
 ${col('  Total Accrued Interest at Balloon', D(resAccruedInterest) + '  (collected all at once in Year ' + scTerm + ')')}
-${col('  Balloon Payment at Year ' + scTerm, D(balloon) + '  (remaining principal + all accrued interest)')}
+${col('  Balloon Payment at Year ' + scTerm, D(balloon) + '  (' + D(resRemPrin) + ' remaining principal + ' + D(resAccruedInterest) + ' accrued interest)')}
 
 Your interest is not paid monthly — it accumulates on the declining balance
 and is paid in full at the balloon. This is standard seller note practice.
