@@ -679,6 +679,17 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           </div>
         </div>
       </div>
+      <div class="row cols-1">
+        <div class="field">
+          <label>Seller Security Type <span style="font-size:10px;color:#888;font-weight:400;">— LOI protection clause</span></label>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <button id="sec-equity" onclick="setSellerSecurityType('equity')"   style="padding:4px 12px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Senior Equity</button>
+            <button id="sec-dot"    onclick="setSellerSecurityType('deed_of_trust')" style="padding:4px 12px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">2nd Lien / Deed of Trust</button>
+            <button id="sec-dil"    onclick="setSellerSecurityType('deed_in_lieu')"  style="padding:4px 12px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">Deed in Lieu</button>
+            <input type="hidden" id="seller_security_type" value="equity">
+          </div>
+        </div>
+      </div>
       <div class="row cols-2">
         <div class="field">
           <label>Rehab Budget (Total)</label>
@@ -1715,6 +1726,7 @@ let staticCF = false;
 let closingCostParty = 'buyer';     // 'buyer' | 'seller' | 'split'
 let appraisalContingency = 'on';    // 'on' | 'off'
 let acqFeeBasis = 'purchase_price'; // 'purchase_price' | 'at_closing'
+let sellerSecurityType = 'equity';  // 'equity' | 'deed_of_trust' | 'deed_in_lieu'
 let interestPrepayAtClose = 0;
 
 function setAgentFeeType(type) {
@@ -1758,6 +1770,19 @@ function setAcqFeeBasis(b) {
   if (ppBtn)  { ppBtn.style.background  = b === 'purchase_price' ? '#111' : '#f9fafb'; ppBtn.style.color  = b === 'purchase_price' ? '#fff' : '#555'; }
   if (cacBtn) { cacBtn.style.background = b === 'at_closing'     ? '#111' : '#f9fafb'; cacBtn.style.color = b === 'at_closing'     ? '#fff' : '#555'; }
   if (hint)   hint.style.display = b === 'at_closing' ? 'block' : 'none';
+  recalc();
+}
+
+function setSellerSecurityType(v) {
+  sellerSecurityType = v;
+  document.getElementById('seller_security_type').value = v;
+  const btns = { equity: 'sec-equity', deed_of_trust: 'sec-dot', deed_in_lieu: 'sec-dil' };
+  Object.entries(btns).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.background = key === v ? '#111' : '#f9fafb';
+    el.style.color       = key === v ? '#fff' : '#555';
+  });
   recalc();
 }
 
@@ -3729,8 +3754,11 @@ ${pmtBlock}
 
 ${narr}${loiPaydownClause}
 
-${H('SELLER PROTECTION BY SENIOR EQUITY INTEREST:')}
-Your position is documented as a Senior Equity Interest, giving you first-priority claim to all cash flow and proceeds from operations, refinance, or sale — ahead of all buyer equity. If the buyer defaults on the note, the operating agreement allows you to take over the buyer's interest in the property without foreclosure.
+${sellerSecurityType === 'deed_of_trust'
+  ? H('SELLER SECURITY BY 2ND POSITION DEED OF TRUST:') + '\nThe seller carry note will be secured by a deed of trust recorded in second position against the property, providing collateral-based security and foreclosure remedies in a default scenario.'
+  : sellerSecurityType === 'deed_in_lieu'
+  ? H('SELLER SECURITY WITH DEED IN LIEU OF FORECLOSURE:') + '\nThe seller-financed balance shall be evidenced by a Promissory Note and secured by a Warranty Deed with Vendor\'s Lien and a recorded Deed of Trust in second position behind the buyer\'s acquisition financing. Following an uncured default, the seller may pursue all remedies available under the loan documents, including foreclosure, or the parties may mutually agree to a deed in lieu of foreclosure, subject to the senior lender and title requirements.'
+  : H('SELLER PROTECTION BY SENIOR EQUITY INTEREST:') + '\nYour position is documented as a Senior Equity Interest, giving you first-priority claim to all cash flow and proceeds from operations, refinance, or sale — ahead of all buyer equity. If the buyer defaults on the note, the operating agreement allows you to take over the buyer\'s interest in the property without foreclosure.'}
 
 ${H('TIMELINE:')}
 Closing: Within 45-60 days of signed purchase and sales agreement.
@@ -6035,7 +6063,7 @@ const FIELDS = [
   'ac_name','ac_phone','ac_email1','ac_email2','buyer_company',
   'sub_mortgage_balance','sub_mortgage_rate','sub_mortgage_pmt','sub_servicer','sub_cash_to_seller',
   'loi_agent_fee','loi_agent_fee_type',
-  'closing_cost_party','appraisal_contingency','acq_fee_basis',
+  'closing_cost_party','appraisal_contingency','acq_fee_basis','seller_security_type',
   // Residential fields
   'res_beds','res_baths','res_rent','res_vacancy','res_arv','res_comp',
   'res_taxes','res_insurance','res_maint_amt','res_maint_pct'
@@ -6085,6 +6113,7 @@ function loadFromURL() {
   if (p.has('closing_cost_party')) setClosingCostParty(p.get('closing_cost_party'));
   if (p.has('appraisal_contingency')) setAppraisalContingency(p.get('appraisal_contingency'));
   if (p.has('acq_fee_basis')) setAcqFeeBasis(p.get('acq_fee_basis'));
+  if (p.has('seller_security_type')) setSellerSecurityType(p.get('seller_security_type'));
   if (p.has('prop_type')) onPropTypeChange();
   if (p.has('res_maint_amt') && p.get('res_maint_amt')) onResMaintInput('amt');
   else if (p.has('res_maint_pct') && p.get('res_maint_pct')) onResMaintInput('pct');
