@@ -3405,13 +3405,29 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
 
   } else if (mode === 'pi') {
     const scAmortYrs = g('sc_amort_yrs') || 30;
-    pmtBlock =
+    if (zeroInterest) {
+      pmtBlock =
+`Principal-Only Payments (amortized over ${scAmortYrs} years, balloon at year ${scTerm}):
+Months 1–${months}: ${esc(D(scMonthly))}/month
+Total Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
+Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (remaining principal balance)
+Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+      narr =
+`The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
+
+During the ${scTerm}-year term, buyer will make monthly principal-only payments of ${esc(D(scMonthly))}/month based on a ${scAmortYrs}-year amortization schedule. No interest accrues — each payment directly reduces the outstanding balance.
+
+At the end of year ${scTerm}, buyer will pay the remaining principal balance through a balloon payment of ${esc(D(balloon))}.
+
+Total seller receipts are ${esc(D(totalReceipts))}.`;
+    } else {
+      pmtBlock =
 `Amortizing P&I Payments (${scAmortYrs}-year amortization, ${scTerm}-year balloon):
 Months 1–${months}: ${esc(Dfmt(scMonthly))}/month
 Total P&I Paid Over ${scTerm} Years: ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (remaining balance)
 Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
-    narr =
+      narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
 During the ${scTerm}-year term, buyer will make fully amortizing principal and interest payments of ${esc(Dfmt(scMonthly))}/month based on a ${scAmortYrs}-year amortization schedule at ${esc(P(scRate))} interest.
@@ -3419,6 +3435,7 @@ During the ${scTerm}-year term, buyer will make fully amortizing principal and i
 At the end of year ${scTerm}, buyer will pay the remaining principal balance through a balloon payment of approximately ${esc(D(balloon))}.
 
 Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes the full ${esc(D(pp))} purchase price plus approximately ${esc(D(finIncome))} in seller financing income.`;
+    }
 
   } else if (mode === 'deferred_exit') {
     if (zeroInterest) {
@@ -3630,6 +3647,8 @@ ${blendedLine}`)
     : poDeferredRate > 0
       ? `Principal Only + ${esc(P(poDeferredRate))} Deferred Simple Interest (accrues on declining balance → balloon)`
       : (zeroInterest && mode === 'principal_only' ? 'Principal Only Seller Carryback'
+        : zeroInterest && mode === 'pi'
+        ? `Principal Only — amortized over ${g('sc_amort_yrs') || 30} years, balloon at year ${scTerm}`
         : zeroInterest
         ? `Interest Rate: ${esc(P(scRate))} (no interest charged)`
         : mode === 'principal_only'
