@@ -3305,7 +3305,7 @@ function generateLOI() {
 
   let pmtBlock, narr;
 
-  if (zeroInterest || mode === 'principal_only') {
+  if (mode === 'principal_only' || (zeroInterest && mode !== 'pi')) {
     const hasMonthlyPmts = scMonthly > 0;
     if (poDeferredRate > 0) {
       // Principal-only payments + separate deferred simple interest → balloon
@@ -3629,7 +3629,9 @@ Period 2 (Yrs ${loiPh1Yrs+1}–${scTerm}): ${ph2RateLabel}
 ${blendedLine}`)
     : poDeferredRate > 0
       ? `Principal Only + ${esc(P(poDeferredRate))} Deferred Simple Interest (accrues on declining balance → balloon)`
-      : (zeroInterest ? 'Principal Only Seller Carryback'
+      : (zeroInterest && mode === 'principal_only' ? 'Principal Only Seller Carryback'
+        : zeroInterest
+        ? `Interest Rate: ${esc(P(scRate))} (no interest charged)`
         : mode === 'principal_only'
         ? `Interest Rate: ${esc(P(scRate))} simple interest (accrues on declining balance — due at balloon)`
         : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
