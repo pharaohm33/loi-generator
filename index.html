@@ -3350,7 +3350,7 @@ Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
       narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
-During the ${scTerm}-year term, buyer will make monthly principal-only payments of ${esc(D(scMonthly))}/month, totaling ${esc(D(totalPmts))}. No interest accrues — each payment directly reduces the outstanding balance.
+During the ${scTerm}-year term, buyer will make monthly principal-only payments of ${esc(D(scMonthly))}/month, totaling ${esc(D(totalPmts))}.
 
 At the end of year ${scTerm}, buyer will pay the remaining principal balance through a balloon payment of ${esc(D(balloon))}.
 
@@ -3415,7 +3415,7 @@ Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
       narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
-During the ${scTerm}-year term, buyer will make monthly principal-only payments of ${esc(D(scMonthly))}/month based on a ${scAmortYrs}-year amortization schedule. No interest accrues — each payment directly reduces the outstanding balance.
+During the ${scTerm}-year term, buyer will make monthly principal-only payments of ${esc(D(scMonthly))}/month based on a ${scAmortYrs}-year amortization schedule.
 
 At the end of year ${scTerm}, buyer will pay the remaining principal balance through a balloon payment of ${esc(D(balloon))}.
 
@@ -4028,7 +4028,7 @@ function generateHybridSubToLOI() {
     : `Seller Equity Note (Balloon): TBD — due Year ${balloonYrs || 'TBD'}`;
   // Structure overview prose per branch
   const equityNoteOverviewLine = zeroEquityRate
-    ? `The remaining equity of ${equityNote > 0 ? D(equityNote) : 'TBD'} is structured as a principal-only seller-held equity note. No interest accrues and no monthly payments are required — the full principal balance of ${equityNote > 0 ? D(equityNote) : 'TBD'} is due in a single balloon payment at the end of Year ${balloonYrs || 'TBD'}.`
+    ? `The remaining equity of ${equityNote > 0 ? D(equityNote) : 'TBD'} is structured as a principal-only seller-held equity note. No monthly payments are required — the full principal balance of ${equityNote > 0 ? D(equityNote) : 'TBD'} is due in a single balloon payment at the end of Year ${balloonYrs || 'TBD'}.`
     : `The remaining equity of ${equityNote > 0 ? D(equityNote) : 'TBD'} is structured as a seller-held equity note at ${equityRate}% simple interest, with the full remaining balance due in a balloon payment at the end of Year ${balloonYrs || 'TBD'}. No monthly payments are required on the equity note — the balloon satisfies the obligation in full.`;
   const ppLine    = pp          > 0 ? `Total Agreed Purchase Price: ${D(pp)}\n`         : '';
   const downLine  = downPayment > 0 ? `Cash to Seller at Closing: ${D(downPayment)}\n`  : '';
