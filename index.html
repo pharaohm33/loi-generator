@@ -3670,7 +3670,7 @@ ${blendedLine}`)
       : modeNameFor(mode, scRate));
   const sellerCarryHeader =
 `Seller Carryback Note: ${esc(D(carry))}
-${rateOrNone}${(ph2Active && allZeroInterest) ? '' : `\nPayment Type: ${esc(paymentTypeLabel)}`}
+${rateOrNone}
 Term: ${scTerm} Years`;
 
   const title = hasBuyer ? 'LOI' : 'Non-Exclusive LOI';
