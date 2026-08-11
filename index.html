@@ -3654,7 +3654,7 @@ ${blendedLine}`)
         : mode === 'principal_only'
         ? `Interest Rate: ${esc(P(scRate))} simple interest (accrues on declining balance — due at balloon)`
         : mode === 'io_deferred'
-        ? `Interest: ${esc(P(scRate))} IO (monthly payments) + ${esc(P(g('sc_deferred_rate') / 100))} Deferred Simple (due at balloon)`
+        ? `Interest: ${esc(P(scRate))} IO (monthly payments) + ${esc(P(g('sc_deferred_rate') / 100))} Deferred Simple (due at balloon) | ${esc(P(scRate + g('sc_deferred_rate') / 100))} total`
         : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
   const ioRate  = g('sc_rate');
   const defRate = g('sc_deferred_rate');
