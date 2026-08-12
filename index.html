@@ -445,6 +445,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   <h1>Suede Buffalo LLC — Seller Carryback Calculator</h1>
   <p>Acquisition &amp; LOI Generator</p>
   <button class="btn-admin" onclick="adminTemplate()">★ Admin Template</button>
+  <button class="btn-admin" onclick="openMaoModal()" style="background:#d1fae5;color:#065f46;border-color:#a7f3d0;">🧮 MAO Calc</button>
   <button class="btn-admin" id="btn-static-cf" onclick="toggleStaticCF()" style="background:#e0e7ff;color:#3730a3;border-color:#c7d2fe;" title="When ON: CF projection uses Day-1 NOI held flat (no growth), but phase payments still apply on schedule. Shows the worst case if rents never grow.">📊 Static CF: OFF</button>
   <button class="btn-share" onclick="shareCalc()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -698,6 +699,39 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         <div class="field">
           <label>Rehab Draw Liquidity %</label>
           <div class="suffix-wrap"><input type="number" id="rehab_draw_pct" placeholder="0" step="1"><span>%</span></div>
+        </div>
+      </div>
+      <!-- CASH OFFER SETTINGS -->
+      <div style="border-top:1px dashed #e5e7eb;margin-top:10px;padding-top:10px;">
+        <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.05em;margin-bottom:10px;">CASH OFFER SETTINGS <span style="font-weight:400;color:#9ca3af;">— used by All-Cash LOI</span></div>
+        <div class="row cols-1" style="margin-bottom:8px;">
+          <div class="field">
+            <label>Due Diligence Period <span style="font-size:10px;color:#888;font-weight:400;">— leave blank to match closing timeline</span></label>
+            <div class="suffix-wrap"><input type="number" id="cash_dd_days" placeholder="auto" step="1"><span>days</span></div>
+          </div>
+        </div>
+        <div class="row cols-1" style="margin-bottom:8px;">
+          <div class="field">
+            <label>Earnest Money Deposit (EMD)</label>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+              <button id="emd-none"  onclick="setCashEMD('none')"         style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">No EMD</button>
+              <button id="emd-close" onclick="setCashEMD('before_close')" style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">Due Before Closing</button>
+              <button id="emd-dd"    onclick="setCashEMD('end_dd')"       style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">Due End of DD</button>
+            </div>
+            <div id="cash-emd-amount-row" style="display:none;">
+              <div class="prefix-wrap"><span>$</span><input type="number" id="cash_emd_amount" placeholder="0" step="500"></div>
+            </div>
+          </div>
+        </div>
+        <div class="row cols-1">
+          <div class="field">
+            <label>Financing Contingency <span style="font-size:10px;color:#888;font-weight:400;">— in cash LOI</span></label>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <button id="fin-none"    onclick="setCashFinancing('none')"                 style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">None (All Cash)</button>
+              <button id="fin-hm"      onclick="setCashFinancing('hard_money')"           style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">Hard Money</button>
+              <button id="fin-hm-appr" onclick="setCashFinancing('hard_money_appraisal')" style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">Hard Money + Appraisal</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1580,6 +1614,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div style="font-size:14px;color:#666;margin-bottom:24px;">Choose the type of Letter of Intent to generate.</div>
       <div style="display:flex;flex-direction:column;gap:12px;">
         <button onclick="closeLOIModal();generateLOI();" style="padding:14px 20px;background:#111;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">Seller Carryback LOI</button>
+        <button onclick="closeLOIModal();generateCashLOI();" style="padding:14px 20px;background:#065f46;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">All-Cash Purchase LOI</button>
         <button onclick="closeLOIModal();generateSubjectToLOI();" style="padding:14px 20px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">Subject To LOI</button>
         <button onclick="closeLOIModal();generateHybridSubToLOI();" style="padding:14px 20px;background:#0f766e;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;">Hybrid: SubTo + Equity Balloon</button>
         <button onclick="closeLOIModal();" style="padding:10px 20px;background:#f3f4f6;color:#555;border:none;border-radius:8px;font-size:14px;cursor:pointer;">Cancel</button>
@@ -1715,6 +1750,24 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     </div>
   </div>
 
+  <!-- CASH LOI OUTPUT -->
+  <div class="loi-output" id="cash-loi-section">
+    <div class="loi-doc-card">
+      <div class="loi-doc-header">
+        <span>All-Cash Purchase LOI — Full Text</span>
+        <div class="loi-doc-actions">
+          <button class="btn-sm" id="copy-cash-btn" onclick="copyCashLOI()">Copy to Clipboard</button>
+          <button class="btn-sm" onclick="window.print()">Print / PDF</button>
+        </div>
+      </div>
+      <div class="loi-text" id="cash-loi-text"></div>
+    </div>
+    <div class="footnote">
+      This is a non-exclusive letter of intent and does not constitute a binding purchase agreement.<br>
+      Generated by Suede Buffalo LLC Deal Calculator
+    </div>
+  </div>
+
 </div><!-- /summary-panel -->
 </div><!-- /page -->
 
@@ -1728,6 +1781,8 @@ let appraisalContingency = 'on';    // 'on' | 'off'
 let acqFeeBasis = 'purchase_price'; // 'purchase_price' | 'at_closing'
 let sellerSecurityType = 'equity';  // 'equity' | 'deed_of_trust' | 'deed_in_lieu'
 let interestPrepayAtClose = 0;
+let cashEMDType = 'none';           // 'none' | 'before_close' | 'end_dd'
+let cashFinancingType = 'none';     // 'none' | 'hard_money' | 'hard_money_appraisal'
 
 function setAgentFeeType(type) {
   document.getElementById('loi_agent_fee_type').value = type;
@@ -6069,6 +6124,178 @@ function copyLOI() {
   });
 }
 
+// ── MAO CALCULATOR ──
+function openMaoModal() {
+  document.getElementById('mao-modal-overlay').style.display = 'flex';
+  calcMAO();
+}
+function closeMaoModal() {
+  document.getElementById('mao-modal-overlay').style.display = 'none';
+}
+document.addEventListener('click', function(e) {
+  if (e.target === document.getElementById('mao-modal-overlay')) closeMaoModal();
+});
+
+function calcMAO() {
+  const arv   = parseFloat(document.getElementById('mao_arv').value)   || 0;
+  const rehab = parseFloat(document.getElementById('mao_rehab').value) || 0;
+  const results = document.getElementById('mao-results');
+  if (!arv) { results.style.display = 'none'; return; }
+
+  const maoCash = Math.round(arv * 0.70 - rehab);
+  const maoHM10 = Math.round(arv * 0.65 - rehab);
+  const maoHM20 = Math.round(arv * 0.60 - rehab);
+  const fmt = v => (v < 0 ? '−$' : '$') + Math.abs(v).toLocaleString();
+
+  document.getElementById('mao-cash-result').textContent = fmt(maoCash);
+  document.getElementById('mao-hm10-result').textContent = fmt(maoHM10);
+  document.getElementById('mao-hm20-result').textContent = fmt(maoHM20);
+  document.getElementById('mao-breakdown').innerHTML =
+    `ARV $${arv.toLocaleString()} × 70% = $${Math.round(arv*0.70).toLocaleString()} − Rehab $${rehab.toLocaleString()} = <strong>${fmt(maoCash)}</strong> cash max<br>` +
+    `HM 10% down: ARV × 65% − Rehab = <strong>${fmt(maoHM10)}</strong> &nbsp;|&nbsp; HM 20% down: ARV × 60% − Rehab = <strong>${fmt(maoHM20)}</strong>`;
+  results.style.display = 'block';
+}
+
+// ── CASH OFFER SETTINGS ──
+function setCashEMD(v) {
+  cashEMDType = v;
+  const btns = { none: 'emd-none', before_close: 'emd-close', end_dd: 'emd-dd' };
+  Object.entries(btns).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.background = key === v ? '#111' : '#f9fafb';
+    el.style.color       = key === v ? '#fff' : '#555';
+  });
+  document.getElementById('cash-emd-amount-row').style.display = v === 'none' ? 'none' : '';
+}
+
+function setCashFinancing(v) {
+  cashFinancingType = v;
+  const btns = { none: 'fin-none', hard_money: 'fin-hm', hard_money_appraisal: 'fin-hm-appr' };
+  Object.entries(btns).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.background = key === v ? '#111' : '#f9fafb';
+    el.style.color       = key === v ? '#fff' : '#555';
+  });
+}
+
+// ── ALL-CASH LOI GENERATOR ──
+function numToWords(n) {
+  const ones = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',
+    'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+  const tens = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+  if (n < 20) return ones[n] || String(n);
+  const t = Math.floor(n / 10), o = n % 10;
+  return tens[t] + (o ? '-' + ones[o] : '');
+}
+
+function generateCashLOI() {
+  const D   = v => '$' + Math.round(v).toLocaleString();
+  const esc = t => (t || '').toString().trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const H   = txt => `<strong>${esc(txt)}</strong>`;
+
+  const pp      = g('purchase_price');
+  const addr    = s('address') || 'Property Address TBD';
+  const units   = Math.round(g('units'));
+  const acName  = s('ac_name'), acE1 = s('ac_email1'), acE2 = s('ac_email2'), acPh = s('ac_phone');
+  const buyerCo = s('buyer_company');
+  const hasBuyer = buyerCo.trim().length > 0;
+  const isRes   = (document.getElementById('prop_type') || {}).value === 'residential';
+
+  // Closing timeline
+  const closingDaysNum  = isRes ? 30 : 45;
+  const closingDaysWord = isRes ? 'thirty (30)' : 'forty-five (45) to sixty (60)';
+
+  // Due diligence period
+  const ddRaw   = g('cash_dd_days');
+  const ddDays  = ddRaw > 0 ? ddRaw : closingDaysNum;
+  const ddWord  = numToWords(ddDays) + ` (${ddDays})`;
+
+  // EMD
+  const emdAmt  = g('cash_emd_amount');
+  const emdLine = cashEMDType === 'none'
+    ? 'None.'
+    : `${esc(D(emdAmt))} due ${cashEMDType === 'before_close' ? 'on or before closing' : 'at the end of the due diligence period'}.`;
+
+  // Financing contingency
+  const financingLine = cashFinancingType === 'hard_money'
+    ? 'Buyer intends to utilize hard money financing. This offer is contingent on Buyer securing hard money loan approval.'
+    : cashFinancingType === 'hard_money_appraisal'
+    ? 'Buyer intends to utilize hard money financing. This offer is contingent on Buyer securing hard money loan approval and a satisfactory appraisal at or above the agreed purchase price.'
+    : 'None — this is an all-cash offer with no financing contingency.';
+
+  // Appraisal contingency (only add separately if not already covered by hard_money_appraisal)
+  const appraisalLine = appraisalContingency === 'on' && cashFinancingType !== 'hard_money_appraisal'
+    ? '\nBuyer contingency for appraisal at agreed upon total purchase price.'
+    : '';
+
+  // Closing costs
+  const closingCostsLine = closingCostParty === 'buyer'
+    ? 'Buyer responsible for all closing costs and transaction fees.'
+    : closingCostParty === 'seller'
+    ? 'Seller to credit buyer for all closing costs and transaction fees at closing.'
+    : 'Closing costs split equally — each party responsible for 50% of total transaction fees.';
+
+  // Seller receives block
+  const sellerReceives = closingCostParty === 'seller'
+    ? `Gross Cash at Closing: ${esc(D(pp))}\n(Less closing cost credit to buyer at settlement)`
+    : closingCostParty === 'split'
+    ? `Gross Cash at Closing: ${esc(D(pp))}\n(Less 50% closing cost credit to buyer at settlement)`
+    : `All Cash at Closing: ${esc(D(pp))}`;
+
+  // Bottom block (same pattern as other LOIs)
+  const bottomBlock = hasBuyer
+    ? `Seller Signature\n\n________________________________________\nSeller Name (Print)\n\n________________________________________\nDate\n\n________________________________________\n\n\n${H('Acquisition Correspondent:')}\n${esc(acName)}\nContact:\n        Email:\n            ${esc(acE1)}\n            ${esc(acE2)}\n        Phone:\n            ${esc(acPh)}\n\n${H('Buyer:')}\n${esc(buyerCo)}`
+    : `────────────────────────────────────────────────\n\n${H('Non-Circumvent')}\n\nThe Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.\n\nCircumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.\n\nThe Acquisition Correspondent's fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing.\n\n${H('Non-Exclusive Nature:')}\nSeller may entertain other offers until final purchase and sales agreement is in place with end buyer.\n\n\nSeller Signature\n\n________________________________________\nSeller Name (Print)\n\n________________________________________\nDate\n\n________________________________________\n\n\n${H('Acquisition Correspondent:')}\n${esc(acName)}\nContact:\n        Email:\n            ${esc(acE1)}\n            ${esc(acE2)}\n        Phone:\n            ${esc(acPh)}`;
+
+  const html =
+`${H(hasBuyer ? 'LOI' : 'Non-Exclusive LOI')}
+${H('Deal Terms - Seller Summary')}
+
+Property: ${esc(addr)}${units ? ' — ' + units + ' Units' : ''}
+Purchase Price: ${esc(D(pp))}
+
+${H('SELLER RECEIVES:')}
+${sellerReceives}
+
+${H('ALL-CASH PURCHASE TERMS:')}
+Purchase Price: ${esc(D(pp))}, payable in full at closing — all cash.
+
+Due Diligence Period: ${esc(ddWord)} days from full execution of a Purchase and Sale Agreement. During this period, Buyer and Buyer's designated agents shall have full access to inspect the property and review all available documentation.
+
+Earnest Money Deposit: ${emdLine}
+
+Closing: On or before ${esc(closingDaysWord)} days from full execution of a Purchase and Sale Agreement.
+
+Condition: As-Is, Where-Is — Seller makes no warranties, representations, or guarantees regarding the condition of the property.
+
+Financing Contingency: ${esc(financingLine)}${appraisalLine}
+
+${H('TIMELINE:')}
+Closing: On or before ${esc(closingDaysWord)} days of signed Purchase and Sale Agreement.${appraisalLine}
+${closingCostsLine}
+
+${bottomBlock}`;
+
+  const el = document.getElementById('cash-loi-text');
+  el.innerHTML = html.replace(/\n/g, '<br>');
+  const sec = document.getElementById('cash-loi-section');
+  sec.classList.add('visible');
+  setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+function copyCashLOI() {
+  const el = document.getElementById('cash-loi-text');
+  const text = el.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-cash-btn');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
 // ── ALL SAVEABLE FIELDS ──
 const FIELDS = [
   'address','units','prop_type','prop_class','sqft',
@@ -6148,5 +6375,50 @@ document.querySelectorAll('input, select').forEach(el => el.addEventListener('in
 loadFromURL();
 recalc();
 </script>
+
+<!-- MAO CALCULATOR MODAL -->
+<div id="mao-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:32px 28px;max-width:480px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,0.25);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <div style="font-size:18px;font-weight:700;">MAO Calculator</div>
+      <button onclick="closeMaoModal()" style="background:none;border:none;font-size:16px;cursor:pointer;color:#666;padding:4px 8px;">Close ×</button>
+    </div>
+    <div style="font-size:13px;color:#666;margin-bottom:20px;">Uses the same Maximum Allowable Offer math as the Cash Deal Details wizard — plug in numbers any time, independent of the main calculator.</div>
+
+    <div class="field" style="margin-bottom:14px;">
+      <label>ARV <span style="font-weight:400;color:#888;">(After Repair Value)</span></label>
+      <div class="prefix-wrap"><span>$</span><input type="number" id="mao_arv" placeholder="0" step="1000" oninput="calcMAO()"></div>
+    </div>
+    <div class="field" style="margin-bottom:14px;">
+      <label>Rehab Estimate</label>
+      <div class="prefix-wrap"><span>$</span><input type="number" id="mao_rehab" placeholder="0" step="1000" oninput="calcMAO()"></div>
+    </div>
+    <div class="field" style="margin-bottom:20px;">
+      <label>Asset Type</label>
+      <select id="mao_asset_type" onchange="calcMAO()" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;">
+        <option value="residential">Residential Property (1-4 units)</option>
+        <option value="multifamily">Multifamily (5+ units)</option>
+        <option value="commercial">Commercial</option>
+      </select>
+    </div>
+
+    <div id="mao-results" style="display:none;background:#f9fafb;border-radius:8px;padding:16px;border:1px solid #e5e7eb;">
+      <div style="font-weight:700;font-size:13px;margin-bottom:12px;color:#111;">MAO Results</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:13px;color:#555;">Cash Buyer MAO <span style="color:#9ca3af;">(ARV × 70% − Rehab)</span></span>
+        <span style="font-weight:700;font-size:15px;" id="mao-cash-result">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:13px;color:#555;">Hard Money MAO <span style="color:#9ca3af;">(10% down)</span></span>
+        <span style="font-weight:700;font-size:15px;" id="mao-hm10-result">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:13px;color:#555;">Hard Money MAO <span style="color:#9ca3af;">(20% down)</span></span>
+        <span style="font-weight:700;font-size:15px;" id="mao-hm20-result">—</span>
+      </div>
+      <div style="font-size:11px;color:#888;border-top:1px solid #e5e7eb;padding-top:10px;line-height:1.6;" id="mao-breakdown"></div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
