@@ -445,7 +445,8 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   <h1>Suede Buffalo LLC — Seller Carryback Calculator</h1>
   <p>Acquisition &amp; LOI Generator</p>
   <button class="btn-admin" onclick="adminTemplate()">★ Admin Template</button>
-  <button class="btn-admin" onclick="openMaoModal()" style="background:#d1fae5;color:#065f46;border-color:#a7f3d0;">🧮 MAO Calc</button>
+  <button class="btn-admin" id="btn-cash-template" onclick="adminCashTemplate()" style="background:#d1fae5;color:#065f46;border-color:#a7f3d0;">★ Cash Template</button>
+  <button class="btn-admin" onclick="openMaoModal()" style="background:#e0e7ff;color:#3730a3;border-color:#c7d2fe;">🧮 MAO Calc</button>
   <button class="btn-admin" id="btn-static-cf" onclick="toggleStaticCF()" style="background:#e0e7ff;color:#3730a3;border-color:#c7d2fe;" title="When ON: CF projection uses Day-1 NOI held flat (no growth), but phase payments still apply on schedule. Shows the worst case if rents never grow.">📊 Static CF: OFF</button>
   <button class="btn-share" onclick="shareCalc()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2080,6 +2081,31 @@ function adminTemplate() {
   const btn = document.querySelector('.btn-admin');
   btn.textContent = '✓ Template Applied!';
   setTimeout(() => btn.textContent = '★ Admin Template', 1800);
+}
+
+function adminCashTemplate() {
+  // Clear correspondent fields — direct buyer, no middleman
+  ['ac_name','ac_email1','ac_email2','ac_phone'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const vals = {
+    buyer_company: 'Suede Buffalo LLC and/or assigns',
+    appreciation:  3,
+    noi_growth:    2,
+  };
+  Object.entries(vals).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  });
+  setClosingCostParty('split');
+  setAppraisalContingency('off');
+  setCashEMD('none');
+  setCashFinancing('none');
+  recalc();
+  const btn = document.getElementById('btn-cash-template');
+  btn.textContent = '✓ Cash Template Applied!';
+  setTimeout(() => btn.textContent = '★ Cash Template', 1800);
 }
 
 function onExitTypeChange() {
@@ -6301,19 +6327,23 @@ function generateCashLOI() {
     ? 'Buyer responsible for all closing costs and transaction fees.'
     : closingCostParty === 'seller'
     ? 'Seller to credit buyer for all closing costs and transaction fees at closing.'
-    : 'Closing costs split equally — each party responsible for 50% of total transaction fees.';
+    : 'Buyer and seller each pay their respective closing costs.';
 
   // Seller receives block
   const sellerReceives = closingCostParty === 'seller'
     ? `Gross Cash at Closing: ${esc(D(pp))}\n(Less closing cost credit to buyer at settlement)`
-    : closingCostParty === 'split'
-    ? `Gross Cash at Closing: ${esc(D(pp))}\n(Less 50% closing cost credit to buyer at settlement)`
     : `All Cash at Closing: ${esc(D(pp))}`;
 
-  // Bottom block (same pattern as other LOIs)
-  const bottomBlock = hasBuyer
-    ? `Seller Signature\n\n________________________________________\nSeller Name (Print)\n\n________________________________________\nDate\n\n________________________________________\n\n\n${H('Acquisition Correspondent:')}\n${esc(acName)}\nContact:\n        Email:\n            ${esc(acE1)}\n            ${esc(acE2)}\n        Phone:\n            ${esc(acPh)}\n\n${H('Buyer:')}\n${esc(buyerCo)}`
-    : `────────────────────────────────────────────────\n\n${H('Non-Circumvent')}\n\nThe Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.\n\nCircumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.\n\nThe Acquisition Correspondent's fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing.\n\n${H('Non-Exclusive Nature:')}\nSeller may entertain other offers until final purchase and sales agreement is in place with end buyer.\n\n\nSeller Signature\n\n________________________________________\nSeller Name (Print)\n\n________________________________________\nDate\n\n________________________________________\n\n\n${H('Acquisition Correspondent:')}\n${esc(acName)}\nContact:\n        Email:\n            ${esc(acE1)}\n            ${esc(acE2)}\n        Phone:\n            ${esc(acPh)}`;
+  // Bottom block — three cases:
+  // hasBuyer + acName → full correspondent + buyer block
+  // hasBuyer + no acName → direct buyer, no correspondent section
+  // no hasBuyer → non-circumvent + correspondent block (no end buyer named)
+  const sigBlock = `Seller Signature\n\n________________________________________\nSeller Name (Print)\n\n________________________________________\nDate\n\n________________________________________`;
+  const bottomBlock = hasBuyer && acName
+    ? `${sigBlock}\n\n\n${H('Acquisition Correspondent:')}\n${esc(acName)}\nContact:\n        Email:\n            ${esc(acE1)}\n            ${esc(acE2)}\n        Phone:\n            ${esc(acPh)}\n\n${H('Buyer:')}\n${esc(buyerCo)}`
+    : hasBuyer
+    ? `${sigBlock}\n\n\n${H('Buyer:')}\n${esc(buyerCo)}`
+    : `────────────────────────────────────────────────\n\n${H('Non-Circumvent')}\n\nThe Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.\n\nCircumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.\n\nThe Acquisition Correspondent's fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing.\n\n${H('Non-Exclusive Nature:')}\nSeller may entertain other offers until final purchase and sales agreement is in place with end buyer.\n\n\n${sigBlock}\n\n\n${H('Acquisition Correspondent:')}\n${esc(acName)}\nContact:\n        Email:\n            ${esc(acE1)}\n            ${esc(acE2)}\n        Phone:\n            ${esc(acPh)}`;
 
   const html =
 `${H(hasBuyer ? 'LOI' : 'Non-Exclusive LOI')}
@@ -6339,8 +6369,7 @@ Condition: As-Is, Where-Is — Seller makes no warranties, representations, or g
 Financing Contingency: ${esc(financingLine)}${appraisalLine}
 
 ${H('TIMELINE:')}
-Closing: On or before ${esc(closingDaysWord)} days of signed Purchase and Sale Agreement.${appraisalLine}
-${closingCostsLine}
+${closingCostsLine}${appraisalLine}
 
 ${bottomBlock}`;
 
