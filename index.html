@@ -803,11 +803,19 @@ input:focus, select:focus { border-color: #111; background: #fff; }
 
   <!-- SELLER CARRY — LOI SECTION -->
   <div class="card" style="border-color:#fde047">
-    <div class="card-title" style="background:#fefce8; border-bottom-color:#fde047; color:#854d0e">
+    <div class="card-title" style="background:#fefce8; border-bottom-color:#fde047; color:#854d0e; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
       D) Seller Carry Note
       <span class="loi-tag" style="background:#fef08a; border-color:#ca8a04">★ Feeds LOI</span>
+      <button id="btn-no-sc" onclick="toggleNoSellerCarry()"
+        style="margin-left:auto;padding:4px 14px;border-radius:20px;border:1.5px solid #ca8a04;background:#fff;color:#854d0e;font-weight:700;font-size:12px;cursor:pointer;">
+        No Seller Carry
+      </button>
     </div>
     <div class="card-body">
+      <div id="no-sc-banner" style="display:none;background:#fef3c7;border:1.5px solid #fde047;border-radius:8px;padding:10px 14px;color:#92400e;font-size:13px;font-weight:600;text-align:center;margin-bottom:4px;">
+        All-Cash Purchase — No Seller Carry. Seller receives full purchase price at closing.
+      </div>
+      <div id="sc-fields-wrap">
       <div class="row cols-2">
         <div class="field loi">
           <label><span class="loi-dot"></span> Annual Interest Rate <span class="loi-tag">→ LOI</span></label>
@@ -943,6 +951,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           </div>
         </div>
       </div>
+      </div><!-- /sc-fields-wrap -->
     </div>
   </div>
 
@@ -1790,6 +1799,7 @@ let sellerSecurityType = 'equity';  // 'equity' | 'deed_of_trust' | 'deed_in_lie
 let interestPrepayAtClose = 0;
 let cashEMDType = 'none';           // 'none' | 'before_close' | 'end_dd'
 let cashFinancingType = 'none';     // 'none' | 'hard_money' | 'hard_money_appraisal'
+let noSellerCarry = false;
 
 function setAgentFeeType(type) {
   document.getElementById('loi_agent_fee_type').value = type;
@@ -1891,6 +1901,18 @@ function setMode(m) {
   document.getElementById('dtp-row').style.display      = m === 'deferred_then_pay'? '' : 'none';
   document.getElementById('iod-row').style.display      = m === 'io_deferred'      ? '' : 'none';
   document.getElementById('mode-desc').textContent = MODE_DESC[m] || '';
+  recalc();
+}
+
+function toggleNoSellerCarry() {
+  noSellerCarry = !noSellerCarry;
+  const btn = document.getElementById('btn-no-sc');
+  const wrap = document.getElementById('sc-fields-wrap');
+  const banner = document.getElementById('no-sc-banner');
+  btn.style.background = noSellerCarry ? '#854d0e' : '#fff';
+  btn.style.color = noSellerCarry ? '#fff' : '#854d0e';
+  wrap.style.display = noSellerCarry ? 'none' : '';
+  banner.style.display = noSellerCarry ? '' : 'none';
   recalc();
 }
 
@@ -3331,8 +3353,9 @@ function getAgentFeeLine(pp) {
 }
 
 function generateLOI() {
-  const pp   = g('purchase_price'), cac = g('cash_at_closing');
-  const carry = pp - cac;
+  const pp   = g('purchase_price');
+  const cac  = noSellerCarry ? pp : g('cash_at_closing');
+  const carry = noSellerCarry ? 0 : pp - cac;
   const scRate = g('sc_rate') / 100;
   const scTerm = g('sc_term');
   const months  = Math.round(scTerm * 12);
@@ -3845,6 +3868,15 @@ Purchase Price: ${esc(D(pp))}
 
 ${H('SELLER RECEIVES:')}
 ${(() => {
+  if (noSellerCarry) {
+    const loiSellerAmt = _exitCache.sellerClosingAmt || 0;
+    if (closingCostParty === 'seller' && loiSellerAmt > 0) {
+      return `Gross Cash at Closing: ${esc(D(pp))}\nLess: Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(pp - loiSellerAmt))}`;
+    } else if (closingCostParty === 'split' && loiSellerAmt > 0) {
+      return `All Cash at Closing: ${esc(D(pp))}\nLess: 50% Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(pp - loiSellerAmt))}`;
+    }
+    return `All Cash at Closing: ${esc(D(pp))}`;
+  }
   const loiSellerAmt  = _exitCache.sellerClosingAmt  || 0;
   const loiSellerNet  = _exitCache.sellerNetAtClose  != null ? _exitCache.sellerNetAtClose : cac + interestPrepayAtClose;
   const prepayLine    = interestPrepayAtClose > 0 ? `\n+ Interest Pre-Pay from Buyer: +${esc(D(interestPrepayAtClose))}` : '';
@@ -3856,9 +3888,9 @@ ${(() => {
   }
   return `Seller Cash at Closing: ${esc(D(cac))}${prepayLine}${prepayNetLine}`;
 })()}
-${sellerCarryHeader}
+${noSellerCarry ? '' : sellerCarryHeader}
 ${getAgentFeeLine(pp) ? '\n' + getAgentFeeLine(pp) : ''}
-
+${noSellerCarry ? '' : `
 ${H('SELLER CARRY NOTE:')}
 ${pmtBlock}
 
@@ -3868,7 +3900,7 @@ ${sellerSecurityType === 'deed_of_trust'
   ? H('SELLER SECURITY BY SECOND POSITION DEED OF TRUST:') + '\nThe seller carry note will be secured by a deed of trust recorded in second position against the property, providing collateral-based security and foreclosure remedies in a default scenario. The parties may alternatively mutually agree to a deed in lieu of foreclosure, subject to the senior lender and title requirements.'
   : sellerSecurityType === 'deed_in_lieu'
   ? H('SELLER SECURITY WITH DEED IN LIEU OF FORECLOSURE:') + '\nThe seller-financed balance shall be evidenced by a Promissory Note and secured by a Warranty Deed with Vendor\'s Lien and a recorded Deed of Trust in second position behind the buyer\'s acquisition financing. Following an uncured default, the seller may pursue all remedies available under the loan documents, including foreclosure, or the parties may mutually agree to a deed in lieu of foreclosure, subject to the senior lender and title requirements.'
-  : H('SELLER PROTECTION BY SENIOR EQUITY INTEREST:') + '\nYour position is documented as a Senior Equity Interest, giving you first-priority claim to all cash flow and proceeds from operations, refinance, or sale — ahead of all buyer equity. If the buyer defaults on the note, the operating agreement allows you to take over the buyer\'s interest in the property without foreclosure.'}
+  : H('SELLER PROTECTION BY SENIOR EQUITY INTEREST:') + '\nYour position is documented as a Senior Equity Interest, giving you first-priority claim to all cash flow and proceeds from operations, refinance, or sale — ahead of all buyer equity. If the buyer defaults on the note, the operating agreement allows you to take over the buyer\'s interest in the property without foreclosure.'}`}
 
 ${H('TIMELINE:')}
 Closing: Within ${(document.getElementById('prop_type') || {}).value === 'residential' ? '30' : '45-60'} days of signed purchase and sales agreement.
@@ -4271,8 +4303,8 @@ function generateBuyerPresentation() {
   const acName = s('ac_name');
 
   const pp  = g('purchase_price');
-  const cac = g('cash_at_closing');
-  const carry = pp - cac;
+  const cac = noSellerCarry ? pp : g('cash_at_closing');
+  const carry = noSellerCarry ? 0 : pp - cac;
   const asIsVal = g('as_is_value') || pp;
   const arvRaw  = g('arv');
   const arv     = arvRaw > 0 ? arvRaw : asIsVal;
@@ -4506,7 +4538,7 @@ EXIT VALUE & PROCEEDS:
     ? `Proforma Implied Value @ ${P(capRate)} cap: ${D(pfImplied)}  (${D(pfNOIatBalloon)}/yr ÷ ${P(capRate)})`
     : `Proforma Exit Value (appreciation-based): ${D(pfImplied)}`}
   Senior Loan Balance:      ${D(exitSrBal)}${bridgeEnabled ? ' (DSCR perm loan, amortized from refi date)' : loanType === 'hard_money' ? ' (HM loan — I/O, no amortization)' : ''} (${pctOf(exitSrBal, pfImplied)} of exit value)
-  Seller Carry Owed:        ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, pfImplied)} of exit value)
+  ${noSellerCarry ? '' : `Seller Carry Owed:        ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, pfImplied)} of exit value)\n  `}
   Cumulative CF (proforma NOI path — ramps to target then grows ${P(noiGrowthRate)}/yr): ${pfCumCF >= 0 ? '+' : ''}${D(pfCumCF)}${bridgeEnabled && _exitCache.brgRefiNetCash != null ? `
     ↳ Includes ${_exitCache.brgRefiNetCash >= 0 ? '+' : ''}${D(_exitCache.brgRefiNetCash)} DSCR refi cash-out at Month ${stabMonths || (g('bridge_term_mo') || 18)} (BRRRR capital recovery — offset by higher perm loan at exit)` : ''}
 
@@ -4578,8 +4610,10 @@ RENTAL INCOME & EXPENSE SUMMARY:
 ${bpResTaxesAn > 0  ? `  Less: Property Taxes:     −${Dfmt(bpResTaxesAn/12)}/mo  (−${D(bpResTaxesAn)}/yr)\n` : ''}${bpResInsAn > 0   ? `  Less: Insurance:          −${Dfmt(bpResInsAn/12)}/mo  (−${D(bpResInsAn)}/yr)\n` : ''}${bpResMaintAn > 0 ? `  Less: Maintenance${bpResMaintPct > 0 ? ' ('+bpResMaintPct+'% of rent)' : ''}:  −${Dfmt(bpResMaintAn/12)}/mo  (−${D(bpResMaintAn)}/yr)\n` : ''}  ${'─'.repeat(38)}
   Net Operating Income:       ${Dfmt(noiMo)}/mo  (${D(noiAn)}/yr)
 ` : `${asIsCapRate > 0 ? `As-Is Cap Rate: ${P(asIsCapRate)} (NOI ÷ As-Is Value)\n` : ''}${impliedVal > 0 ? `Cap Rate Implied Valuation: ${D(impliedVal)} (at ${P(capRate)} market cap on ${D(noiAn)} NOI)\n` : ''}NOI (Annual, Day-1): ${D(noiAn)}
-`}Cash to Seller at Closing: ${D(cac)} (${pctOf(cac, pp)} of purchase price)
-Seller Carryback Note: ${D(carry)} (${pctOf(carry, pp)} of purchase price)
+`}${noSellerCarry
+  ? `All Cash to Seller at Closing: ${D(pp)}`
+  : `Cash to Seller at Closing: ${D(cac)} (${pctOf(cac, pp)} of purchase price)
+Seller Carryback Note: ${D(carry)} (${pctOf(carry, pp)} of purchase price)`}
 
 ══════════════════════════════════════
 FINANCING STRUCTURE
@@ -4595,11 +4629,11 @@ ${bridgeEnabled
     ? `Senior Monthly Payment: ${Dfmt(hmIOmoLocal)}/mo (I/O — HM loan, no amortization during hold)`
     : `Senior Monthly Payment: ${Dfmt(srPmt)}/mo`}
 ${isResidential ? 'Debt Coverage (Senior Only)' : (loanType === 'hard_money' && !bridgeEnabled ? 'ICR' : 'DSCR') + ' (Senior Only)'}: ${(bpDayOneSrPmt > 0 ? noiAn / (bpDayOneSrPmt * 12) : dscrSrOnly).toFixed(2)}x${isResidential ? '  (net income ÷ senior payment)' : ''}
-${isResidential ? 'Debt Coverage (All Debt incl. Seller Carry)' : (loanType === 'hard_money' && !bridgeEnabled ? 'ICR' : 'DSCR') + ' (All Debt incl. Seller Carry)'}: ${(bpDayOneDebt > 0 ? noiAn / (bpDayOneDebt * 12) : dscrAllDebt).toFixed(2)}x
+${noSellerCarry ? '' : `${isResidential ? 'Debt Coverage (All Debt incl. Seller Carry)' : (loanType === 'hard_money' && !bridgeEnabled ? 'ICR' : 'DSCR') + ' (All Debt incl. Seller Carry)'}: ${(bpDayOneDebt > 0 ? noiAn / (bpDayOneDebt * 12) : dscrAllDebt).toFixed(2)}x`}
 
-Seller Carry Terms:
-  Total Term: ${scTerm} years${ph2Enabled && bpPh2 ? ` (${bpPh1Yrs}-yr Period 1 + ${bpPh2Yrs}-yr Period 2)` : ''}
-${ph2Enabled && bpPh2 ? `
+${noSellerCarry ? 'No Seller Carry — All-Cash Purchase' : `Seller Carry Terms:
+  Total Term: ${scTerm} years${ph2Enabled && bpPh2 ? ` (${bpPh1Yrs}-yr Period 1 + ${bpPh2Yrs}-yr Period 2)` : ''}`}
+${!noSellerCarry && ph2Enabled && bpPh2 ? `
   PERIOD 1 (Years 1–${bpPh1Yrs}):
     Rate: ${P(scRate)} simple interest
     Payment: ${{
@@ -4622,7 +4656,7 @@ ${ph2Enabled && bpPh2 ? `
       deferred_then_pay: '$0/mo × ' + (g('ph2_defer_months')||0) + ' mo, then ' + Dfmt(scMonthly2) + '/mo IO',
       io_deferred:       Dfmt(scMonthly2) + '/mo IO + ' + g('ph2_deferred_rate') + '% deferred → balloon',
     }[mode2] || Dfmt(scMonthly2) + '/mo'}
-` : `  Rate: ${P(scRate)} simple interest
+` : noSellerCarry ? `` : `  Rate: ${P(scRate)} simple interest
   Payment: ${{
     principal_only:    D(scMonthly) + '/mo (principal only, interest accrues to balloon)',
     interest_only:     Dfmt(scMonthly) + '/mo (interest only)',
@@ -4631,7 +4665,7 @@ ${ph2Enabled && bpPh2 ? `
     deferred_then_pay: '$0/mo × ' + (g('sc_defer_months')||0) + ' mo deferral, then ' + Dfmt(scMonthly) + '/mo (IO)',
     io_deferred:       Dfmt(scMonthly) + '/mo IO + ' + g('sc_deferred_rate') + '% deferred simple interest → balloon',
   }[mode] || Dfmt(scMonthly) + '/mo'}
-`}  Balloon at Year ${balloonYr}: ~${D(balloon)}
+`}${noSellerCarry ? '' : `  Balloon at Year ${balloonYr}: ~${D(balloon)}`}
 
 Total Monthly Debt Service (Day-1 / Period 1): ${Dfmt(totalDebtMo)}/mo${ph2Enabled && bpPh2 ? `
 Total Monthly Debt Service (Period 2): ${Dfmt(srPmt + scMonthly2)}/mo` : ''}
@@ -4670,7 +4704,7 @@ EXIT PROFIT PROJECTION (Year ${balloonYr} Balloon — ${staticCF ? 'Static CF Mo
 Day-1 ${isResidential ? 'Net Rental Income' : 'NOI'}: ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)${staticCF ? '  →  held flat (Static CF)' : noiGrowthRate > 0 ? `  →  growing at ${P(noiGrowthRate)}/yr` : '  (held flat)'}
 ${!staticCF && noiGrowthRate > 0 ? `NOI at Balloon (Year ${balloonYr}): ${D(bpNOIatYear(balloonYr))}/yr\n` : ''}Projected Property Value: ${D(exitPropVal)} (${P(appr)}/yr appreciation — ${pctOf(exitPropVal - arv, arv)} total gain since acquisition)
 Senior Loan Balance Remaining: ${D(exitSrBal)} (${pctOf(exitSrBal, exitPropVal)} of exit value)
-Seller Carry Balance Owed: ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, exitPropVal)} of exit value)
+${noSellerCarry ? '' : `Seller Carry Balance Owed: ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, exitPropVal)} of exit value)`}
 Cumulative Net Cash Flow (${staticCF ? 'NOI flat at Day-1, Static CF mode' : `current NOI${noiGrowthRate > 0 ? ` + ${P(noiGrowthRate)}/yr` : ', flat'}`}${hasProforma ? ' — proforma NOT used' : ''}): ${cumCF >= 0 ? '+' : ''}${D(cumCF)}
 
   SALE EXIT (appreciation-based exit value):
@@ -4731,14 +4765,12 @@ PHASE 1 — ${bpIsHM ? 'HARD MONEY' : 'BRIDGE LOAN'} (Acquisition through Month 
   Rate (Interest-Only):       ${P(bpBrgRate)}  →  ${Dfmt(bpBrgIOmo)}/mo
   Origination Fee:            ${D(bpBrgOrigFee)}
   Max Commitment Term:        ${bpBrgTermMo} months
-  Seller Carry Note:          ${D(carry)} (seller stays in equity position — no payoff yet)
-  Cash to Seller at Closing:  ${D(cac)}
+  ${noSellerCarry ? '' : `Seller Carry Note:          ${D(carry)} (seller stays in equity position — no payoff yet)\n  `}Cash to Seller at Closing:  ${D(cac)}
 
   HOLDING PERIOD CASH FLOW (current NOI):
   NOI / mo:                   ${Dfmt(noiMo)}/mo
   ${bpIsHM ? 'Hard Money' : 'Bridge'} I/O Payment:   −${Dfmt(bpBrgIOmo)}/mo
-  Seller Carry Payment:       −${Dfmt(scMonthly)}/mo
-  Net CF / mo (holding):      ${bpBridgeCF >= 0 ? '+' : ''}${Dfmt(bpBridgeCF)}/mo ${bpBridgeCF >= 0 ? '✓' : '← negative during holding is expected on value-add deals'}
+  ${noSellerCarry ? '' : `Seller Carry Payment:       −${Dfmt(scMonthly)}/mo\n  `}Net CF / mo (holding):      ${bpBridgeCF >= 0 ? '+' : ''}${Dfmt(bpBridgeCF)}/mo ${bpBridgeCF >= 0 ? '✓' : '← negative during holding is expected on value-add deals'}
 
 PHASE 2 — ${bpIsHM ? 'DSCR REFI' : 'PERM REFI'} (Month ${bpRefiMo} — End of Stabilization Period)
   Trigger:                    End of ${stabMonths > 0 ? `${stabMonths}-month stabilization period` : `${bpBrgTermMo}-month bridge term`}
@@ -4762,19 +4794,17 @@ ${'─'.repeat(44)}
     : bpNetAtRefi < 0
       ? `Perm loan falls short of bridge payoff by ${D(-bpNetAtRefi)} — buyer must inject additional cash at refi to retire the bridge.`
       : `Bridge fully retired by perm loan — no net cash in or out at refi.`}
-  Seller Carry Note:          ${D(carry)} carry continues — seller still in equity position${bpScRefiPaydown > 0 ? `\n  Carry Balance After Paydown: ${D(Math.max(0, carry - bpScRefiPaydown))} (reduced principal going forward)` : ''}
-
+  ${noSellerCarry ? '' : `Seller Carry Note:          ${D(carry)} carry continues — seller still in equity position${bpScRefiPaydown > 0 ? `\n  Carry Balance After Paydown: ${D(Math.max(0, carry - bpScRefiPaydown))} (reduced principal going forward)` : ''}\n`}
 PHASE 3 — STABILIZED OPERATIONS (Post-Refi through Year ${scTerm} Balloon)
   ${bpRefiLabel} P&I:     ${Dfmt(bpPermPmt)}/mo  (${P(bpRefiRate)}, ${bpRefiAmort}-yr amort)
-  Seller Carry Payment:       ${Dfmt(bpRefiScMo)}/mo${ph2Enabled ? ' (Phase 1 rate — steps up at Period 2 start)' : ''}
-  Stabilized NOI / mo:        ${Dfmt(bpRefiNOI / 12)}/mo
+  ${noSellerCarry ? '' : `Seller Carry Payment:       ${Dfmt(bpRefiScMo)}/mo${ph2Enabled ? ' (Phase 1 rate — steps up at Period 2 start)' : ''}\n  `}Stabilized NOI / mo:        ${Dfmt(bpRefiNOI / 12)}/mo
   Net CF / mo at Stabilization: ${bpStabCF >= 0 ? '+' : ''}${Dfmt(bpStabCF)}/mo
-  DSCR (${bpRefiLabel} + carry):  ${bpStabDSCR.toFixed(2)}x
+  DSCR (${bpRefiLabel}${noSellerCarry ? '' : ' + carry'}):  ${bpStabDSCR.toFixed(2)}x
 
 PHASE 4 — BALLOON (Year ${scTerm})
-  At the end of Year ${scTerm}, the seller carry note balance is paid in full — this is the seller's final payoff.${bpScRefiPaydown > 0 ? `\n  Note: Seller carry balance was reduced by ${D(bpScRefiPaydown)} at the Month ${bpRefiMo} refi — final balloon reflects this lower balance.` : ''}
+  ${noSellerCarry ? 'The senior loan balance is paid off, refinanced, or the property is sold.' : `At the end of Year ${scTerm}, the seller carry note balance is paid in full — this is the seller's final payoff.${bpScRefiPaydown > 0 ? `\n  Note: Seller carry balance was reduced by ${D(bpScRefiPaydown)} at the Month ${bpRefiMo} refi — final balloon reflects this lower balance.` : ''}
   The ${bpRefiLabel} balance at balloon is separately paid off, refinanced, or the property is sold.
-  Buyer reserves the sole right to prepay the seller carry at any time prior to maturity with no prepayment penalty.
+  Buyer reserves the sole right to prepay the seller carry at any time prior to maturity with no prepayment penalty.`}
 `;
 })() : ''}\
 ══════════════════════════════════════
