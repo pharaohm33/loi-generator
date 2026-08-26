@@ -1265,10 +1265,10 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         <div class="basics-val" id="s-pp">—</div>
       </div>
       <div class="basics-cell loi">
-        <div class="basics-lbl">Seller Cash at Closing</div>
+        <div class="basics-lbl" id="s-cac-lbl">Seller Cash at Closing</div>
         <div class="basics-val" id="s-cac">—</div>
       </div>
-      <div class="basics-cell loi">
+      <div class="basics-cell loi" id="s-carry-cell">
         <div class="basics-lbl">Seller Carry</div>
         <div class="basics-val" id="s-carry">—</div>
       </div>
@@ -1285,8 +1285,8 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     <div class="sum-title">B) Capital Stack</div>
     <div class="sum-body">
       <div class="sum-row"><span class="lbl" id="s-sr-loan-lbl">DSCR 1st</span><span class="val" id="s-sr-loan">—</span></div>
-      <div class="sum-row loi-row"><span class="lbl">Seller Carry</span><span class="val" id="s-carry2">—</span></div>
-      <div class="sum-row loi-row"><span class="lbl">Seller Cash / DP</span><span class="val" id="s-cac2">—</span></div>
+      <div class="sum-row loi-row" id="s-carry2-row"><span class="lbl">Seller Carry</span><span class="val" id="s-carry2">—</span></div>
+      <div class="sum-row loi-row"><span class="lbl" id="s-cac2-lbl">Seller Cash / DP</span><span class="val" id="s-cac2">—</span></div>
       <div class="sum-row"><span class="lbl">Total Project Basis</span><span class="val" id="s-basis">—</span></div>
     </div>
   </div>
@@ -1304,7 +1304,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   </div>
 
   <!-- D) SELLER CARRY -->
-  <div class="sum-card" style="border-color:#fde047">
+  <div class="sum-card" id="s-sc-card" style="border-color:#fde047">
     <div class="sum-title" style="background:#fefce8; border-bottom-color:#fde047; color:#854d0e">
       D) Seller Carry Note <span class="loi-tag">★ LOI</span>
     </div>
@@ -1321,7 +1321,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     <div class="sum-title">E) Closing Costs Detail</div>
     <div class="sum-body">
       <div class="sum-row"><span class="lbl">1st Escrow Fee (% of Purchase Price) — 1st escrow at purchase price</span><span class="val" id="s-esc1">—</span></div>
-      <div class="sum-row"><span class="lbl">2nd Escrow Fee (% of Seller Carry) — 2nd escrow at seller carry balance</span><span class="val" id="s-esc2">—</span></div>
+      <div class="sum-row" id="s-esc2-row"><span class="lbl">2nd Escrow Fee (% of Seller Carry) — 2nd escrow at seller carry balance</span><span class="val" id="s-esc2">—</span></div>
       <div class="sum-row" style="background:#f0fdf4">
         <span class="lbl" style="color:#166534;font-weight:600">Acq / Bird Dog Fee (% of Purchase Price)</span>
         <span class="val" style="color:#15803d;font-size:15px" id="s-acq">—</span>
@@ -1451,7 +1451,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
   </div>
 
   <!-- SELLER RECEIPTS -->
-  <div class="sum-card" style="border-color:#fde047">
+  <div class="sum-card" id="s-receipts-card" style="border-color:#fde047">
     <div class="sum-title" style="background:#fefce8; border-bottom-color:#fde047; color:#854d0e">
       Seller Total Receipts <span class="loi-tag">★ LOI</span>
     </div>
@@ -2226,8 +2226,8 @@ function calcCarry(carry, rate_annual, term_years, monthly_pmt) {
 
 function recalc() {
   const pp      = g('purchase_price');
-  const cac     = g('cash_at_closing');
-  const carry   = pp - cac;
+  const cac     = noSellerCarry ? pp : g('cash_at_closing');
+  const carry   = noSellerCarry ? 0 : pp - cac;
 
   // As-Is Value = lender's basis for loan sizing (DSCR & Hard Money both lend on as-is)
   const asIsVal = g('as_is_value') || pp;
@@ -2320,9 +2320,9 @@ function recalc() {
   if (!isFinite(maxLoan) || isNaN(maxLoan)) maxLoan = 0;
   const srPmt = pmtPI(srRate, g('sr_amort'), maxLoan);
 
-  const scRate = g('sc_rate') / 100;
-  const scTerm = g('sc_term');
-  const scMpmt = g('monthly_principal');
+  const scRate = noSellerCarry ? 0 : g('sc_rate') / 100;
+  const scTerm = noSellerCarry ? (g('sr_amort') || 30) : (g('sc_term') || 0);
+  const scMpmt = noSellerCarry ? 0 : g('monthly_principal');
 
   // ── Phase-aware seller carry math ──
   const ph1Years = ph2Enabled ? Math.min(g('ph1_years') || 1, scTerm) : scTerm;
@@ -2378,7 +2378,7 @@ function recalc() {
   const dscr   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
 
   const esc1   = pp * g('esc1_pct') / 100;  // 1st escrow: % of purchase price
-  const esc2   = (pp - g('cash_at_closing')) * g('esc2_pct') / 100;  // 2nd escrow: % of seller carry (PP - cash to seller)
+  const esc2   = noSellerCarry ? 0 : carry * g('esc2_pct') / 100;  // 2nd escrow: % of seller carry
   const pts    = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
@@ -2438,10 +2438,22 @@ function recalc() {
     arvWarn.style.display = 'none';
   }
 
-  set('s-pp', fm(pp)); set('s-cac', fm(cac)); set('s-carry', fm(carry));
+  set('s-pp', fm(pp)); set('s-cac', noSellerCarry ? fm(pp) : fm(cac)); set('s-carry', fm(carry));
   set('s-noi', fm(noiAn) + '/yr');
   set('s-arv', arvRaw > 0 ? fm(arv) + ' (ARV)' : fm(asIsVal) + ' (as-is)');
   set('s-equity', fm(asIsVal - pp) + ' (' + fp((asIsVal - pp) / (pp || 1), 1) + ')');
+
+  // Toggle noSellerCarry visibility in summary panel
+  const _showHide = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none'; };
+  _showHide('s-carry-cell', !noSellerCarry);
+  _showHide('s-carry2-row', !noSellerCarry);
+  _showHide('s-sc-card',    !noSellerCarry);
+  _showHide('s-receipts-card', !noSellerCarry);
+  _showHide('s-esc2-row',   !noSellerCarry);
+  const cacLbl = document.getElementById('s-cac-lbl');
+  if (cacLbl) cacLbl.textContent = noSellerCarry ? 'All Cash at Closing' : 'Seller Cash at Closing';
+  const cac2Lbl = document.getElementById('s-cac2-lbl');
+  if (cac2Lbl) cac2Lbl.textContent = noSellerCarry ? 'All Cash / DP' : 'Seller Cash / DP';
 
   const constraintLabel = {'ltv':'LTV','ltc':'LTC','arv':'ARV%','dscr':'DSCR Cap'}[bindingConstraint] || 'LTV';
   const actualLTVpct = asIsVal > 0 ? (maxLoan / asIsVal * 100).toFixed(1) + '%' : '';
@@ -2457,12 +2469,12 @@ function recalc() {
   setLbl('s-sr-loan-lbl', isHM ? 'HM 1st'       : 'DSCR 1st');
   setLbl('s-sr-pmt-lbl',  isHM ? 'Monthly I/O'  : 'Monthly P&I');
   setLbl('s-sr-detail-lbl', isHM ? 'Rate / I/O Term' : 'Rate / Amort');
-  setLbl('s-dscr-lbl',    isHM ? 'ICR (all debt)' : 'DSCR (all debt)');
+  setLbl('s-dscr-lbl',    isHM ? 'ICR (all debt)' : noSellerCarry ? 'DSCR (senior only)' : 'DSCR (all debt)');
   setLbl('s-sr-mo-lbl',   isHM ? 'HM I/O / mo'  : 'DSCR Pmt / mo');
 
   document.getElementById('s-sr-loan').innerHTML = fm(maxLoan) + ` (${actualLTVpct}) <span class="constraint-badge ${bindingConstraint}">${constraintLabel}</span>`;
   set('s-carry2',  fm(carry)   + ' (' + fp(carry / (pp || 1), 1) + ')');
-  set('s-cac2',    fm(cac)     + ' (' + fp(cac   / (pp || 1), 1) + ')');
+  set('s-cac2',    noSellerCarry ? fm(pp) + ' (100.0%)' : fm(cac) + ' (' + fp(cac / (pp || 1), 1) + ')');
   set('s-basis', fm(basis));
 
   set('s-max-loan', fm(maxLoan));
