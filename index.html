@@ -2321,7 +2321,8 @@ function recalc() {
   const srPmt = pmtPI(srRate, g('sr_amort'), maxLoan);
 
   const scRate = g('sc_rate') / 100;
-  const scTerm = g('sc_term') || 0;
+  // If sc_term is blank/0 but there IS a carry, default to sr_amort so exit projections work
+  const scTerm = g('sc_term') || (carry > 0 ? (g('sr_amort') || 30) : 0);
   const scMpmt = g('monthly_principal');
 
   // ── Phase-aware seller carry math ──
