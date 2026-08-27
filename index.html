@@ -6333,6 +6333,8 @@ function generateCashLOI() {
   const H   = txt => `<strong>${esc(txt)}</strong>`;
 
   const pp      = g('purchase_price');
+  const cac     = g('cash_at_closing');
+  const loiPP   = noSellerCarry && cac > 0 ? cac : pp;  // seller-facing price
   const addr    = s('address') || 'Property Address TBD';
   const units   = Math.round(g('units'));
   const acName  = s('ac_name'), acE1 = s('ac_email1'), acE2 = s('ac_email2'), acPh = s('ac_phone');
@@ -6376,8 +6378,8 @@ function generateCashLOI() {
 
   // Seller receives block
   const sellerReceives = closingCostParty === 'seller'
-    ? `Gross Cash at Closing: ${esc(D(pp))}\n(Less closing cost credit to buyer at settlement)`
-    : `All Cash at Closing: ${esc(D(pp))}`;
+    ? `Gross Cash at Closing: ${esc(D(loiPP))}\n(Less closing cost credit to buyer at settlement)`
+    : `All Cash at Closing: ${esc(D(loiPP))}`;
 
   // Bottom block — three cases:
   // hasBuyer + acName → full correspondent + buyer block
@@ -6395,13 +6397,13 @@ function generateCashLOI() {
 ${H('Deal Terms - Seller Summary')}
 
 Property: ${esc(addr)}${units ? ' — ' + units + ' Units' : ''}
-Purchase Price: ${esc(D(pp))}
+Purchase Price: ${esc(D(loiPP))}
 
 ${H('SELLER RECEIVES:')}
 ${sellerReceives}
 
 ${H('ALL-CASH PURCHASE TERMS:')}
-Purchase Price: ${esc(D(pp))}, payable in full at closing — all cash.
+Purchase Price: ${esc(D(loiPP))}, payable in full at closing — all cash.
 
 Due Diligence Period: ${esc(ddWord)} days from full execution of a Purchase and Sale Agreement. During this period, Buyer and Buyer's designated agents shall have full access to inspect the property and review all available documentation.
 
