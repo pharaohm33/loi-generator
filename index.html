@@ -3876,7 +3876,7 @@ This is a voluntary partial prepayment at Buyer's election, applied at no prepay
 ${H('Deal Terms - Seller Summary')}
 
 Property: ${esc(addr)}${units ? ' - ' + units + ' Units' : ''}
-Purchase Price: ${esc(D(pp))}
+Purchase Price: ${esc(D(noSellerCarry ? cac : pp))}
 
 ${H('SELLER RECEIVES:')}
 ${(() => {
