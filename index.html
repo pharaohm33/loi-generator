@@ -2226,8 +2226,8 @@ function calcCarry(carry, rate_annual, term_years, monthly_pmt) {
 
 function recalc() {
   const pp      = g('purchase_price');
-  const cac     = noSellerCarry ? pp : g('cash_at_closing');
-  const carry   = noSellerCarry ? 0 : pp - cac;
+  const cac     = g('cash_at_closing');
+  const carry   = pp - cac;
 
   // As-Is Value = lender's basis for loan sizing (DSCR & Hard Money both lend on as-is)
   const asIsVal = g('as_is_value') || pp;
@@ -2320,9 +2320,9 @@ function recalc() {
   if (!isFinite(maxLoan) || isNaN(maxLoan)) maxLoan = 0;
   const srPmt = pmtPI(srRate, g('sr_amort'), maxLoan);
 
-  const scRate = noSellerCarry ? 0 : g('sc_rate') / 100;
-  const scTerm = noSellerCarry ? (g('sr_amort') || 30) : (g('sc_term') || 0);
-  const scMpmt = noSellerCarry ? 0 : g('monthly_principal');
+  const scRate = g('sc_rate') / 100;
+  const scTerm = g('sc_term') || 0;
+  const scMpmt = g('monthly_principal');
 
   // ── Phase-aware seller carry math ──
   const ph1Years = ph2Enabled ? Math.min(g('ph1_years') || 1, scTerm) : scTerm;
@@ -2378,7 +2378,7 @@ function recalc() {
   const dscr   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
 
   const esc1   = pp * g('esc1_pct') / 100;  // 1st escrow: % of purchase price
-  const esc2   = noSellerCarry ? 0 : carry * g('esc2_pct') / 100;  // 2nd escrow: % of seller carry
+  const esc2   = carry * g('esc2_pct') / 100;  // 2nd escrow: % of seller carry (PP - cash to seller)
   const pts    = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
@@ -2438,7 +2438,7 @@ function recalc() {
     arvWarn.style.display = 'none';
   }
 
-  set('s-pp', fm(pp)); set('s-cac', noSellerCarry ? fm(pp) : fm(cac)); set('s-carry', fm(carry));
+  set('s-pp', fm(pp)); set('s-cac', fm(cac)); set('s-carry', fm(carry));
   set('s-noi', fm(noiAn) + '/yr');
   set('s-arv', arvRaw > 0 ? fm(arv) + ' (ARV)' : fm(asIsVal) + ' (as-is)');
   set('s-equity', fm(asIsVal - pp) + ' (' + fp((asIsVal - pp) / (pp || 1), 1) + ')');
@@ -2449,11 +2449,10 @@ function recalc() {
   _showHide('s-carry2-row', !noSellerCarry);
   _showHide('s-sc-card',    !noSellerCarry);
   _showHide('s-receipts-card', !noSellerCarry);
-  _showHide('s-esc2-row',   !noSellerCarry);
   const cacLbl = document.getElementById('s-cac-lbl');
-  if (cacLbl) cacLbl.textContent = noSellerCarry ? 'All Cash at Closing' : 'Seller Cash at Closing';
+  if (cacLbl) cacLbl.textContent = noSellerCarry ? 'Seller Cash at Closing' : 'Seller Cash at Closing';
   const cac2Lbl = document.getElementById('s-cac2-lbl');
-  if (cac2Lbl) cac2Lbl.textContent = noSellerCarry ? 'All Cash / DP' : 'Seller Cash / DP';
+  if (cac2Lbl) cac2Lbl.textContent = noSellerCarry ? 'Seller Cash / DP' : 'Seller Cash / DP';
 
   const constraintLabel = {'ltv':'LTV','ltc':'LTC','arv':'ARV%','dscr':'DSCR Cap'}[bindingConstraint] || 'LTV';
   const actualLTVpct = asIsVal > 0 ? (maxLoan / asIsVal * 100).toFixed(1) + '%' : '';
@@ -3366,8 +3365,8 @@ function getAgentFeeLine(pp) {
 
 function generateLOI() {
   const pp   = g('purchase_price');
-  const cac  = noSellerCarry ? pp : g('cash_at_closing');
-  const carry = noSellerCarry ? 0 : pp - cac;
+  const cac  = g('cash_at_closing');
+  const carry = pp - cac;
   const scRate = g('sc_rate') / 100;
   const scTerm = g('sc_term');
   const months  = Math.round(scTerm * 12);
@@ -3883,11 +3882,11 @@ ${(() => {
   if (noSellerCarry) {
     const loiSellerAmt = _exitCache.sellerClosingAmt || 0;
     if (closingCostParty === 'seller' && loiSellerAmt > 0) {
-      return `Gross Cash at Closing: ${esc(D(pp))}\nLess: Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(pp - loiSellerAmt))}`;
+      return `Gross Cash at Closing: ${esc(D(cac))}\nLess: Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(cac - loiSellerAmt))}`;
     } else if (closingCostParty === 'split' && loiSellerAmt > 0) {
-      return `All Cash at Closing: ${esc(D(pp))}\nLess: 50% Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(pp - loiSellerAmt))}`;
+      return `Seller Cash at Closing: ${esc(D(cac))}\nLess: 50% Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(cac - loiSellerAmt))}`;
     }
-    return `All Cash at Closing: ${esc(D(pp))}`;
+    return `Seller Cash at Closing: ${esc(D(cac))}`;
   }
   const loiSellerAmt  = _exitCache.sellerClosingAmt  || 0;
   const loiSellerNet  = _exitCache.sellerNetAtClose  != null ? _exitCache.sellerNetAtClose : cac + interestPrepayAtClose;
@@ -4315,8 +4314,8 @@ function generateBuyerPresentation() {
   const acName = s('ac_name');
 
   const pp  = g('purchase_price');
-  const cac = noSellerCarry ? pp : g('cash_at_closing');
-  const carry = noSellerCarry ? 0 : pp - cac;
+  const cac = g('cash_at_closing');
+  const carry = pp - cac;
   const asIsVal = g('as_is_value') || pp;
   const arvRaw  = g('arv');
   const arv     = arvRaw > 0 ? arvRaw : asIsVal;
@@ -4623,7 +4622,7 @@ ${bpResTaxesAn > 0  ? `  Less: Property Taxes:     −${Dfmt(bpResTaxesAn/12)}/m
   Net Operating Income:       ${Dfmt(noiMo)}/mo  (${D(noiAn)}/yr)
 ` : `${asIsCapRate > 0 ? `As-Is Cap Rate: ${P(asIsCapRate)} (NOI ÷ As-Is Value)\n` : ''}${impliedVal > 0 ? `Cap Rate Implied Valuation: ${D(impliedVal)} (at ${P(capRate)} market cap on ${D(noiAn)} NOI)\n` : ''}NOI (Annual, Day-1): ${D(noiAn)}
 `}${noSellerCarry
-  ? `All Cash to Seller at Closing: ${D(pp)}`
+  ? `Cash to Seller at Closing: ${D(cac)} (${pctOf(cac, pp)} of purchase price)`
   : `Cash to Seller at Closing: ${D(cac)} (${pctOf(cac, pp)} of purchase price)
 Seller Carryback Note: ${D(carry)} (${pctOf(carry, pp)} of purchase price)`}
 
