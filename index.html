@@ -3883,11 +3883,11 @@ ${(() => {
   if (noSellerCarry) {
     const loiSellerAmt = _exitCache.sellerClosingAmt || 0;
     if (closingCostParty === 'seller' && loiSellerAmt > 0) {
-      return `Gross Cash at Closing: ${esc(D(cac))}\nLess: Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(cac - loiSellerAmt))}`;
+      return `All Cash at Closing: ${esc(D(cac))}\nLess: Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(cac - loiSellerAmt))}`;
     } else if (closingCostParty === 'split' && loiSellerAmt > 0) {
-      return `Seller Cash at Closing: ${esc(D(cac))}\nLess: 50% Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(cac - loiSellerAmt))}`;
+      return `All Cash at Closing: ${esc(D(cac))}\nLess: 50% Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(cac - loiSellerAmt))}`;
     }
-    return `Seller Cash at Closing: ${esc(D(cac))}`;
+    return `All Cash at Closing: ${esc(D(cac))}`;
   }
   const loiSellerAmt  = _exitCache.sellerClosingAmt  || 0;
   const loiSellerNet  = _exitCache.sellerNetAtClose  != null ? _exitCache.sellerNetAtClose : cac + interestPrepayAtClose;
@@ -3900,7 +3900,10 @@ ${(() => {
   }
   return `Seller Cash at Closing: ${esc(D(cac))}${prepayLine}${prepayNetLine}`;
 })()}
-${noSellerCarry ? '' : sellerCarryHeader}
+${noSellerCarry ? `
+${H('ALL-CASH PURCHASE TERMS:')}
+Purchase Price: ${esc(D(cac))}, payable in full at closing — all cash.
+` : sellerCarryHeader}
 ${getAgentFeeLine(pp) ? '\n' + getAgentFeeLine(pp) : ''}
 ${noSellerCarry ? '' : `
 ${H('SELLER CARRY NOTE:')}
