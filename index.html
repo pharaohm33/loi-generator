@@ -6467,6 +6467,7 @@ function shareCalc() {
   if (ph2Enabled) { p.set('ph2_enabled', '1'); p.set('mode2', mode2); }
   if (bridgeEnabled) p.set('ph2_bridge', '1');
   if (staticCF) p.set('static_cf', '1');
+  if (noSellerCarry) p.set('no_sc', '1');
   const url = location.origin + location.pathname + '?' + p.toString();
   navigator.clipboard.writeText(url).then(() => {
     history.replaceState(null, '', '?' + p.toString());
@@ -6497,6 +6498,7 @@ function loadFromURL() {
   if (p.has('mode2')) setMode2(p.get('mode2'));
   if (p.has('ph2_bridge') && p.get('ph2_bridge') === '1') { if (!bridgeEnabled) toggleBridge(); }
   if (p.has('static_cf') && p.get('static_cf') === '1') { if (!staticCF) toggleStaticCF(); }
+  if (p.has('no_sc') && p.get('no_sc') === '1') { if (!noSellerCarry) toggleNoSellerCarry(); }
   if (p.has('exit_type')) onExitTypeChange();
   if (p.has('loi_agent_fee_type')) setAgentFeeType(p.get('loi_agent_fee_type'));
   if (p.has('closing_cost_party')) setClosingCostParty(p.get('closing_cost_party'));
