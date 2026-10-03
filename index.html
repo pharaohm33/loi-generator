@@ -487,6 +487,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <option value="A">Class A</option><option value="B">Class B</option><option value="C">Class C</option><option value="D">Class D</option>
             <option value="sfr">SFR</option><option value="duplex">Duplex</option><option value="triplex">Triplex</option><option value="fourplex">Fourplex</option>
             <option value="condo">Condo / Townhome</option>
+            <option value="vacant_land">Vacant Land</option><option value="infill_lot">Infill Lot</option><option value="raw_land">Raw Land</option><option value="agricultural">Agricultural</option><option value="commercial_lot">Commercial Lot</option>
           </select>
         </div>
       </div>
@@ -5699,7 +5700,9 @@ function generateResidentialLOIReasoning(offerType, sellerData) {
   const beds   = g('res_beds') || 0, baths = g('res_baths') || 0, sqft = g('sqft') || 0;
   const propClass = (document.getElementById('prop_class') || {}).value || '';
   const propSubtype = { sfr:'Single Family Residence', duplex:'Duplex', triplex:'Triplex',
-    fourplex:'Fourplex', condo:'Condo / Townhome' }[propClass] || propClass || 'Residential Property';
+    fourplex:'Fourplex', condo:'Condo / Townhome',
+    vacant_land:'Vacant Land', infill_lot:'Infill Lot', raw_land:'Raw Land',
+    agricultural:'Agricultural Land', commercial_lot:'Commercial Lot' }[propClass] || propClass || 'Residential Property';
 
   const pp   = g('purchase_price');
   const cac  = g('cash_at_closing');
