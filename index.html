@@ -6373,7 +6373,7 @@ function generateCashLOI() {
   // EMD
   const emdAmt  = g('cash_emd_amount');
   const emdLine = cashEMDType === 'none'
-    ? 'None.'
+    ? ''
     : `${esc(D(emdAmt))} due ${cashEMDType === 'before_close' ? 'on or before closing' : 'at the end of the due diligence period'}.`;
 
   // Financing contingency
@@ -6426,7 +6426,7 @@ Purchase Price: ${esc(D(loiPP))}, payable in full at closing — all cash.
 
 Due Diligence Period: ${esc(ddWord)} days from full execution of a Purchase and Sale Agreement. During this period, Buyer and Buyer's designated agents shall have full access to inspect the property and review all available documentation.
 
-Earnest Money Deposit: ${emdLine}
+${emdLine ? `Earnest Money Deposit: ${emdLine}` : ''}
 
 ${isLand
   ? `Closing will be within Ninety (90) Days of agreement being accepted and signed by both Buyer and Seller. Seller grants any extension needed to clear title or to complete closing documentation. Title to the above described real estate to be conveyed by General Warranty Deed or other customary instrument of transfer.
