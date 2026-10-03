@@ -6281,11 +6281,37 @@ function computeMaoSuite(arv, rehab, assetType) {
     tierName, targetRoi, cashTargetRoc };
 }
 
+function onMaoAssetTypeChange() {
+  const isLand = document.getElementById('mao_asset_type').value === 'land';
+  document.getElementById('mao-arv-rehab-fields').style.display = isLand ? 'none' : '';
+  document.getElementById('mao-land-fields').style.display      = isLand ? '' : 'none';
+  calcMAO();
+}
+
 function calcMAO() {
-  const arv       = parseFloat(document.getElementById('mao_arv').value)        || 0;
-  const rehab     = parseFloat(document.getElementById('mao_rehab').value)      || 0;
   const assetType = document.getElementById('mao_asset_type').value;
   const results   = document.getElementById('mao-results');
+
+  if (assetType === 'land') {
+    const asIs = parseFloat(document.getElementById('mao_as_is').value) || 0;
+    if (!asIs) { results.style.display = 'none'; return; }
+    const mao = asIs * 0.70;
+    const fmt = v => (v < 0 ? '−$' : '$') + Math.round(Math.abs(v)).toLocaleString();
+    results.innerHTML =
+      `<div style="font-weight:700;font-size:12px;color:#374151;margin-bottom:12px;letter-spacing:.03em;">MAO RESULTS — LAND</div>` +
+      `<div style="margin-bottom:14px;">` +
+      `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;">` +
+      `<span style="font-weight:700;font-size:13px;">Land MAO (70% of As-Is)</span>` +
+      `<span style="font-weight:800;font-size:17px;color:${mao < 0 ? '#dc2626' : '#065f46'};">${fmt(mao)}</span>` +
+      `</div>` +
+      `<div style="font-size:11px;color:#6b7280;line-height:1.5;">${fmt(asIs)} As-Is Value × 70% — no ARV or rehab applied for land acquisitions.</div>` +
+      `</div>`;
+    results.style.display = 'block';
+    return;
+  }
+
+  const arv       = parseFloat(document.getElementById('mao_arv').value)   || 0;
+  const rehab     = parseFloat(document.getElementById('mao_rehab').value) || 0;
   if (!arv) { results.style.display = 'none'; return; }
 
   const s = computeMaoSuite(arv, rehab, assetType);
@@ -6552,21 +6578,30 @@ recalc();
     </div>
     <div style="font-size:13px;color:#666;margin-bottom:20px;">Uses the same Maximum Allowable Offer math as the Cash Deal Details wizard — plug in numbers any time, independent of the main calculator.</div>
 
-    <div class="field" style="margin-bottom:14px;">
-      <label>ARV <span style="font-weight:400;color:#888;">(After Repair Value)</span></label>
-      <div class="prefix-wrap"><span>$</span><input type="number" id="mao_arv" placeholder="0" step="1000" oninput="calcMAO()"></div>
-    </div>
-    <div class="field" style="margin-bottom:14px;">
-      <label>Rehab Estimate</label>
-      <div class="prefix-wrap"><span>$</span><input type="number" id="mao_rehab" placeholder="0" step="1000" oninput="calcMAO()"></div>
-    </div>
     <div class="field" style="margin-bottom:20px;">
       <label>Asset Type</label>
-      <select id="mao_asset_type" onchange="calcMAO()" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;">
+      <select id="mao_asset_type" onchange="onMaoAssetTypeChange()" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;">
         <option value="residential">Residential Property (1-4 units)</option>
         <option value="multifamily">Multifamily (5+ units)</option>
         <option value="commercial">Commercial</option>
+        <option value="land">Land</option>
       </select>
+    </div>
+    <div id="mao-arv-rehab-fields">
+      <div class="field" style="margin-bottom:14px;">
+        <label>ARV <span style="font-weight:400;color:#888;">(After Repair Value)</span></label>
+        <div class="prefix-wrap"><span>$</span><input type="number" id="mao_arv" placeholder="0" step="1000" oninput="calcMAO()"></div>
+      </div>
+      <div class="field" style="margin-bottom:14px;">
+        <label>Rehab Estimate</label>
+        <div class="prefix-wrap"><span>$</span><input type="number" id="mao_rehab" placeholder="0" step="1000" oninput="calcMAO()"></div>
+      </div>
+    </div>
+    <div id="mao-land-fields" style="display:none;">
+      <div class="field" style="margin-bottom:14px;">
+        <label>As-Is Value</label>
+        <div class="prefix-wrap"><span>$</span><input type="number" id="mao_as_is" placeholder="0" step="1000" oninput="calcMAO()"></div>
+      </div>
     </div>
 
     <div id="mao-results" style="display:none;background:#f9fafb;border-radius:8px;padding:16px;border:1px solid #e5e7eb;"></div>
