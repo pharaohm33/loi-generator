@@ -1249,6 +1249,13 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <input type="text" id="buyer_company" placeholder="Leave blank for Non-Exclusive LOI">
         </div>
       </div>
+      <div class="row cols-2" style="margin-top:6px;">
+        <div class="field loi">
+          <label><span class="loi-dot"></span> Offer Expiration Date <span class="loi-tag">→ LOI</span></label>
+          <input type="date" id="offer_expiry">
+          <div style="font-size:10px;color:#888;margin-top:2px;">Included in all LOIs as the acceptance deadline. Templates default to 7 days from today.</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2124,6 +2131,22 @@ function syncBridgeFromHM() {
   }
 }
 
+function setDefaultExpiry(daysFromNow = 7) {
+  const el = document.getElementById('offer_expiry');
+  if (!el) return;
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  el.value = d.toISOString().slice(0, 10);
+}
+
+function fmtExpiry() {
+  const el = document.getElementById('offer_expiry');
+  if (!el || !el.value) return null;
+  const [y, m, d] = el.value.split('-').map(Number);
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return `${months[m-1]} ${d}, ${y}`;
+}
+
 function adminTemplate() {
   const vals = {
     ac_name:       'Suede Buffalo LLC',
@@ -2161,6 +2184,7 @@ function adminTemplate() {
   });
   onExitTypeChange();
   if (!staticCF) toggleStaticCF();
+  setDefaultExpiry(7);
   recalc();
   // Flash the button
   const btn = document.querySelector('.btn-admin');
@@ -2229,6 +2253,7 @@ function adminCashTemplate() {
   setMode('principal_only');
   onExitTypeChange();
   if (!staticCF) toggleStaticCF();
+  setDefaultExpiry(7);
   recalc();
   const btn = document.getElementById('btn-cash-template');
   btn.textContent = '✓ Cash Template Applied!';
@@ -2795,6 +2820,8 @@ function recalc() {
   // Effective senior loan balance at a given year — accounts for bridge-to-perm if enabled
   function effectiveSrBalAt(yr) {
     if (!brgParams) {
+      // Hard money without bridge: interest-only, no principal reduction during hold
+      if (loanType === 'hard_money') return maxLoan;
       // Standard amortization
       if (srRate === 0 || g('sr_amort') === 0) return Math.max(maxLoan - srPmt * yr * 12, 0);
       const r = srRate / 12, n = g('sr_amort') * 12, mo = yr * 12;
@@ -2814,7 +2841,8 @@ function recalc() {
 
   // Returns monthly senior debt service at a given year — bridge I/O during bridge period, perm P&I after refi
   function effectiveSrPmtMoAt(yr) {
-    if (!brgParams) return srPmt;
+    // Hard money without bridge: loan is interest-only — use I/O payment, not P&I
+    if (!brgParams) return loanType === 'hard_money' ? hmIOmoEarly : srPmt;
     return yr <= brgParams.refiYr ? brgParams.brgIOmo : brgParams.permPmtMo;
   }
 
@@ -3976,11 +4004,15 @@ At the time of the DSCR refinance (Month ${Math.round(loiRefiMo)} — end of sta
 This is a voluntary partial prepayment at Buyer's election, applied at no prepayment penalty. The monthly payment schedule continues per the original note terms on the reduced balance. The final balloon payment at Year ${scTerm} will reflect the reduced outstanding principal.`
     : '';
 
+  const loiToday = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  const loiExpiry = fmtExpiry();
+
   const loiHtml =
 `${H(title)}
 ${H('Deal Terms - Seller Summary')}
 
 Property: ${esc(addr)}${units ? ' - ' + units + ' Units' : ''}
+Date: ${loiToday}${loiExpiry ? '\nOffer Expiration: ' + loiExpiry : ''}
 Purchase Price: ${esc(D(noSellerCarry ? cac : pp))}
 
 ${H('SELLER RECEIVES:')}
@@ -4092,6 +4124,7 @@ function generateSubjectToLOI() {
   const subCac    = subCacRaw > 0 ? subCacRaw : 0;
 
   const todayStr = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const expiryStr = fmtExpiry();
   const H = txt => `<strong>${esc(txt)}</strong>`;
 
   const title    = hasBuyer ? 'LOI' : 'Non-Exclusive LOI';
@@ -4158,7 +4191,7 @@ Contact:
 
   const loiHtml =
 `${H(title + ' — SUBJECT TO EXISTING FINANCING')}
-${todayStr}
+${todayStr}${expiryStr ? '\nOffer Expiration: ' + expiryStr : ''}
 
 PROPERTY: ${esc(addr)}${unitLine}
 BUYER: ${buyerCo ? esc(buyerCo) : esc(acName)} and/or assigns
@@ -4264,6 +4297,7 @@ function generateHybridSubToLOI() {
   const equityRate  = g('sc_rate') || 0;
 
   const todayStr = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const expiryStr = fmtExpiry();
   const H = txt => `<strong>${esc(txt)}</strong>`;
 
   const title    = hasBuyer ? 'LOI' : 'Non-Exclusive LOI';
@@ -4342,7 +4376,7 @@ Contact:
 
   const loiHtml =
 `${H(title + ' — SUBJECT TO EXISTING FINANCING + SELLER EQUITY BALLOON')}
-${todayStr}
+${todayStr}${expiryStr ? '\nOffer Expiration: ' + expiryStr : ''}
 
 PROPERTY: ${esc(addr)}${unitLine}
 BUYER: ${buyerCo ? esc(buyerCo) : esc(acName)} and/or assigns
@@ -6537,11 +6571,15 @@ function generateCashLOI() {
     ? `${sigBlock}\n\n\n${H('Buyer:')}\n${esc(buyerCo)}${acPh ? '\nPhone: ' + esc(acPh) : ''}${acE1 ? '\nEmail: ' + esc(acE1) : ''}`
     : `────────────────────────────────────────────────\n\n${H('Non-Circumvent')}\n\nThe Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.\n\nCircumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.\n\nThe Acquisition Correspondent's fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing.\n\n${H('Non-Exclusive Nature:')}\nSeller may entertain other offers until final purchase and sales agreement is in place with end buyer.\n\n\n${sigBlock}\n\n\n${H('Acquisition Correspondent:')}\n${esc(acName)}\nContact:\n        Email:\n            ${esc(acE1)}\n            ${esc(acE2)}\n        Phone:\n            ${esc(acPh)}`;
 
+  const cashToday = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  const cashExpiry = fmtExpiry();
+
   const html =
 `${H(hasBuyer ? 'LOI' : 'Non-Exclusive LOI')}
 ${H('Deal Terms - Seller Summary')}
 
 Property: ${esc(addr)}${isLand ? ' — Land' : units ? ' — ' + units + ' Units' : ''}
+Date: ${cashToday}${cashExpiry ? '\nOffer Expiration: ' + cashExpiry : ''}
 Purchase Price: ${esc(D(loiPP))}
 
 ${H('SELLER RECEIVES:')}
@@ -6707,6 +6745,7 @@ ${sigBlock}`;
   const divider = '══════════════════════════════════════════════════════════';
 
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const dualExpiry = fmtExpiry();
 
   const html =
 `${H('LETTER OF INTENT — DUAL OFFER')}
@@ -6714,7 +6753,7 @@ ${H('Deal Terms — Seller Summary')}
 
 Property: ${esc(addr)}${units ? ' — ' + units + ' Unit' + (units !== 1 ? 's' : '') : ''}
 Buyer: ${esc(buyerCo)}
-Date: ${today}
+Date: ${today}${dualExpiry ? '\nOffer Expiration: ' + dualExpiry : ''}
 
 ${esc(buyerCo)} is pleased to present two offer options for your consideration. Please review both options and indicate your preference at the bottom of this letter.
 
@@ -6772,7 +6811,7 @@ const FIELDS = [
   'bridge_ltv','bridge_rate','bridge_term_mo','bridge_orig_pct',
   'bridge_refi_ltv','bridge_refi_rate','bridge_refi_amort','bridge_refi_dscr','bridge_refi_costs','sc_refi_paydown',
   'exit_type','exit_sale_costs','exit_refi_ltv','exit_refi_rate','exit_dscr_req','exit_amort','exit_refi_costs','exit_refi_fees','exit_reserve_mo',
-  'ac_name','ac_phone','ac_email1','ac_email2','buyer_company',
+  'ac_name','ac_phone','ac_email1','ac_email2','buyer_company','offer_expiry',
   'sub_mortgage_balance','sub_mortgage_rate','sub_mortgage_pmt','sub_servicer','sub_cash_to_seller',
   'loi_agent_fee','loi_agent_fee_type',
   'closing_cost_party','appraisal_contingency','acq_fee_basis','seller_security_type',
