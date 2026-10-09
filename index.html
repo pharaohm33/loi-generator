@@ -2182,6 +2182,8 @@ function adminTemplate() {
     const el = document.getElementById(id);
     if (el) el.value = val;
   });
+  const ptEl = document.getElementById('prop_type');
+  if (ptEl) { ptEl.value = 'residential'; onPropTypeChange(); }
   onExitTypeChange();
   if (!staticCF) toggleStaticCF();
   setDefaultExpiry(7);
@@ -2251,6 +2253,8 @@ function adminCashTemplate() {
   setAcqFeeBasis('at_closing');
   setSellerSecurityType('equity');
   setMode('principal_only');
+  const ptElC = document.getElementById('prop_type');
+  if (ptElC) { ptElC.value = 'residential'; onPropTypeChange(); }
   onExitTypeChange();
   if (!staticCF) toggleStaticCF();
   setDefaultExpiry(7);
