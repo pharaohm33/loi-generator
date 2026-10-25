@@ -6622,6 +6622,7 @@ function generateDualOfferLOI() {
   activateDualOffer();
 
   const D   = v => '$' + Math.round(v).toLocaleString();
+  const Dfmt = v => '$' + (+v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});   // was missing here: broke the dual LOI whenever the seller note pays monthly
   const P   = r => (r * 100).toFixed(2) + '%';
   const esc = t => (t || '').toString().trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const H   = txt => `<strong>${esc(txt)}</strong>`;
@@ -7180,6 +7181,35 @@ function loadFromURL() {
 document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', recalc));
 loadFromURL();
 recalc();
+
+// Hand-off for automation (the browser agent / admin tools): once the URL values are applied and the LOI text has been built, the page says so and says which
+// text box holds the final LOI (the same text its "Copy to Clipboard" button copies). Nothing here changes how the page works for a person.
+function loiActiveOutputId() {
+  const ids = ['dual-loi-text', 'cash-loi-text', 'loi-text'];
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (el && el.offsetParent !== null && el.innerText.trim().length > 200) return id;
+  }
+  return '';
+}
+window.loiOutput = function () { const id = loiActiveOutputId(); return { id: id, text: id ? document.getElementById(id).innerText : '' }; };
+// ?autogen=1 builds the LOI that matches the other settings (dual offer, or all-cash when seller carry is off); autogen=dual | cash | loi picks one explicitly.
+(function autoGenerateLoi() {
+  const want = new URLSearchParams(location.search).get('autogen');
+  if (!want) return;
+  try {
+    if (want === 'dual' || (want === '1' && dualOfferActive)) generateDualOfferLOI();
+    else if (want === 'cash' || (want === '1' && noSellerCarry)) generateCashLOI();
+    else generateLOI();
+  } catch (e) { document.documentElement.dataset.loiError = String(e && e.message || e); }
+})();
+(function markLoiReady() {
+  const id = loiActiveOutputId();
+  document.documentElement.dataset.loiReady = id ? '1' : '0';
+  document.documentElement.dataset.loiOutput = id;
+  document.querySelectorAll('[data-loi-final]').forEach(e => e.removeAttribute('data-loi-final'));
+  if (id) document.getElementById(id).setAttribute('data-loi-final', '1');
+})();
 </script>
 
 <!-- MAO CALCULATOR MODAL -->
