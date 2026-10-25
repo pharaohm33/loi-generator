@@ -2136,7 +2136,7 @@ function setDefaultExpiry(daysFromNow = 7) {
   if (!el) return;
   const d = new Date();
   d.setDate(d.getDate() + daysFromNow);
-  el.value = d.toISOString().slice(0, 10);
+  el.value = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');   // the local date (toISOString is UTC: after 5pm in Arizona it is already tomorrow)
 }
 
 function fmtExpiry() {
