@@ -7044,8 +7044,6 @@ ${sigBlock}`;
     ? `${H('Acquisition Correspondent:')}\n${esc(acName)}\nContact:\n        Email:\n            ${esc(acE1)}\n            ${esc(acE2)}\n        Phone:\n            ${esc(acPh)}\n\n${H('Buyer:')}\n${esc(buyerCo)}`
     : `${H('Buyer:')}\n${esc(buyerCo)}${acPh ? '\nPhone: ' + esc(acPh) : ''}${acE1 ? '\nEmail: ' + esc(acE1) : ''}`;
 
-  const divider = '══════════════════════════════════════════════════════════';
-
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const dualExpiry = fmtExpiry();
 
@@ -7059,13 +7057,10 @@ Date: ${today}${dualExpiry ? '\nOffer Expiration: ' + dualExpiry : ''}
 
 ${esc(buyerCo)} is pleased to present two offer options for your consideration. Please review both options and indicate your preference at the bottom of this letter.
 
-${divider}
 ${cashOption}
 
-${divider}
 ${carrybackOption}
 
-${divider}
 ${sellerChoiceBlock}
 
 
