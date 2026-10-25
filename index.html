@@ -7135,6 +7135,8 @@ function shareCalc() {
   if (staticCF) p.set('static_cf', '1');
   if (noSellerCarry) p.set('no_sc', '1');
   if (dualOfferActive) p.set('dual_offer_active', '1');
+  p.set('cash_financing', cashFinancingType);
+  p.set('appraisal_contingency', appraisalContingency);
   const url = location.origin + location.pathname + '?' + p.toString();
   navigator.clipboard.writeText(url).then(() => {
     history.replaceState(null, '', '?' + p.toString());
@@ -7171,6 +7173,7 @@ function loadFromURL() {
   if (p.has('loi_agent_fee_type')) setAgentFeeType(p.get('loi_agent_fee_type'));
   if (p.has('closing_cost_party')) setClosingCostParty(p.get('closing_cost_party'));
   if (p.has('appraisal_contingency')) setAppraisalContingency(p.get('appraisal_contingency'));
+  if (p.has('cash_financing')) setCashFinancing(p.get('cash_financing'));        // none | hard_money | hard_money_appraisal (the cash offer's financing contingency)
   if (p.has('acq_fee_basis')) setAcqFeeBasis(p.get('acq_fee_basis'));
   if (p.has('seller_security_type')) setSellerSecurityType(p.get('seller_security_type'));
   if (p.has('prop_type')) onPropTypeChange();
