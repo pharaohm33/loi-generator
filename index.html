@@ -4025,19 +4025,15 @@ ${(() => {
     const loiSellerAmt = _exitCache.sellerClosingAmt || 0;
     if (closingCostParty === 'seller' && loiSellerAmt > 0) {
       return `All Cash at Closing: ${esc(D(cac))}\nLess: Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(cac - loiSellerAmt))}`;
-    } else if (closingCostParty === 'split' && loiSellerAmt > 0) {
-      return `All Cash at Closing: ${esc(D(cac))}\nLess: 50% Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(cac - loiSellerAmt))}`;
     }
     return `All Cash at Closing: ${esc(D(cac))}`;
   }
   const loiSellerAmt  = _exitCache.sellerClosingAmt  || 0;
-  const loiSellerNet  = _exitCache.sellerNetAtClose  != null ? _exitCache.sellerNetAtClose : cac + interestPrepayAtClose;
+  const loiSellerNet  = closingCostParty !== 'split' && _exitCache.sellerNetAtClose != null ? _exitCache.sellerNetAtClose : cac + interestPrepayAtClose;
   const prepayLine    = interestPrepayAtClose > 0 ? `\n+ Interest Pre-Pay from Buyer: +${esc(D(interestPrepayAtClose))}` : '';
   const prepayNetLine = interestPrepayAtClose > 0 ? `\n= Total to Seller at Closing: ${esc(D(loiSellerNet))}` : '';
   if (closingCostParty === 'seller' && loiSellerAmt > 0) {
     return `Gross Cash at Closing: ${esc(D(cac))}\nLess: Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}${prepayLine}\nNet to Seller at Closing: ${esc(D(loiSellerNet))}`;
-  } else if (closingCostParty === 'split' && loiSellerAmt > 0) {
-    return `Seller Cash at Closing: ${esc(D(cac))}\nLess: 50% Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}${prepayLine}\nNet to Seller at Closing: ${esc(D(loiSellerNet))}`;
   }
   return `Seller Cash at Closing: ${esc(D(cac))}${prepayLine}${prepayNetLine}`;
 })()}
@@ -4074,7 +4070,7 @@ ${appraisalContingency === 'on'
   : 'Buyer contingency for senior loan only — offer is not contingent on appraisal.'}
 ${closingCostParty === 'buyer'   ? 'Buyer responsible for all closing costs and transaction fees.'
 : closingCostParty === 'seller'  ? 'Seller to credit buyer for all closing costs and transaction fees at closing.'
-: 'Buyer and Seller pay their respective transaction fees.'}
+: 'Buyer and Seller split their respective closing costs.'}
 
 ${bottomBlock}`;
 
@@ -4246,7 +4242,7 @@ Due diligence period: Buyer requests a reasonable inspection and review period.
 Buyer contingency: Subject to final verification of existing loan terms, payoff statement, and title review.
 ${closingCostParty === 'buyer'  ? 'Buyer to pay all closing costs.'
 : closingCostParty === 'seller' ? 'Seller to credit buyer for all closing costs at closing.'
-: 'Buyer and Seller pay their respective transaction fees.'}
+: 'Buyer and Seller split their respective closing costs.'}
 
 ${H('GENERAL TERMS:')}
 This letter is non-binding and represents a good-faith summary of proposed terms. Neither party is obligated to proceed until a final Purchase and Sale Agreement is executed by both parties.
@@ -4440,7 +4436,7 @@ Due diligence period: Buyer requests a reasonable inspection and review period.
 Buyer contingency: Subject to final verification of existing loan terms, payoff statement, and title review.
 ${closingCostParty === 'buyer'  ? 'Buyer to pay all closing costs.'
 : closingCostParty === 'seller' ? 'Seller to credit buyer for all closing costs at closing.'
-: 'Buyer and Seller pay their respective transaction fees.'}
+: 'Buyer and Seller split their respective closing costs.'}
 
 ${H('GENERAL TERMS:')}
 This letter is non-binding and represents a good-faith summary of proposed terms. Neither party is obligated to proceed until a final Purchase and Sale Agreement is executed by both parties.
@@ -6557,7 +6553,7 @@ function generateCashLOI() {
     ? 'Buyer responsible for all closing costs and transaction fees.'
     : closingCostParty === 'seller'
     ? 'Seller to credit buyer for all closing costs and transaction fees at closing.'
-    : 'Buyer and Seller pay their respective transaction fees.';
+    : 'Buyer and Seller split their respective closing costs.';
 
   // Seller receives block
   const sellerReceives = closingCostParty === 'seller'
@@ -6663,7 +6659,7 @@ function generateDualOfferLOI() {
     ? 'Buyer responsible for all closing costs and transaction fees.'
     : closingCostParty === 'seller'
     ? 'Seller to credit buyer for all closing costs and transaction fees at closing.'
-    : 'Buyer and Seller pay their respective transaction fees.';
+    : 'Buyer and Seller split their respective closing costs.';
 
   const agentFeeLine = getAgentFeeLine(pp);
 
