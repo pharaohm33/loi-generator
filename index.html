@@ -4022,19 +4022,11 @@ Purchase Price: ${esc(D(noSellerCarry ? cac : pp))}
 ${H('SELLER RECEIVES:')}
 ${(() => {
   if (noSellerCarry) {
-    const loiSellerAmt = _exitCache.sellerClosingAmt || 0;
-    if (closingCostParty === 'seller' && loiSellerAmt > 0) {
-      return `All Cash at Closing: ${esc(D(cac))}\nLess: Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}\nNet to Seller at Closing: ${esc(D(cac - loiSellerAmt))}`;
-    }
     return `All Cash at Closing: ${esc(D(cac))}`;
   }
-  const loiSellerAmt  = _exitCache.sellerClosingAmt  || 0;
-  const loiSellerNet  = closingCostParty !== 'split' && _exitCache.sellerNetAtClose != null ? _exitCache.sellerNetAtClose : cac + interestPrepayAtClose;
+  const loiSellerNet  = cac + interestPrepayAtClose;
   const prepayLine    = interestPrepayAtClose > 0 ? `\n+ Interest Pre-Pay from Buyer: +${esc(D(interestPrepayAtClose))}` : '';
   const prepayNetLine = interestPrepayAtClose > 0 ? `\n= Total to Seller at Closing: ${esc(D(loiSellerNet))}` : '';
-  if (closingCostParty === 'seller' && loiSellerAmt > 0) {
-    return `Gross Cash at Closing: ${esc(D(cac))}\nLess: Closing Cost Credit to Buyer: −${esc(D(loiSellerAmt))}${prepayLine}\nNet to Seller at Closing: ${esc(D(loiSellerNet))}`;
-  }
   return `Seller Cash at Closing: ${esc(D(cac))}${prepayLine}${prepayNetLine}`;
 })()}
 ${noSellerCarry ? `
@@ -6556,9 +6548,7 @@ function generateCashLOI() {
     : 'Buyer and Seller split their respective closing costs.';
 
   // Seller receives block
-  const sellerReceives = closingCostParty === 'seller'
-    ? `Gross Cash at Closing: ${esc(D(loiPP))}\n(Less closing cost credit to buyer at settlement)`
-    : `All Cash at Closing: ${esc(D(loiPP))}`;
+  const sellerReceives = `All Cash at Closing: ${esc(D(loiPP))}`;
 
   // Bottom block — three cases:
   // hasBuyer + acName → full correspondent + buyer block
