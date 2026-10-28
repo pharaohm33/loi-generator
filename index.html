@@ -1253,7 +1253,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
         <div class="field loi">
           <label><span class="loi-dot"></span> Offer Expiration Date <span class="loi-tag">→ LOI</span></label>
           <input type="date" id="offer_expiry">
-          <div style="font-size:10px;color:#888;margin-top:2px;">Included in all LOIs as the acceptance deadline. Templates default to 7 days from today.</div>
+          <div style="font-size:10px;color:#888;margin-top:2px;">Included in all LOIs as the acceptance deadline. Templates default to two weeks from tomorrow (15 days from today); 30 days from tomorrow for 5+ units or commercial over $1M.</div>
         </div>
       </div>
     </div>
@@ -2131,9 +2131,14 @@ function syncBridgeFromHM() {
   }
 }
 
-function setDefaultExpiry(daysFromNow = 7) {
+function setDefaultExpiry(daysFromNow) {
   const el = document.getElementById('offer_expiry');
   if (!el) return;
+  if (daysFromNow === undefined) {   // two weeks from tomorrow (today + 15); thirty days from tomorrow (today + 31) for 5+ units or commercial over $1M
+    const num = id => parseFloat((document.getElementById(id) || {}).value) || 0;
+    const type = (document.getElementById('prop_type') || {}).value;
+    daysFromNow = (num('units') >= 5 || (type === 'commercial' && num('purchase_price') > 1000000)) ? 31 : 15;
+  }
   const d = new Date();
   d.setDate(d.getDate() + daysFromNow);
   el.value = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');   // the local date (toISOString is UTC: after 5pm in Arizona it is already tomorrow)
@@ -2186,7 +2191,7 @@ function adminTemplate() {
   if (ptEl) { ptEl.value = 'residential'; onPropTypeChange(); }
   onExitTypeChange();
   if (!staticCF) toggleStaticCF();
-  setDefaultExpiry(7);
+  setDefaultExpiry();
   recalc();
   // Flash the button
   const btn = document.querySelector('.btn-admin');
@@ -2257,7 +2262,7 @@ function adminCashTemplate() {
   if (ptElC) { ptElC.value = 'residential'; onPropTypeChange(); }
   onExitTypeChange();
   if (!staticCF) toggleStaticCF();
-  setDefaultExpiry(7);
+  setDefaultExpiry();
   recalc();
   const btn = document.getElementById('btn-cash-template');
   btn.textContent = '✓ Cash Template Applied!';
