@@ -3576,11 +3576,11 @@ function generateLOI() {
       pmtBlock =
 `Monthly Principal-Reduction Payments:
 Months 1–${months}: ${esc(D(scMonthly))}/month
-Total Monthly Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
+Total Monthly Principal Payments Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))}
 Deferred Simple Interest at ${esc(P(poDeferredRate))} (accrues on declining balance):
 Accrued Interest Due at Balloon: Approximately ${esc(D(poAccruedDeferred))}
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(poBalloon))} (remaining principal + ${esc(D(poAccruedDeferred))} deferred interest)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(poReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(poReceipts))}`;
       narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -3596,7 +3596,7 @@ Total seller receipts are approximately ${esc(D(poReceipts))}, which includes th
       pmtBlock =
 `No monthly payments during the ${scTerm}-year term — this is a principal-only carry with no interest and no monthly obligations.
 Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (full principal balance)
-Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalReceipts))}`;
       narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -3608,9 +3608,9 @@ Total seller receipts are ${esc(D(totalReceipts))}.`;
       pmtBlock =
 `Monthly Principal-Only Payments:
 Months 1–${months}: ${esc(D(scMonthly))}/month
-Total Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
+Total Principal Payments Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (remaining principal balance)
-Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalReceipts))}`;
       narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -3628,11 +3628,11 @@ Total seller receipts are ${esc(D(totalReceipts))}.`;
       pmtBlock =
 `Monthly Principal-Reduction Payments:
 Months 1–${months}: ${esc(D(scMonthly))}/month
-Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))} — reduces ${esc(D(carry))} carry to ${esc(D(loiRemBal))} remaining balance${interestPrepayAtClose > 0 ? `
+Principal Payments Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))} — reduces ${esc(D(carry))} carry to ${esc(D(loiRemBal))} remaining balance${interestPrepayAtClose > 0 ? `
 Interest Pre-Paid at Closing: ${esc(D(interestPrepayAtClose))} (paid at close — reduces balloon by same amount)` : ''}
 ${interestPrepayAtClose > 0 ? 'Remaining ' : ''}Accrued Interest at Balloon: ${esc(D(netAccrued))} (${esc(P(scRate))} simple interest on declining balance — due at balloon)
 Balloon Payment at Year ${scTerm}: ${esc(D(netBalloon))} (${esc(D(loiRemBal))} remaining principal + ${esc(D(netAccrued))} accrued interest)
-Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalReceipts))}`;
       narr =
 `The seller receives ${esc(D(cac))}${interestPrepayAtClose > 0 ? ` plus a ${esc(D(interestPrepayAtClose))} interest pre-payment` : ''} at closing and carries back ${esc(D(carry))}.
 
@@ -3653,9 +3653,9 @@ ${finIncome <= 0
     pmtBlock =
 `Monthly Interest-Only Payments:
 Months 1–${months}: ${esc(Dfmt(scMonthly))}/month
-Total Interest Paid Over ${scTerm} Years: ${esc(D(totalPmts))}
+Total Interest Paid Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (full principal)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
     narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -3673,9 +3673,9 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
       pmtBlock =
 `Principal-Only Payments (amortized over ${scAmortYrs} years, balloon at year ${scTerm}):
 Months 1–${months}: ${esc(D(scMonthly))}/month
-Total Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
+Total Principal Payments Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (remaining principal balance)
-Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalReceipts))}`;
       narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -3688,9 +3688,9 @@ Total seller receipts are ${esc(D(totalReceipts))}.`;
       pmtBlock =
 `Amortizing P&I Payments (${scAmortYrs}-year amortization, ${scTerm}-year balloon):
 Months 1–${months}: ${esc(Dfmt(scMonthly))}/month
-Total P&I Paid Over ${scTerm} Years: ${esc(D(totalPmts))}
+Total P&I Paid Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (remaining balance)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
       narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -3705,7 +3705,7 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
     if (zeroInterest) {
       pmtBlock =
 `Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))}
-Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalReceipts))}`;
       narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -3717,7 +3717,7 @@ Total seller receipts are ${esc(D(totalReceipts))}.`;
 `No monthly payments — all principal + interest deferred to balloon
 Interest accrues at ${esc(P(scRate))} simple interest on the full ${esc(D(carry))} balance
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))} (principal + accrued interest)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
       narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -3735,7 +3735,7 @@ Months 1–${deferMo}: $0/month (interest accrues — ${esc(D(deferred))} deferr
 Months ${deferMo + 1}–${months}: ${esc(Dfmt(scMonthly))}/month (interest-only)
 Total IO Payments (Months ${deferMo + 1}–${months}): ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))} (principal + ${esc(D(deferred))} deferred interest)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
     narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -3754,11 +3754,11 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
 `IO + Deferred Simple Interest:
 Monthly IO Payments at ${esc(P(scRate))}:
 Months 1–${months}: ${esc(Dfmt(scMonthly))}/month
-Total IO Paid Over ${scTerm} Years: ${esc(D(totalPmts))}
+Total IO Paid Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))}
 Deferred Simple Interest at ${esc(P(deferredRate))} (accrues on full principal):
 Deferred Interest Due at Balloon: Approximately ${esc(D(deferredInt))}
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))} (principal + ${esc(D(deferredInt))} deferred interest)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
     narr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -3841,7 +3841,7 @@ Payment Period 2 (Months ${ph2StartMo}–${totalMonths} — Years ${loiPh1Yrs+1}
 ${ph2Desc.charAt(0).toUpperCase() + ph2Desc.slice(1)}${ph2HasPmts ? `\nTotal payments Period 2: Approximately ${esc(D(ph2TotPmts))}` : ''}
 
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))}
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
 
     // Narrative rollup sentence for when Phase 1 carries accrued deferred into Phase 2
     const deferredRollupSentence = ph1HasDeferredRollup
@@ -3910,7 +3910,7 @@ Period 2 (Yrs ${loiPh1Yrs+1}–${scTerm}): ${ph2RateLabel}
 ${blendedLine}`)
     : poDeferredRate > 0
       ? `Principal Only + ${esc(P(poDeferredRate))} Deferred Simple Interest (accrues on declining balance → balloon)`
-      : (zeroInterest && mode === 'principal_only' ? 'Principal Only Seller Carryback'
+      : (zeroInterest && (mode === 'principal_only' || mode === 'deferred_exit') ? 'Principal Only Seller Carryback'
         : zeroInterest && mode === 'pi'
         ? `Principal Only — amortized over ${g('sc_amort_yrs') || 30} years, balloon at year ${scTerm}`
         : zeroInterest
@@ -3937,7 +3937,7 @@ ${blendedLine}`)
   const sellerCarryHeader =
 `Seller Carryback Note: ${esc(D(carry))}
 ${rateOrNone}
-Term: ${scTerm} Years`;
+Term: ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}`;
 
   const title = hasBuyer ? 'LOI' : 'Non-Exclusive LOI';
 
@@ -6728,11 +6728,11 @@ Closing Costs: ${closingCostsLine}${agentFeeLine ? '\n' + agentFeeLine : ''}`;
       dualPmtBlock =
 `Monthly Principal-Reduction Payments:
 Months 1–${months}: ${esc(D(scMonthly))}/month
-Total Monthly Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
+Total Monthly Principal Payments Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))}
 Deferred Simple Interest at ${esc(P(poDeferredRate))} (accrues on declining balance):
 Accrued Interest Due at Balloon: Approximately ${esc(D(poAccruedDeferred))}
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(poBalloon))} (remaining principal + ${esc(D(poAccruedDeferred))} deferred interest)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(poReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(poReceipts))}`;
       dualNarr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -6747,7 +6747,7 @@ Total seller receipts are approximately ${esc(D(poReceipts))}, which includes th
       dualPmtBlock =
 `No monthly payments during the ${scTerm}-year term — this is a principal-only carry with no interest and no monthly obligations.
 Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (full principal balance)
-Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalReceipts))}`;
       dualNarr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -6758,9 +6758,9 @@ Total seller receipts are ${esc(D(totalReceipts))}.`;
       dualPmtBlock =
 `Monthly Principal-Only Payments:
 Months 1–${months}: ${esc(D(scMonthly))}/month
-Total Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
+Total Principal Payments Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (remaining principal balance)
-Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalReceipts))}`;
       dualNarr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -6777,11 +6777,11 @@ Total seller receipts are ${esc(D(totalReceipts))}.`;
       dualPmtBlock =
 `Monthly Principal-Reduction Payments:
 Months 1–${months}: ${esc(D(scMonthly))}/month
-Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))} — reduces ${esc(D(carry))} carry to ${esc(D(loiRemBal))} remaining balance${interestPrepayAtClose > 0 ? `
+Principal Payments Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))} — reduces ${esc(D(carry))} carry to ${esc(D(loiRemBal))} remaining balance${interestPrepayAtClose > 0 ? `
 Interest Pre-Paid at Closing: ${esc(D(interestPrepayAtClose))} (paid at close — reduces balloon by same amount)` : ''}
 ${interestPrepayAtClose > 0 ? 'Remaining ' : ''}Accrued Interest at Balloon: ${esc(D(netAccrued))} (${esc(P(scRate))} simple interest on declining balance — due at balloon)
 Balloon Payment at Year ${scTerm}: ${esc(D(netBalloon))} (${esc(D(loiRemBal))} remaining principal + ${esc(D(netAccrued))} accrued interest)
-Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalReceipts))}`;
       dualNarr =
 `The seller receives ${esc(D(cac))}${interestPrepayAtClose > 0 ? ` plus a ${esc(D(interestPrepayAtClose))} interest pre-payment` : ''} at closing and carries back ${esc(D(carry))}.
 
@@ -6802,9 +6802,9 @@ ${dualFinIncome <= 0
     dualPmtBlock =
 `Monthly Interest-Only Payments:
 Months 1–${months}: ${esc(Dfmt(scMonthly))}/month
-Total Interest Paid Over ${scTerm} Years: ${esc(D(totalPmts))}
+Total Interest Paid Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (full principal)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
     dualNarr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -6822,9 +6822,9 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
       dualPmtBlock =
 `Principal-Only Payments (amortized over ${scAmortYrs} years, balloon at year ${scTerm}):
 Months 1–${months}: ${esc(D(scMonthly))}/month
-Total Principal Payments Over ${scTerm} Years: ${esc(D(totalPmts))}
+Total Principal Payments Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (remaining principal balance)
-Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalReceipts))}`;
       dualNarr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -6837,9 +6837,9 @@ Total seller receipts are ${esc(D(totalReceipts))}.`;
       dualPmtBlock =
 `Amortizing P&I Payments (${scAmortYrs}-year amortization, ${scTerm}-year balloon):
 Months 1–${months}: ${esc(Dfmt(scMonthly))}/month
-Total P&I Paid Over ${scTerm} Years: ${esc(D(totalPmts))}
+Total P&I Paid Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: ${esc(D(balloon))} (remaining balance)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
       dualNarr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -6854,7 +6854,7 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
     if (zeroInterest) {
       dualPmtBlock =
 `Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))}
-Total Seller Receipts Over ${scTerm} Years: ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalReceipts))}`;
       dualNarr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -6866,7 +6866,7 @@ Total seller receipts are ${esc(D(totalReceipts))}.`;
 `No monthly payments — all principal + interest deferred to balloon
 Interest accrues at ${esc(P(scRate))} simple interest on the full ${esc(D(carry))} balance
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))} (principal + accrued interest)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
       dualNarr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -6884,7 +6884,7 @@ Months 1–${deferMo}: $0/month (interest accrues — ${esc(D(deferred))} deferr
 Months ${deferMo + 1}–${months}: ${esc(Dfmt(scMonthly))}/month (interest-only)
 Total IO Payments (Months ${deferMo + 1}–${months}): ${esc(D(totalPmts))}
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))} (principal + ${esc(D(deferred))} deferred interest)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
     dualNarr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -6903,11 +6903,11 @@ Total seller receipts are approximately ${esc(D(totalReceipts))}, which includes
 `IO + Deferred Simple Interest:
 Monthly IO Payments at ${esc(P(scRate))}:
 Months 1–${months}: ${esc(Dfmt(scMonthly))}/month
-Total IO Paid Over ${scTerm} Years: ${esc(D(totalPmts))}
+Total IO Paid Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: ${esc(D(totalPmts))}
 Deferred Simple Interest at ${esc(P(dualDeferredRate))} (accrues on full principal):
 Deferred Interest Due at Balloon: Approximately ${esc(D(dualDeferredInt))}
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))} (principal + ${esc(D(dualDeferredInt))} deferred interest)
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
     dualNarr =
 `The seller receives ${esc(D(cac))} at closing and carries back ${esc(D(carry))}.
 
@@ -6977,7 +6977,7 @@ Payment Period 2 (Months ${ph2StartMo}–${totalMonths2} — Years ${loiPh1Yrs+1
 ${ph2Desc.charAt(0).toUpperCase() + ph2Desc.slice(1)}${ph2HasPmts ? `\nTotal payments Period 2: Approximately ${esc(D(ph2TotPmts))}` : ''}
 
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))}
-Total Seller Receipts Over ${scTerm} Years: Approximately ${esc(D(totalReceipts))}`;
+Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
     const deferredRollupSentence = ph1HasDeferredRollup
       ? ` The ${esc(D(ph1AccruedDeferred))} in accrued deferred interest from Period 1 is added to the original ${esc(D(carry))} carry balance, bringing the Period 2 starting balance to approximately ${esc(D(loiPh1EndBal))}.`
       : '';
