@@ -2165,7 +2165,7 @@ function adminTemplate() {
     park_escrow: 'N',
     esc1_pct:    2,
     esc2_pct:    1.5,
-    acq_pct:     6,
+    acq_pct:     50,       // Acq / Bird Dog Fee: 50% of the total net cash at closing (an even split with the buyer's cash back)
     taf_pct:     2.5,
     sr_rate:     8,
     sr_ltv:      75,
@@ -2189,6 +2189,7 @@ function adminTemplate() {
   });
   const ptEl = document.getElementById('prop_type');
   if (ptEl) { ptEl.value = 'residential'; onPropTypeChange(); }
+  setAcqFeeBasis('at_closing');
   onExitTypeChange();
   if (!staticCF) toggleStaticCF();
   setDefaultExpiry();
@@ -2209,7 +2210,7 @@ function adminCashTemplate() {
     ac_email1:     'SuedeBuffaloOfficial@gmail.com',
     appreciation:  3,
     noi_growth:    2,
-    loi_agent_fee: 3,
+    loi_agent_fee: 0,
     // Hard money loan defaults for fix & flip
     sr_rate:       9.5,
     sr_term:       12,
