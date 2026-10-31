@@ -4047,10 +4047,10 @@ ${pmtBlock}
 ${narr}${loiPaydownClause}
 
 ${sellerSecurityType === 'deed_of_trust'
-  ? H('SELLER SECURITY BY SECOND POSITION DEED OF TRUST:') + '\nThe seller carry note will be secured by a deed of trust recorded in second position against the property, providing collateral-based security and foreclosure remedies in a default scenario. The parties may alternatively mutually agree to a deed in lieu of foreclosure, subject to the senior lender and title requirements.'
+  ? H('SELLER SECURITY BY SECOND POSITION DEED OF TRUST:') + '\nBuyer is taking out an investment loan on the property. The seller carry note will be secured by a deed of trust recorded in second position against the property, providing collateral-based security and foreclosure remedies in a default scenario. The parties may alternatively mutually agree to a deed in lieu of foreclosure, subject to the senior lender and title requirements.'
   : sellerSecurityType === 'deed_in_lieu'
-  ? H('SELLER SECURITY WITH DEED IN LIEU OF FORECLOSURE:') + '\nThe seller-financed balance shall be evidenced by a Promissory Note and secured by a Warranty Deed with Vendor\'s Lien and a recorded Deed of Trust in second position behind the buyer\'s acquisition financing. Following an uncured default, the seller may pursue all remedies available under the loan documents, including foreclosure, or the parties may mutually agree to a deed in lieu of foreclosure, subject to the senior lender and title requirements.'
-  : H('SELLER PROTECTION BY SENIOR EQUITY INTEREST:') + '\nYour position is documented as a Senior Equity Interest, giving you first-priority claim to all cash flow and proceeds from operations, refinance, or sale — ahead of all buyer equity. If the buyer defaults on the note, the operating agreement allows you to take over the buyer\'s interest in the property without foreclosure.'}`}
+  ? H('SELLER SECURITY WITH DEED IN LIEU OF FORECLOSURE:') + '\nBuyer is taking out an investment loan on the property. The seller-financed balance shall be evidenced by a Promissory Note and secured by a Warranty Deed with Vendor\'s Lien and a recorded Deed of Trust in second position behind the buyer\'s acquisition financing. Following an uncured default, the seller may pursue all remedies available under the loan documents, including foreclosure, or the parties may mutually agree to a deed in lieu of foreclosure, subject to the senior lender and title requirements.'
+  : H('SELLER PROTECTION BY SENIOR EQUITY INTEREST:') + '\nBuyer is taking out an investment loan on the property. Your position is documented as a Senior Equity Interest, giving you first-priority claim to all cash flow and proceeds from operations, refinance, or sale — ahead of all buyer equity. If the buyer defaults on the note, the operating agreement allows you to take over the buyer\'s interest in the property without foreclosure.'}`}
 
 ${H('TIMELINE:')}
 ${(() => {
@@ -6694,10 +6694,10 @@ Closing Costs: ${closingCostsLine}${agentFeeLine ? '\n' + agentFeeLine : ''}`;
   const totalReceipts = cac + totalPmts + balloon;
 
   const securityLine = sellerSecurityType === 'deed_of_trust'
-    ? 'The seller carry note will be secured by a deed of trust recorded in second position against the property.'
+    ? 'Buyer is taking out an investment loan on the property. The seller carry note will be secured by a deed of trust recorded in second position against the property.'
     : sellerSecurityType === 'deed_in_lieu'
-    ? 'The seller-financed balance shall be secured by a Deed of Trust in second position; seller may pursue a deed in lieu of foreclosure following an uncured default.'
-    : 'Seller\'s position is documented as a Senior Equity Interest, giving the seller first-priority claim to all cash flow and proceeds from operations, refinance, or sale.';
+    ? 'Buyer is taking out an investment loan on the property. The seller-financed balance shall be secured by a Deed of Trust in second position; seller may pursue a deed in lieu of foreclosure following an uncured default.'
+    : 'Buyer is taking out an investment loan on the property. Seller\'s position is documented as a Senior Equity Interest, giving the seller first-priority claim to all cash flow and proceeds from operations, refinance, or sale.';
 
   // ── Build nuanced carry note (mirrors generateLOI logic) ──
   const zeroInterest   = scRate === 0;
