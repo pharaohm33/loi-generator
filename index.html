@@ -3883,10 +3883,10 @@ ${finIncome <= 0
   // Phase 1 rate label — show "Principal Only" when rate is 0
   const ph1RateLabel = ph2Active && mode === 'io_deferred'
     ? `${esc(P(scRate))} IO + ${esc(P(deferredRate))} Deferred = ${esc(P(ph1CombinedRate))} combined`
-    : (scRate === 0 ? 'Principal Only' : esc(P(scRate)));
+    : (scRate === 0 ? 'Principal Only' : mode === 'deferred_exit' ? `${esc(P(scRate))} simple interest deferred to exit` : esc(P(scRate)));
   // Phase 2 rate label — show "Principal Only" when rate is 0, otherwise rate + mode short name
   const ph2RateLabel = ph2Active
-    ? (loiPh2Rate === 0 ? 'Principal Only' : `${esc(P(loiPh2Rate))} ${esc(ph2ModeShort)}`)
+    ? (loiPh2Rate === 0 ? 'Principal Only' : mode2 === 'deferred_exit' ? `${esc(P(loiPh2Rate))} simple interest deferred to exit` : `${esc(P(loiPh2Rate))} ${esc(ph2ModeShort)}`)
     : '';
 
   // Weighted-average rate across both phases (by years)
@@ -3918,6 +3918,8 @@ ${blendedLine}`)
         ? `Interest Rate: ${esc(P(scRate))} (no interest charged)`
         : mode === 'principal_only'
         ? `Interest Rate: ${esc(P(scRate))} simple interest (accrues on declining balance — due at balloon)`
+        : mode === 'deferred_exit'
+        ? `Interest Rate: ${esc(P(scRate))} simple interest deferred to exit`
         : mode === 'io_deferred'
         ? `Interest: ${esc(P(scRate))} IO (monthly payments) + ${esc(P(g('sc_deferred_rate') / 100))} Deferred Simple (due at balloon) | ${esc(P(scRate + g('sc_deferred_rate') / 100))} total`
         : `Monthly Payment Interest Rate: ${esc(P(scRate))} simple interest`);
@@ -6865,7 +6867,7 @@ Total seller receipts are ${esc(D(totalReceipts))}.`;
     } else {
       dualPmtBlock =
 `No monthly payments — all principal + interest deferred to balloon
-Interest accrues at ${esc(P(scRate))} simple interest on the full ${esc(D(carry))} balance
+Interest Rate: ${esc(P(scRate))} simple interest deferred to exit
 Balloon Payment at Year ${scTerm}: Approximately ${esc(D(balloon))} (principal + accrued interest)
 Total Seller Receipts Over ${scTerm} ${scTerm === 1 ? 'Year' : 'Years'}: Approximately ${esc(D(totalReceipts))}`;
       dualNarr =
