@@ -713,7 +713,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
           <div class="prefix-wrap"><span>$</span><input type="number" id="rehab" placeholder="0" step="1000"></div>
         </div>
         <div class="field">
-          <label>Rehab Draw Liquidity %</label>
+          <label>Rehab Draw Liquidity % <span style="font-size:10px;color:#888;font-weight:400;">(cash to show lender)</span></label>
           <div class="suffix-wrap"><input type="number" id="rehab_draw_pct" placeholder="0" step="1"><span>%</span></div>
         </div>
       </div>
@@ -793,7 +793,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div id="hm-fields" style="display:none">
         <div class="row cols-3">
           <div class="field">
-            <label>Max LTC (of total cost)</label>
+            <label>Max LTC (of purchase price)</label>
             <div class="suffix-wrap"><input type="number" id="hm_ltc" placeholder="75" step="1"><span>%</span></div>
           </div>
           <div class="field">
@@ -801,7 +801,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <div class="suffix-wrap"><input type="number" id="hm_arv_pct" placeholder="70" step="1"><span>%</span></div>
           </div>
           <div class="field">
-            <label>Rehab Financed %</label>
+            <label>Rehab Financed % <span style="font-size:10px;color:#888;font-weight:400;">(of budget, via draws)</span></label>
             <div class="suffix-wrap"><input type="number" id="hm_rehab_pct" placeholder="100" step="5"><span>%</span></div>
           </div>
         </div>
@@ -811,7 +811,16 @@ input:focus, select:focus { border-color: #111; background: #fff; }
             <input type="number" id="hm_rehab_months" placeholder="12" min="1" step="1">
           </div>
         </div>
-        <div style="font-size:11px;color:#888;padding:4px 0 2px">Binding constraint: lowest of LTV / LTC / ARV%</div>
+        <div class="row cols-1" style="margin-top:4px">
+          <div class="field">
+            <label>Rehab Interest Charged On</label>
+            <select id="hm_int_mode" onchange="recalc()">
+              <option value="drawn" selected>Drawn amount only (draws spread over rehab months)</option>
+              <option value="full">Full loan from day 1 (rehab holdback included)</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#888;padding:4px 0 2px">Funded at closing = lowest of LTV / LTC (purchase price) / ARV% less the rehab holdback. The rehab holdback (budget × Rehab Financed %) is funded through draws and sits inside the ARV% limit.</div>
       </div>
     </div>
   </div>
@@ -1275,6 +1284,9 @@ input:focus, select:focus { border-color: #111; background: #fff; }
     <strong>⚠ ARV not set</strong> — fix &amp; flip exit projections will use As-Is Value ($<span id="arv-fallback-val"></span>) instead. Enter ARV in B) Deal Pricing for accurate exit valuation. (Loan sizing uses As-Is Value regardless.)
   </div>
 
+  <!-- Hard money rehab interest warning -->
+  <div id="hm-rehab-warning" style="display:none; background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:9px 14px; font-size:12px; color:#9f1239; margin-bottom:10px;"></div>
+
   <!-- Address banner -->
   <div class="addr-banner" id="s-addr">—</div>
 
@@ -1320,6 +1332,8 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="sum-row"><span class="lbl" id="s-max-loan-lbl">Max Loan (% of As-Is Value)</span><span class="val" id="s-max-loan">—</span></div>
       <div class="sum-row"><span class="lbl" id="s-sr-detail-lbl">Rate / Amort</span><span class="val" id="s-sr-detail">—</span></div>
       <div class="sum-row" id="s-rehab-timeline-row" style="display:none"><span class="lbl">Rehab Timeline</span><span class="val" id="s-rehab-months">—</span></div>
+      <div class="sum-row" id="s-hm-holdback-row" style="display:none"><span class="lbl">Rehab Holdback (draws)</span><span class="val" id="s-hm-holdback">—</span></div>
+      <div class="sum-row" id="s-hm-total-row" style="display:none"><span class="lbl">Total Loan Commitment</span><span class="val" id="s-hm-total">—</span></div>
       <div class="sum-row"><span class="lbl" id="s-sr-pmt-lbl">Monthly P&amp;I</span><span class="val" id="s-sr-pmt">—</span></div>
       <div class="sum-row"><span class="lbl" id="s-dscr-lbl">DSCR (all debt)</span><span class="val" id="s-dscr">—</span></div>
     </div>
@@ -1369,14 +1383,16 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="sum-row"><span class="lbl">− Cash to Seller</span><span class="val" id="s-out-seller">—</span></div>
       <div class="sum-row"><span class="lbl">− Closing Costs</span><span class="val" id="s-out-closing">—</span></div>
       <div class="sum-row"><span class="lbl">− TAF Fee</span><span class="val" id="s-out-taf">—</span></div>
-      <div class="sum-row"><span class="lbl">− Rehab Out-of-Pocket</span><span class="val" id="s-out-rehab">—</span></div>
+      <div class="sum-row"><span class="lbl">− Rehab Payment at Close (Out-of-Pocket)</span><span class="val" id="s-out-rehab">—</span></div>
       <div class="sum-row" id="s-out-prepay-row" style="display:none"><span class="lbl">− Interest Pre-Pay to Seller</span><span class="val" id="s-out-prepay">—</span></div>
     </div>
     <div class="sum-total" id="cashback-total-row">
       <span id="cashback-label">Buyer Net at Close</span>
       <span id="s-cashback">—</span>
     </div>
-    <div style="padding:8px 16px 12px; font-size:11px; color:#888; border-top:1px solid #f0f0ee;" id="cashback-note">—</div>
+    <div style="padding:8px 16px 4px; font-size:11px; color:#888; border-top:1px solid #f0f0ee;" id="cashback-note">—</div>
+    <div style="padding:0 16px 4px; font-size:11px; color:#555;" id="max-cac-note"></div>
+    <div style="padding:0 16px 12px; font-size:11px; color:#555;" id="draw-liq-note"></div>
   </div>
 
   <!-- CASH FLOW -->
@@ -2293,6 +2309,47 @@ function fmd(v) {
 }
 function fp(r, d=2) { return (r * 100).toFixed(d) + '%'; }
 
+// ── Hard money sizing: the rehab holdback sits INSIDE the loan limits ──
+// Funded at closing = lowest of LTV (as-is), LTC (purchase price) and the ARV % limit less the rehab holdback.
+// Holdback = rehab budget x Rehab Financed %, released through draws, so a bigger rehab never adds cash at closing.
+function hmSizing(asIsVal, arv, rehab) {
+  const srLTV  = g('sr_ltv') / 100;
+  const ltc    = g('hm_ltc') / 100;
+  const arvPct = g('hm_arv_pct') / 100;
+  const finEl  = document.getElementById('hm_rehab_pct');
+  const finPct = Math.min(1, Math.max(0, (finEl && finEl.value.trim() !== '') ? g('hm_rehab_pct') / 100 : 1));
+  const byLTV  = srLTV > 0  ? asIsVal * srLTV  : Infinity;
+  const byLTC  = ltc > 0    ? asIsVal * ltc    : Infinity;
+  const arvCap = arvPct > 0 ? arv * arvPct     : Infinity;
+  const holdback = Math.max(0, Math.min((rehab || 0) * finPct, arvCap));
+  const byARV  = arvCap - holdback;
+  let purchaseAdv = Math.min(byLTV, byLTC, byARV);
+  if (!isFinite(purchaseAdv) || purchaseAdv < 0) purchaseAdv = 0;
+  const binding = purchaseAdv === byLTV ? 'ltv' : purchaseAdv === byLTC ? 'ltc' : 'arv';
+  return { purchaseAdv, holdback, byLTV, byLTC, byARV, arvCap, finPct, binding };
+}
+function hmRehabMonths() { return g('hm_rehab_months') || 12; }
+function hmIntMode() { const el = document.getElementById('hm_int_mode'); return el && el.value === 'full' ? 'full' : 'drawn'; }
+// Rehab money drawn after m months (draws spread evenly over the rehab timeline)
+function hmDrawnAt(holdback, m) { return holdback * Math.min(1, m / hmRehabMonths()); }
+// Average monthly interest-only payment during year yr
+function hmAvgMonthlyIO(funded, holdback, rate, yr, mode) {
+  const R = hmRehabMonths();
+  let sum = 0;
+  for (let m = (yr - 1) * 12 + 1; m <= yr * 12; m++) {
+    const drawn = mode === 'full' ? holdback : holdback * Math.min(1, (m - 0.5) / R);
+    sum += (funded + drawn) * rate / 12;
+  }
+  return sum / 12;
+}
+// Extra interest if the lender charges on the full loan from day 1 instead of drawn-only
+function hmExtraInterestFull(holdback, rate) {
+  const R = hmRehabMonths();
+  let ex = 0;
+  for (let m = 1; m <= Math.ceil(R); m++) ex += holdback * (1 - Math.min(1, (m - 0.5) / R)) * rate / 12;
+  return ex;
+}
+
 function pmtPI(rate_annual, amort_years, pv) {
   const r = rate_annual / 12;
   const n = amort_years * 12;
@@ -2377,7 +2434,7 @@ function recalc() {
   const arv     = arvRaw > 0 ? arvRaw : asIsVal; // for exit projections, fall back to as-is
   const arvMissingForExit = arvRaw === 0 && g('rehab') > 0; // only warn if there's a rehab
 
-  const totalProjectCost = asIsVal + g('rehab');
+  let hmHoldback = 0; // rehab money the hard money lender funds through draws (inside the loan limits)
 
   const noiDirectAn = g('noi_direct');
   const usingDirectNOI = noiDirectAn > 0;
@@ -2437,12 +2494,10 @@ function recalc() {
   // Loan sizing always uses AS-IS VALUE (lenders underwrite current value, not future ARV)
   let maxLoan, bindingConstraint;
   if (loanType === 'hard_money') {
-    const byLTV = srLTV > 0         ? asIsVal * srLTV                    : Infinity;
-    const byLTC = g('hm_ltc') > 0   ? totalProjectCost * g('hm_ltc')/100 : Infinity;
-    const byARV = g('hm_arv_pct')>0 ? arv * g('hm_arv_pct')/100         : Infinity;
-    maxLoan = Math.min(byLTV, byLTC, byARV);
-    if (!isFinite(maxLoan)) maxLoan = 0;
-    bindingConstraint = maxLoan === byLTV ? 'ltv' : maxLoan === byLTC ? 'ltc' : 'arv';
+    const hmS = hmSizing(asIsVal, arv, g('rehab'));
+    maxLoan = hmS.purchaseAdv;   // funded at closing
+    hmHoldback = hmS.holdback;
+    bindingConstraint = hmS.binding;
   } else {
     // DSCR: cap by LTV AND by DSCR minimum requirement
     const byLTV  = srLTV > 0 ? asIsVal * srLTV : Infinity;
@@ -2513,7 +2568,8 @@ function recalc() {
   let brgParams = null;
 
   // For Day-1 display: HM loans are I/O; use I/O payment unless bridge overrides below
-  const hmIOmoEarly = loanType === 'hard_money' ? maxLoan * (g('sr_rate') / 100) / 12 : srPmt;
+  const hmIntModeSel = hmIntMode();
+  const hmIOmoEarly = loanType === 'hard_money' ? (maxLoan + (hmIntModeSel === 'full' ? hmHoldback : 0)) * (g('sr_rate') / 100) / 12 : srPmt;
   const totalDebtMo = hmIOmoEarly + scMonthly;  // Phase 1 debt service for Day-1 CF display
   const netCF  = noiMo - totalDebtMo;
   const dscr   = totalDebtMo > 0 ? noiAn / (totalDebtMo * 12) : 0;
@@ -2523,6 +2579,8 @@ function recalc() {
   const pts    = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
+  // Rehab the buyer pays themselves: not covered by lender draws and not already paid from cash back at close
+  const rehabBuyerCost = Math.max(0, g('rehab') - (loanType === 'hard_money' ? hmHoldback : 0) - rehabOOP);
   const agentFeeRaw = g('loi_agent_fee') || 0;
   const agentFeeType = (document.getElementById('loi_agent_fee_type') || {}).value || 'pct';
   const agentFee = agentFeeRaw > 0 ? (agentFeeType === 'pct' ? pp * agentFeeRaw / 100 : agentFeeRaw) : 0;
@@ -2599,7 +2657,7 @@ function recalc() {
   const actualLTVpct = asIsVal > 0 ? (maxLoan / asIsVal * 100).toFixed(1) + '%' : '';
   const isHM = loanType === 'hard_money';
   // For HM the monthly payment is interest-only; srPmt (P&I) is only used for balance tracking
-  const hmIOmo = isHM ? maxLoan * srRate / 12 : 0;
+  const hmIOmo = isHM ? hmIOmoEarly : 0;
   const displaySrPmt = isHM ? hmIOmo : srPmt;  // what to show in panels and CF
 
   // Update loan-type-sensitive labels
@@ -2730,6 +2788,33 @@ function recalc() {
     cbNote.style.color  = '#9f1239';
   }
 
+  // Max cash to seller at closing (cash back = $0) and the cash the buyer must show the hard money lender
+  const maxCacEl = document.getElementById('max-cac-note');
+  if (maxCacEl) {
+    const maxCac = Math.max(0, cac + buyerNet);
+    maxCacEl.innerHTML = `<strong>Max cash to seller at close:</strong> ${fm(maxCac)} (cash back = $0, at current costs)` +
+      (isHM && hmHoldback > 0 ? ` — ${fm(hmHoldback)} of the loan is held back for rehab draws and does not fund at closing` : '');
+  }
+  const drawLiqEl = document.getElementById('draw-liq-note');
+  if (drawLiqEl) {
+    const drawLiq = g('rehab') * g('rehab_draw_pct') / 100;
+    const cashToBring = g('buyer_cash') + cashNeeded;
+    drawLiqEl.innerHTML = (isHM && drawLiq > 0)
+      ? `<strong>Show the lender:</strong> ${fm(cashToBring)} cash at close + ${fm(drawLiq)} draw liquidity (${g('rehab_draw_pct')}% of rehab) = ${fm(cashToBring + drawLiq)}`
+      : '';
+  }
+  const hbRow = document.getElementById('s-hm-holdback-row'), hbTot = document.getElementById('s-hm-total-row');
+  if (hbRow && hbTot) {
+    const showHB = isHM && hmHoldback > 0;
+    hbRow.style.display = showHB ? '' : 'none';
+    hbTot.style.display = showHB ? '' : 'none';
+    if (showHB) {
+      set('s-hm-holdback', fm(hmHoldback) + ' (' + Math.round(hmSizing(asIsVal, arv, g('rehab')).finPct * 100) + '% of rehab)');
+      set('s-hm-total', fm(maxLoan + hmHoldback));
+    }
+  }
+  setLbl('s-max-loan-lbl', isHM ? 'Funded at Closing' : 'Max Loan (% of As-Is Value)');
+
   // When bridge/BRRRR is active, append a note about the refi cash event so the
   // closing-day picture isn't mistaken for the buyer's complete cash position.
   if (bridgeEnabled && brgParams) {
@@ -2790,7 +2875,7 @@ function recalc() {
     const _refiRate    = gb('bridge_refi_rate') / 100;
     const _refiAmort   = gb('bridge_refi_amort') || 30;
     const _refiDSCRmin = gb('bridge_refi_dscr') || 1.25;
-    const _brgAmount   = loanType === 'hard_money' ? maxLoan : arv * _brgLTV;
+    const _brgAmount   = loanType === 'hard_money' ? maxLoan + hmHoldback : arv * _brgLTV;
     const _brgIOmo     = _brgAmount * _brgRate / 12;
     const _stabVal     = arv;
     const _refiNOI     = hasProforma ? (g('noi_proforma') || noiAn) : noiAn;
@@ -2831,7 +2916,7 @@ function recalc() {
   function effectiveSrBalAt(yr) {
     if (!brgParams) {
       // Hard money without bridge: interest-only, no principal reduction during hold
-      if (loanType === 'hard_money') return maxLoan;
+      if (loanType === 'hard_money') return maxLoan + hmDrawnAt(hmHoldback, yr * 12);
       // Standard amortization
       if (srRate === 0 || g('sr_amort') === 0) return Math.max(maxLoan - srPmt * yr * 12, 0);
       const r = srRate / 12, n = g('sr_amort') * 12, mo = yr * 12;
@@ -2852,7 +2937,7 @@ function recalc() {
   // Returns monthly senior debt service at a given year — bridge I/O during bridge period, perm P&I after refi
   function effectiveSrPmtMoAt(yr) {
     // Hard money without bridge: loan is interest-only — use I/O payment, not P&I
-    if (!brgParams) return loanType === 'hard_money' ? hmIOmoEarly : srPmt;
+    if (!brgParams) return loanType === 'hard_money' ? hmAvgMonthlyIO(maxLoan, hmHoldback, srRate, yr, hmIntModeSel) : srPmt;
     return yr <= brgParams.refiYr ? brgParams.brgIOmo : brgParams.permPmtMo;
   }
 
@@ -3004,7 +3089,7 @@ function recalc() {
     const cumCF      = baseCumCF;
 
     const salePct      = propVal * (1 - saleClosingPct);
-    const saleSurplus  = salePct - srBal - sellerOwe;
+    const saleSurplus  = salePct - srBal - sellerOwe - rehabBuyerCost;
 
     // Refi proceeds: when exit type is refi, constrain by DSCR and deduct refi costs
     function refiProceeds(val, noi) {
@@ -3022,7 +3107,7 @@ function recalc() {
     }
 
     const refiProc     = refiProceeds(propVal, baseNOIyr);
-    const refiSurplus  = refiProc - srBal - sellerOwe;
+    const refiSurplus  = refiProc - srBal - sellerOwe - rehabBuyerCost;
     const saleCF     = saleSurplus + cumCF;
     const refiCF     = refiSurplus + cumCF;
     const isBalloon  = yr === balloonIntYr;
@@ -3033,18 +3118,18 @@ function recalc() {
     // Proforma exit value: implied by cap rate (NOI / capRate) rather than raw appreciation
     const capRate    = g('cap_rate') / 100;
     const pfImplied  = hasProforma && capRate > 0 ? pfNOIyr / capRate : propVal;
-    const pfSale     = pfImplied * (1 - saleClosingPct) - srBal - sellerOwe;
-    const pfRefi     = refiProceeds(pfImplied, pfNOIyr) - srBal - sellerOwe;
+    const pfSale     = pfImplied * (1 - saleClosingPct) - srBal - sellerOwe - rehabBuyerCost;
+    const pfRefi     = refiProceeds(pfImplied, pfNOIyr) - srBal - sellerOwe - rehabBuyerCost;
     const pfSaleWithCF = pfSale + pfCumCF;
     const pfRefiWithCF = pfRefi + pfCumCF;
 
     if (isBalloon) {
       // Net seller owed at balloon: subtract interest pre-paid at closing
       const sellerOweNet     = Math.max(0, sellerOwe - interestPrepayAtClose);
-      const saleSurplusNet   = salePct - srBal - sellerOweNet;
-      const refiSurplusNet   = refiProc - srBal - sellerOweNet;
-      const pfSaleNet_adj    = pfImplied * (1 - saleClosingPct) - srBal - sellerOweNet;
-      const pfRefiNet_adj    = refiProceeds(pfImplied, pfNOIyr) - srBal - sellerOweNet;
+      const saleSurplusNet   = salePct - srBal - sellerOweNet - rehabBuyerCost;
+      const refiSurplusNet   = refiProc - srBal - sellerOweNet - rehabBuyerCost;
+      const pfSaleNet_adj    = pfImplied * (1 - saleClosingPct) - srBal - sellerOweNet - rehabBuyerCost;
+      const pfRefiNet_adj    = refiProceeds(pfImplied, pfNOIyr) - srBal - sellerOweNet - rehabBuyerCost;
       balloonSaleSurplus  = saleSurplusNet; balloonRefiSurplus = refiSurplusNet; balloonCumCF = cumCF;
       balloonStaticCumCF  = staticCumCFAccum; balloonPfCumCF = pfCumCF;
       balloonPfNOI        = pfNOIyr;
@@ -3295,6 +3380,25 @@ function recalc() {
   }
   const saleWithCF = balloonSaleSurplus + balloonCumCF;
   const refiWithCF = balloonRefiSurplus + balloonCumCF;
+
+  // Hard money rehab interest warning: some lenders charge interest on the full loan from day 1 (not just drawn funds)
+  const hmWarnEl = document.getElementById('hm-rehab-warning');
+  if (hmWarnEl) {
+    const extraInt = (isHM && !brgParams) ? hmExtraInterestFull(hmHoldback, srRate) : 0;
+    const profitSel = isSaleExit ? saleWithCF : refiWithCF;
+    const profitDrawn = hmIntModeSel === 'drawn' ? profitSel : profitSel + extraInt;
+    const profitFull  = hmIntModeSel === 'full'  ? profitSel : profitSel - extraInt;
+    const exitWord = isSaleExit ? 'sale' : 'refi';
+    if (extraInt > 0 && profitFull < 0) {
+      hmWarnEl.style.display = 'block';
+      hmWarnEl.innerHTML = profitDrawn >= 0
+        ? `<strong>⚠ Profit turns negative if the lender charges interest on the full loan from day 1.</strong> Interest on the full rehab holdback until rehab completes adds ${fm(extraInt)}, taking net profit at the Year ${balloonYr} ${exitWord} (with cash flow) from ${fm(profitDrawn)} (interest on drawn funds only) to ${fm(profitFull)}. Confirm how the lender charges interest before committing.`
+        : `<strong>⚠ Net profit at the Year ${balloonYr} ${exitWord} (with cash flow) is negative either way:</strong> ${fm(profitDrawn)} with interest on drawn funds only, ${fm(profitFull)} if interest is charged on the full loan from day 1 (${fm(extraInt)} more).`;
+    } else {
+      hmWarnEl.style.display = 'none';
+    }
+  }
+
   const saleEl = document.getElementById('badge-term-sale-val');
   const refiEl = document.getElementById('badge-term-refi-val');
   saleEl.textContent = (saleWithCF >= 0 ? '+' : '') + fm(saleWithCF);
@@ -3374,7 +3478,7 @@ function recalc() {
     const refiCostPct = gb('bridge_refi_costs') / 100;
 
     // Bridge loan — if Hard Money selected, use the already-computed maxLoan; otherwise ARV × LTV
-    const brgAmount   = loanType === 'hard_money' ? maxLoan : arv * brgLTV;
+    const brgAmount   = loanType === 'hard_money' ? maxLoan + hmHoldback : arv * brgLTV;
     const brgIOmo     = brgAmount * brgRate / 12;   // I/O payment
     const brgOrigFee  = brgAmount * brgOrigPct;
     const extraToSeller = Math.max(0, brgAmount - maxLoan); // vs what DSCR loan would give
@@ -4502,15 +4606,13 @@ function generateBuyerPresentation() {
 
   const srRate = g('sr_rate') / 100;
   const srLTV  = g('sr_ltv') / 100;
-  const totalProjectCost = asIsVal + g('rehab');
+  let bpHoldback = 0; // rehab holdback funded through draws (inside the loan limits)
   let maxLoan, bindingConstraint;
   if (loanType === 'hard_money') {
-    const byLTV = srLTV > 0 ? asIsVal * srLTV : Infinity;
-    const byLTC = g('hm_ltc') > 0 ? totalProjectCost * g('hm_ltc')/100 : Infinity;
-    const byARV = g('hm_arv_pct') > 0 ? arv * g('hm_arv_pct')/100 : Infinity;
-    maxLoan = Math.min(byLTV, byLTC, byARV);
-    if (!isFinite(maxLoan)) maxLoan = 0;
-    bindingConstraint = maxLoan === byLTV ? 'LTV (As-Is)' : maxLoan === byLTC ? 'LTC' : 'ARV %';
+    const hmS = hmSizing(asIsVal, arv, g('rehab'));
+    maxLoan = hmS.purchaseAdv;
+    bpHoldback = hmS.holdback;
+    bindingConstraint = { ltv: 'LTV (As-Is)', ltc: 'LTC', arv: 'ARV %' }[hmS.binding];
   } else {
     const byLTV2 = srLTV > 0 ? asIsVal * srLTV : Infinity;
     const dscrReq2 = g('sr_dscr') || 0;
@@ -4525,7 +4627,7 @@ function generateBuyerPresentation() {
   }
   const srPmt = pmtPI(srRate, g('sr_amort'), maxLoan);
   const actualLTV = asIsVal > 0 ? maxLoan / asIsVal : 0;
-  const hmIOmoLocal = loanType === 'hard_money' ? maxLoan * srRate / 12 : srPmt;
+  const hmIOmoLocal = loanType === 'hard_money' ? (maxLoan + (hmIntMode() === 'full' ? bpHoldback : 0)) * srRate / 12 : srPmt;
 
   const scRate = g('sc_rate') / 100;
   const scTerm = g('sc_term');
@@ -4556,6 +4658,7 @@ function generateBuyerPresentation() {
   const pts = maxLoan * g('sr_points') / 100;
   const broker = maxLoan * g('broker_pct') / 100;
   const rehabOOP = g('rehab_oop');
+  const bpRehabBuyerCost = Math.max(0, g('rehab') - (loanType === 'hard_money' ? bpHoldback : 0) - rehabOOP); // rehab not covered by draws or paid from cash back
   const loiAgentFeeRaw = g('loi_agent_fee') || 0;
   const loiAgentFeeType = (document.getElementById('loi_agent_fee_type') || {}).value || 'pct';
   const loiAgentFee = loiAgentFeeRaw > 0 ? (loiAgentFeeType === 'pct' ? pp * loiAgentFeeRaw / 100 : loiAgentFeeRaw) : 0;
@@ -4782,8 +4885,10 @@ Seller Carryback Note: ${D(carry)} (${pctOf(carry, pp)} of purchase price)`}
 FINANCING STRUCTURE
 ══════════════════════════════════════
 Loan Type: ${loanType === 'hard_money' ? 'Hard Money' : 'DSCR'}
-Senior Loan Amount: ${D(maxLoan)} — ${P(actualLTV)} LTV of As-Is Value (binding constraint: ${bindingConstraint})
-Interest Rate: ${P(srRate)}
+Senior Loan Amount${bpHoldback > 0 ? ' (funded at closing)' : ''}: ${D(maxLoan)} — ${P(actualLTV)} LTV of As-Is Value (binding constraint: ${bindingConstraint})
+${loanType === 'hard_money' && bpHoldback > 0 ? `Rehab Holdback (funded through draws, inside the loan limits): ${D(bpHoldback)} — Total Loan Commitment: ${D(maxLoan + bpHoldback)}
+Rehab Interest: ${hmIntMode() === 'full' ? 'charged on the full loan from day 1' : 'charged on drawn funds only (draws spread over ' + hmRehabMonths() + ' months)'}
+` : ''}Interest Rate: ${P(srRate)}
 ${loanType === 'hard_money' && !bridgeEnabled ? 'Payment Type: Interest-Only (I/O)' : `Amortization: ${g('sr_amort')} years`}
 ${bridgeEnabled
   ? `Senior Monthly Payment: ${Dfmt(bpDayOneSrPmt)}/mo (bridge I/O during holding period)
@@ -4854,20 +4959,23 @@ ${closingCostParty === 'buyer'
   ? `− Total Closing Costs:   −${D(closing)}\n+ Seller Closing Credit: +${D(bpSellerClosingAmt)}  (seller pays all)\n= Net Buyer Closing Cost: −${D(closing - bpSellerClosingAmt)}`
   : `− Total Closing Costs:   −${D(closing)}\n+ Seller Closing Credit: +${D(bpSellerClosingAmt)}  (seller pays 50%)\n= Net Buyer Closing Cost: −${D(closing - bpSellerClosingAmt)}`}
 − TAF Fee: −${D(tafFee)} (${pctOf(tafFee, tafPrin)} of TAF principal)
-− Rehab Out-of-Pocket: −${D(rehabOOP)}${interestPrepayAtClose > 0 ? `
+− Rehab Payment at Close (from cash back): −${D(rehabOOP)}${interestPrepayAtClose > 0 ? `
 − Interest Pre-Pay to Seller at Close: −${D(interestPrepayAtClose)}` : ''}
 ${'─'.repeat(40)}
 ${buyerNet >= 0 ? 'CASH BACK TO BUYER' : 'CASH NEEDED FROM BUYER'}: ${buyerNet >= 0 ? '+' : ''}${D(buyerNet)} (${pctOf(Math.abs(buyerNet), pp)} of purchase price)
 ${buyerNet >= 0 ? (parkEscrow ? '(Held in escrow against the deal, not taken home)' : '(Returned to buyer at closing)') : '(Buyer must bring this amount to close)'}
-${closingCostParty !== 'buyer' ? `Note: Seller closing credit of ${D(bpSellerClosingAmt)} reduces seller\'s net at closing to ${D(cac - bpSellerClosingAmt + interestPrepayAtClose)}${interestPrepayAtClose > 0 ? ' (includes ' + D(interestPrepayAtClose) + ' interest pre-pay)' : ''}.` : ''}
+Max Cash to Seller at Closing (cash back = $0): ${D(Math.max(0, cac + buyerNet))}${loanType === 'hard_money' && bpHoldback > 0 ? ` — ${D(bpHoldback)} of the loan is held back for rehab draws and does not fund at closing` : ''}
+${loanType === 'hard_money' && g('rehab') * g('rehab_draw_pct') > 0 ? `Show the Lender: ${D(g('buyer_cash') + Math.max(-buyerNet, 0))} cash at close + ${D(g('rehab') * g('rehab_draw_pct') / 100)} draw liquidity (${g('rehab_draw_pct')}% of rehab) = ${D(g('buyer_cash') + Math.max(-buyerNet, 0) + g('rehab') * g('rehab_draw_pct') / 100)}
+` : ''}${closingCostParty !== 'buyer' ? `Note: Seller closing credit of ${D(bpSellerClosingAmt)} reduces seller\'s net at closing to ${D(cac - bpSellerClosingAmt + interestPrepayAtClose)}${interestPrepayAtClose > 0 ? ' (includes ' + D(interestPrepayAtClose) + ' interest pre-pay)' : ''}.` : ''}
 ══════════════════════════════════════
 EXIT PROFIT PROJECTION (Year ${balloonYr} Balloon — ${staticCF ? 'Static CF Mode' : 'Current NOI Path'})
   [NOI: ${staticCF ? 'Day-1 held flat — Static CF mode, no growth applied' : (noiGrowthRate > 0 ? `Day-1 + ${P(noiGrowthRate)}/yr growth` : 'Day-1 held flat, no growth')}${hasProforma ? ' — proforma target NOT used here' : ''}. Phase payments apply on schedule. Appreciation-based exit value.]
 ══════════════════════════════════════
 Day-1 ${isResidential ? 'Net Rental Income' : 'NOI'}: ${D(noiAn)}/yr  (${Dfmt(noiMo)}/mo)${staticCF ? '  →  held flat (Static CF)' : noiGrowthRate > 0 ? `  →  growing at ${P(noiGrowthRate)}/yr` : '  (held flat)'}
 ${!staticCF && noiGrowthRate > 0 ? `NOI at Balloon (Year ${balloonYr}): ${D(bpNOIatYear(balloonYr))}/yr\n` : ''}Projected Property Value: ${D(exitPropVal)} (${P(appr)}/yr appreciation — ${pctOf(exitPropVal - arv, arv)} total gain since acquisition)
-Senior Loan Balance Remaining: ${D(exitSrBal)} (${pctOf(exitSrBal, exitPropVal)} of exit value)
-${noSellerCarry ? '' : `Seller Carry Balance Owed: ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, exitPropVal)} of exit value)`}
+Senior Loan Balance Remaining: ${D(exitSrBal)} (${pctOf(exitSrBal, exitPropVal)} of exit value)${loanType === 'hard_money' && bpHoldback > 0 ? ' — includes drawn rehab funds' : ''}
+${bpRehabBuyerCost > 0 ? `Rehab Not Covered by Lender Draws (deducted from profit): −${D(bpRehabBuyerCost)}
+` : ''}${noSellerCarry ? '' : `Seller Carry Balance Owed: ${D(exitSellerOwed)} (${pctOf(exitSellerOwed, exitPropVal)} of exit value)`}
 Cumulative Net Cash Flow (${staticCF ? 'NOI flat at Day-1, Static CF mode' : `current NOI${noiGrowthRate > 0 ? ` + ${P(noiGrowthRate)}/yr` : ', flat'}`}${hasProforma ? ' — proforma NOT used' : ''}): ${cumCF >= 0 ? '+' : ''}${D(cumCF)}
 
   SALE EXIT (appreciation-based exit value):
@@ -5127,16 +5235,13 @@ function generateLOIReasoning(offerType, sellerData) {
   const srLTV   = g('sr_ltv') / 100;
   const dscrReq = g('sr_dscr') || 1.25;
   const srAmort = g('sr_amort') || 30;
-  const totalProjectCost = asIsVal + g('rehab');
-
+  let rsHoldback = 0; // rehab holdback funded through draws (inside the loan limits)
   let maxLoan, bindingConstraint;
   if (loanType === 'hard_money') {
-    const byLTV = srLTV > 0 ? asIsVal * srLTV : Infinity;
-    const byLTC = g('hm_ltc') > 0 ? totalProjectCost * g('hm_ltc')/100 : Infinity;
-    const byARV = g('hm_arv_pct') > 0 ? arv * g('hm_arv_pct')/100 : Infinity;
-    maxLoan = Math.min(byLTV, byLTC, byARV);
-    if (!isFinite(maxLoan)) maxLoan = 0;
-    bindingConstraint = maxLoan === byLTV ? 'LTV (As-Is)' : maxLoan === byLTC ? 'LTC' : 'ARV %';
+    const hmS = hmSizing(asIsVal, arv, g('rehab'));
+    maxLoan = hmS.purchaseAdv;
+    rsHoldback = hmS.holdback;
+    bindingConstraint = { ltv: 'LTV (As-Is)', ltc: 'LTC', arv: 'ARV %' }[hmS.binding];
   } else {
     const byLTV2 = srLTV > 0 ? asIsVal * srLTV : Infinity;
     let byDSCR2  = Infinity;
@@ -5151,7 +5256,7 @@ function generateLOIReasoning(offerType, sellerData) {
 
   const srPmt          = pmtPI(srRate, srAmort, maxLoan);
   const actualLTV      = asIsVal > 0 ? maxLoan / asIsVal : 0;
-  const hmIOmo         = maxLoan * srRate / 12;
+  const hmIOmo         = (maxLoan + (hmIntMode() === 'full' ? rsHoldback : 0)) * srRate / 12;
   const effectiveSrPmt = loanType === 'hard_money' ? hmIOmo : srPmt;
 
   const scRate   = g('sc_rate') / 100;
@@ -5488,7 +5593,7 @@ ${thin}
 
   const hmLTC = g('hm_ltc'), hmARVpct = g('hm_arv_pct');
   const constraintDesc = bindingConstraint === 'LTC' && hmLTC > 0
-    ? `LTC at ${hmLTC}% of project cost (${D(totalProjectCost)})`
+    ? `LTC at ${hmLTC}% of purchase price (${D(asIsVal)})`
     : bindingConstraint === 'ARV %' && hmARVpct > 0
     ? `ARV% at ${hmARVpct}% of after-repair value (${D(arv)})`
     : `LTV at ${P(srLTV)} of as-is value (${D(asIsVal)})`;
@@ -5507,7 +5612,12 @@ ${thin}
   ln.push(`LOAN STRUCTURE:`);
   ln.push(col('  As-Is Value', D(asIsVal)));
   if (useARV) ln.push(col('  After-Repair Value (ARV)', D(arv)));
-  ln.push(col('  Hard Money Loan', D(maxLoan) + '  (' + P(actualLTV) + ' of as-is)'));
+  ln.push(col('  Hard Money Loan' + (rsHoldback > 0 ? ' (funded at closing)' : ''), D(maxLoan) + '  (' + P(actualLTV) + ' of as-is)'));
+  if (rsHoldback > 0) {
+    ln.push(col('  Rehab Holdback (funded via draws)', D(rsHoldback) + '  (inside the ARV% limit — adds no cash at closing)'));
+    ln.push(col('  Total Loan Commitment', D(maxLoan + rsHoldback)));
+    ln.push(col('  Rehab Interest', hmIntMode() === 'full' ? 'charged on the full loan from day 1' : 'charged on drawn funds only'));
+  }
   ln.push(col('  Rate / Type', P(srRate) + ' / Interest-Only (no principal paydown)'));
   ln.push(col('  Monthly I/O Payment', Dfmt(effectiveSrPmt) + '/mo'));
   ln.push('');
@@ -5896,15 +6006,12 @@ function generateResidentialLOIReasoning(offerType, sellerData) {
   const srRate  = g('sr_rate') / 100;
   const srAmort = g('sr_amort') || 30;
   const srLTV   = g('sr_ltv') / 100;
-  const totalProjectCostR = asIsVal + (g('rehab') || 0);
-  let calcMaxLoan, srPmt, hmIOPmt = 0;
+  let calcMaxLoan, srPmt, hmIOPmt = 0, hmHoldbackR = 0;
   if (isHM) {
-    const byLTV = srLTV > 0 ? asIsVal * srLTV : Infinity;
-    const byLTC = g('hm_ltc') > 0 ? totalProjectCostR * g('hm_ltc') / 100 : Infinity;
-    const byARV = g('hm_arv_pct') > 0 ? arv * g('hm_arv_pct') / 100 : Infinity;
-    calcMaxLoan = Math.min(byLTV, byLTC, byARV);
-    if (!isFinite(calcMaxLoan) || calcMaxLoan < 0) calcMaxLoan = 0;
-    hmIOPmt = srRate > 0 ? calcMaxLoan * srRate / 12 : 0;
+    const hmS = hmSizing(asIsVal, arv, g('rehab') || 0);
+    calcMaxLoan = hmS.purchaseAdv;
+    hmHoldbackR = hmS.holdback;
+    hmIOPmt = srRate > 0 ? (calcMaxLoan + (hmIntMode() === 'full' ? hmHoldbackR : 0)) * srRate / 12 : 0;
     srPmt = hmIOPmt;
   } else {
     const byLTV = srLTV > 0 ? asIsVal * srLTV : Infinity;
@@ -6188,19 +6295,20 @@ ${(() => {
   // Senior loan remaining balance at balloon (amortizing)
   const srBalRes = (() => {
     if (calcMaxLoan <= 0) return 0;
-    if (isHM) return calcMaxLoan; // interest-only: full principal balance remains at exit
+    if (isHM) return calcMaxLoan + hmHoldbackR; // interest-only: funded amount plus drawn rehab remains at exit
     if (srRate <= 0 || srAmort <= 0) return Math.max(calcMaxLoan - srPmt * scTerm * 12, 0);
     const rm = srRate/12, n = srAmort*12, k = Math.min(scTerm*12, n);
     if (k >= n) return 0;
     return calcMaxLoan * (Math.pow(1+rm,n) - Math.pow(1+rm,k)) / (Math.pow(1+rm,n) - 1);
   })();
 
+  const rehabBuyerCostR = Math.max(0, (g('rehab') || 0) - (isHM ? hmHoldbackR : 0) - rehabOOPRes); // rehab not covered by draws or cash back
   const totalDebtR  = srBalRes + balloon;
-  const netBase     = projValBase * (1 - resExitCosts) - totalDebtR;
-  const netFlat     = flatVal    * (1 - resExitCosts) - totalDebtR;
-  const netDn10     = dn10Val    * (1 - resExitCosts) - totalDebtR;
-  const netDn20     = dn20Val    * (1 - resExitCosts) - totalDebtR;
-  const breakEvenV  = totalDebtR / (1 - resExitCosts);
+  const netBase     = projValBase * (1 - resExitCosts) - totalDebtR - rehabBuyerCostR;
+  const netFlat     = flatVal    * (1 - resExitCosts) - totalDebtR - rehabBuyerCostR;
+  const netDn10     = dn10Val    * (1 - resExitCosts) - totalDebtR - rehabBuyerCostR;
+  const netDn20     = dn20Val    * (1 - resExitCosts) - totalDebtR - rehabBuyerCostR;
+  const breakEvenV  = (totalDebtR + rehabBuyerCostR) / (1 - resExitCosts);
   const bePct       = arv > 0 ? ((breakEvenV - arv) / arv * 100).toFixed(1) : '—';
   const beDir       = breakEvenV > arv
     ? `property must appreciate +${bePct}% to cover all debt`
@@ -7105,7 +7213,7 @@ const FIELDS = [
   'ac_name','ac_phone','ac_email1','ac_email2','buyer_company','offer_expiry',
   'sub_mortgage_balance','sub_mortgage_rate','sub_mortgage_pmt','sub_servicer','sub_cash_to_seller',
   'loi_agent_fee','loi_agent_fee_type',
-  'closing_cost_party','appraisal_contingency','acq_fee_basis','seller_security_type',
+  'closing_cost_party','appraisal_contingency','acq_fee_basis','seller_security_type','hm_int_mode',
   // Residential fields
   'res_beds','res_baths','res_rent','res_vacancy','res_arv','res_comp',
   'res_taxes','res_insurance','res_maint_amt','res_maint_pct'
