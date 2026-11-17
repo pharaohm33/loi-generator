@@ -1078,7 +1078,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       </div>
       <div class="row cols-2">
         <div class="field loi">
-          <label><span class="loi-dot"></span> Seller's Agent Fee (paid by buyer) <span class="loi-tag">→ LOI</span></label>
+          <label><span class="loi-dot"></span> Agent Commission (paid by buyer) <span class="loi-tag">→ LOI</span></label>
           <div style="display:flex;gap:6px;align-items:center;">
             <button id="btn-fee-type-pct" onclick="setAgentFeeType('pct')" style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#111;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">%</button>
             <button id="btn-fee-type-flat" onclick="setAgentFeeType('flat')" style="padding:4px 10px;border-radius:5px;border:1px solid #d1d5db;background:#f9fafb;color:#555;font-size:12px;font-weight:700;cursor:pointer;">$</button>
@@ -1387,7 +1387,7 @@ input:focus, select:focus { border-color: #111; background: #fff; }
       <div class="sum-row"><span class="lbl">Loan Points</span><span class="val" id="s-pts">—</span></div>
       <div class="sum-row"><span class="lbl">Mortgage Broker Fee</span><span class="val" id="s-broker">—</span></div>
       <div class="sum-row" id="s-agent-fee-row" style="display:none">
-        <span class="lbl">Seller's Agent Fee (paid by buyer)</span>
+        <span class="lbl">Agent Commission (paid by buyer)</span>
         <span class="val" id="s-agent-fee">—</span>
       </div>
       <div class="sum-row"><span class="lbl">TAF Principal</span><span class="val" id="s-taf2">—</span></div>
@@ -3627,9 +3627,9 @@ function getAgentFeeLine(pp) {
   const D = v => '$' + Math.round(v).toLocaleString();
   if (feeType === 'pct') {
     const feeDollar = pp > 0 ? ` (${D(pp * feeVal / 100)})` : '';
-    return `Buyer agrees to pay the seller's agent/realtor a fee of ${feeVal}%${feeDollar} of the listed price. This fee is paid by the buyer and is in addition to and separate from the cash paid to seller at closing — it does not reduce seller proceeds in any way.`;
+    return `Buyer agrees to pay an agent commission of ${feeVal}%${feeDollar} of the listed price. This commission is paid by the buyer and is in addition to and separate from the cash paid to seller at closing — it does not reduce seller proceeds in any way.`;
   } else {
-    return `Buyer agrees to pay the seller's agent/realtor a fee of ${D(feeVal)}. This fee is paid by the buyer and is in addition to and separate from the cash paid to seller at closing — it does not reduce seller proceeds in any way.`;
+    return `Buyer agrees to pay an agent commission of ${D(feeVal)}. This commission is paid by the buyer and is in addition to and separate from the cash paid to seller at closing — it does not reduce seller proceeds in any way.`;
   }
 }
 
@@ -3659,6 +3659,8 @@ function generateLetterLOI() {
   const P = r => (r * 100).toFixed(2) + '%';
   const esc = str => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const H = txt => `<strong>${esc(txt)}</strong>`;
+  const T = txt => `<strong style="color:#2c5282;font-size:1.08em;">${esc(txt)}</strong>`;                      // the blue section titles of the Red Bridge letter (#2c5282, as in the sample LOI)
+  const TT = txt => `<strong style="color:#1a365d;font-size:1.3em;">${esc(txt)}</strong>`;                      // the dark navy letter title (#1a365d)
   const yrsTxt = y => `${y} ${y === 1 ? 'year' : 'years'}`;
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const expiry = fmtExpiry();
@@ -3735,9 +3737,9 @@ function generateLetterLOI() {
   const feeVal = g('loi_agent_fee'), feeType = (document.getElementById('loi_agent_fee_type') || {}).value || 'pct';
   const feeTxt = feeVal > 0 ? (feeType === 'pct' ? `${feeVal}%` : D2(feeVal)) : '';
   const costsTxt = closingCostParty === 'seller'
-    ? `Seller will credit Buyer for customary closing costs and transaction fees at closing.${feeTxt ? ` Buyer will pay the seller's agent a ${feeTxt} commission, in addition to and separate from the cash paid to Seller at closing.` : ''}`
+    ? `Seller will credit Buyer for customary closing costs and transaction fees at closing.${feeTxt ? ` Buyer will pay a ${feeTxt} agent commission, in addition to and separate from the cash paid to Seller at closing.` : ''}`
     : closingCostParty === 'split'
-      ? `Buyer and Seller will each pay their respective closing costs.${feeTxt ? ` Buyer will also pay the seller's agent a ${feeTxt} commission, in addition to and separate from the cash paid to Seller at closing.` : ''}`
+      ? `Buyer and Seller will each pay their respective closing costs.${feeTxt ? ` Buyer will also pay a ${feeTxt} agent commission, in addition to and separate from the cash paid to Seller at closing.` : ''}`
       : noSellerCarry
         ? `Buyer will pay customary closing costs${feeTxt ? ` and a ${feeTxt} agent commission` : ''}.`
         : `Buyer will pay customary closing costs${feeTxt ? `, lender-related costs, and a ${feeTxt} agent commission` : ' and lender-related costs'}. These costs will be paid by Buyer as permitted by the lender.`;
@@ -3752,8 +3754,8 @@ function generateLetterLOI() {
   const equityPara = "Seller's position is documented as a Senior Equity Interest, giving Seller first-priority claim to all cash flow and proceeds from operations, refinance, or sale, ahead of all Buyer equity. If Buyer defaults on the note, Seller may take over Buyer's interest in the Property without foreclosure.";
   const securityPara = security === 'equity' ? equityPara : dilPara;
   const deedSection = variant === 'deed'
-    ? `${H('Deed Structure')}\n\nSeller may elect to stay on the deed or come off the deed at closing (we recommend Seller stay on the deed for extra security). If Seller remains on the deed, Buyer entity will be added as an additional owner.\n\n${esc(securityPara)}`
-    : `${H('Seller Security')}\n\n${esc(securityPara)}`;
+    ? `${T('Deed Structure')}\n\nSeller may elect to stay on the deed or come off the deed at closing (we recommend Seller stay on the deed for extra security). If Seller remains on the deed, Buyer entity will be added as an additional owner.\n\n${esc(securityPara)}`
+    : `${T('Seller Security')}\n\n${esc(securityPara)}`;
 
   const subjectItems = [];
   if (appraisalContingency === 'on') subjectItems.push('satisfactory appraisal');
@@ -3782,7 +3784,7 @@ function generateLetterLOI() {
   ].join(' ');
 
   const loiHtml =
-`${H('LETTER OF INTENT')}
+`${TT('LETTER OF INTENT')}
 
 ${H('Date: ' + today)}${expiry ? '\n' + H('Offer Expiration: ' + expiry) : ''}
 ${H('Seller: ______________________')}
@@ -3790,26 +3792,26 @@ ${H('Buyer: ' + (buyerCo || '______________________'))}
 ${H('Property: ' + propDesc)}
 ${H('Address: ' + addr)}
 
-${H('Proposed Transaction')}
+${T('Proposed Transaction')}
 
 ${esc(proposed)}
 ${sellerBlock}${lenderParas}
 
-${noSellerCarry ? '' : deedSection + '\n\n'}${H('Costs')}
+${noSellerCarry ? '' : deedSection + '\n\n'}${T('Costs')}
 
 ${esc(costsTxt)}
 
-${H('Other Terms')}
+${T('Other Terms')}
 
 ${esc(otherTerms)}
 
-${H('No Commitment to Close')}
+${T('No Commitment to Close')}
 
 This LOI does not obligate Seller to sell or Buyer to purchase the Property.
 
 ${esc(subjectTxt)}
 
-${H('Seller Acknowledgment')}
+${T('Seller Acknowledgment')}
 
 Seller acknowledges the above proposed terms and is open to exploring the transaction with Buyer.
 
