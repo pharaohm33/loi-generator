@@ -3738,7 +3738,9 @@ function generateLetterLOI() {
     ? `Seller will credit Buyer for customary closing costs and transaction fees at closing.${feeTxt ? ` Buyer will pay the seller's agent a ${feeTxt} commission, in addition to and separate from the cash paid to Seller at closing.` : ''}`
     : closingCostParty === 'split'
       ? `Buyer and Seller will each pay their respective closing costs.${feeTxt ? ` Buyer will also pay the seller's agent a ${feeTxt} commission, in addition to and separate from the cash paid to Seller at closing.` : ''}`
-      : `Buyer will pay customary closing costs${feeTxt ? `, lender-related costs, and a ${feeTxt} agent commission` : ' and lender-related costs'}. These costs will be paid by Buyer as permitted by the lender.`;
+      : noSellerCarry
+        ? `Buyer will pay customary closing costs${feeTxt ? ` and a ${feeTxt} agent commission` : ''}.`
+        : `Buyer will pay customary closing costs${feeTxt ? `, lender-related costs, and a ${feeTxt} agent commission` : ' and lender-related costs'}. These costs will be paid by Buyer as permitted by the lender.`;
 
   const closingTxt = propType === 'land'
     ? 'Closing will be within ninety (90) days of the agreement being accepted and signed by both Buyer and Seller.'
@@ -3755,22 +3757,27 @@ function generateLetterLOI() {
 
   const subjectItems = [];
   if (appraisalContingency === 'on') subjectItems.push('satisfactory appraisal');
-  subjectItems.push('underwriting', 'due diligence', 'lender approval');
+  if (noSellerCarry) { subjectItems.push('due diligence'); if (cashFinancingType !== 'none') subjectItems.push('lender approval'); }          // an all-cash offer: no underwriting / lender approval unless the cash template says there is financing
+  else subjectItems.push('underwriting', 'due diligence', 'lender approval');
   if (financialsApply) subjectItems.push("satisfactory review of the Property's financials (including trailing 12-month operating statements, current rent roll, and leases)");
   const subjectTxt = `The transaction remains subject to ${subjectItems.join(', ')}, and execution of definitive agreements by both parties.`;
 
-  const proposed = variant === 'deed'
+  const proposed = noSellerCarry ? 'Buyer is interested in acquiring the Property for cash.' : variant === 'deed'
     ? 'Buyer is interested in acquiring the Property through a business-purpose financing transaction. Seller may elect to remain on the deed or come off the deed at closing (we recommend Seller stay on the deed for extra security).'
     : 'Buyer is interested in acquiring the Property through a business-purpose financing transaction.';
-  const lenderParas = variant === 'deed'
+  const lenderParas = variant === 'deed' && !noSellerCarry
     ? `\n\nBuyer will connect Seller directly with Buyer's lender, who will explain the proposed transaction and financing process.\n\nAfter speaking with the lender and becoming comfortable with the process, Seller agrees to reasonably cooperate with Buyer in scheduling the appraisal and providing customary due diligence items requested by the lender.\n\nOnce the transaction is fully approved, Seller and the lender will connect to review the next steps and proceed toward closing.`
     : '';
 
   const sellerBlock = `${H('Agreed Purchase Price / Seller Consideration: ' + D2(noSellerCarry ? cac : pp))}\n${H('Cash to Seller at Closing: ' + D2(cac))}${prepay > 0 ? `\n${H('Interest Pre-Pay at Closing: ' + D2(prepay) + ' (reduces the balloon by the same amount)')}` : ''}`
     + (noSellerCarry ? `\n${H('Seller Financing: None (all cash at closing)')}` : `\n${H('Seller Financing, if applicable: ' + D2(carry))}\n${noteLines.map(l => l.startsWith('  ') || /^Period \d/.test(l) ? esc(l) : '• ' + esc(l)).join('\n')}`);
 
+  const ddDaysN = Math.round(g('cash_dd_days') || 0), emdN = g('cash_emd_amount');
   const otherTerms = [
-    'Seller cash at closing is the amount before any senior loan payoffs.' + (showLtv && ltvTxt ? ` Buyer is obtaining a loan up to ${ltvTxt}% LTV based on appraised value.` : ''),
+    'Seller cash at closing is the amount before any senior loan payoffs.' + (!noSellerCarry && showLtv && ltvTxt ? ` Buyer is obtaining a loan up to ${ltvTxt}% LTV based on appraised value.` : ''),
+    ...(noSellerCarry ? ['Seller will receive the full purchase price in cash at closing. The Property is being purchased as-is, where-is.',
+      ...(ddDaysN > 0 ? [`Buyer will have a ${ddDaysN}-day due diligence period from a signed purchase and sale agreement.`] : []),
+      ...(cashEMDType !== 'none' && emdN > 0 ? [`Earnest money deposit of ${D2(emdN)}, due ${cashEMDType === 'before_close' ? 'on or before closing' : 'at the end of the due diligence period'}.`] : [])] : []),
     closingTxt
   ].join(' ');
 
@@ -6826,6 +6833,7 @@ function numToWords(n) {
 }
 
 function generateCashLOI() {
+  if (noSellerCarry && effectiveLoiStyle() === 'letter') return generateLetterLOI();          // Red Bridge: the all-cash offer is written in the letter style too
   const D   = v => '$' + Math.round(v).toLocaleString();
   const esc = t => (t || '').toString().trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const H   = txt => `<strong>${esc(txt)}</strong>`;
