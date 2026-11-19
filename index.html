@@ -4297,7 +4297,7 @@ ${esc(buyerCo)}`
 
 ${H('Non-Circumvent')}
 
-The Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.
+The Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 3% of the total purchase price.
 
 Circumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.
 
@@ -4485,7 +4485,7 @@ ${esc(buyerCo)}`
     : `
 ${H('Non-Circumvent')}
 
-The Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.
+The Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 3% of the total purchase price.
 
 Circumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.
 
@@ -4670,7 +4670,7 @@ ${esc(buyerCo)}`
     : `
 ${H('Non-Circumvent')}
 
-The Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.
+The Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 3% of the total purchase price.
 
 Circumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.
 
@@ -6898,7 +6898,7 @@ function generateCashLOI() {
     ? `${sigBlock}\n\n\n${H('Acquisition Correspondent:')}\n${esc(acName)}\nContact:\n        Email:\n            ${esc(acE1)}\n            ${esc(acE2)}\n        Phone:\n            ${esc(acPh)}\n\n${H('Buyer:')}\n${esc(buyerCo)}`
     : hasBuyer
     ? `${sigBlock}\n\n\n${H('Buyer:')}\n${esc(buyerCo)}${acPh ? '\nPhone: ' + esc(acPh) : ''}${acE1 ? '\nEmail: ' + esc(acE1) : ''}`
-    : `────────────────────────────────────────────────\n\n${H('Non-Circumvent')}\n\nThe Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 1% of the total purchase price.\n\nCircumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.\n\nThe Acquisition Correspondent's fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing.\n\n${H('Non-Exclusive Nature:')}\nSeller may entertain other offers until final purchase and sales agreement is in place with end buyer.\n\n\n${sigBlock}\n\n\n${H('Acquisition Correspondent:')}\n${esc(acName)}\nContact:\n        Email:\n            ${esc(acE1)}\n            ${esc(acE2)}\n        Phone:\n            ${esc(acPh)}`;
+    : `────────────────────────────────────────────────\n\n${H('Non-Circumvent')}\n\nThe Acquisition Correspondent will bring the buyer to closing on the property. Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. In the event of circumvention, Seller shall pay the Acquisition Correspondent a penalty equal to 3% of the total purchase price.\n\nCircumvention is defined as Seller closing on the subject property listed in this LOI with a buyer introduced by the Acquisition Correspondent, without ensuring that the Acquisition Correspondent is compensated by either party.\n\nThe Acquisition Correspondent's fee is currently payable by the buyer. If the Acquisition Correspondent is unable to secure payment from the buyer, Seller agrees to coordinate a mutually agreed-upon payment with the Acquisition Correspondent prior to closing.\n\n${H('Non-Exclusive Nature:')}\nSeller may entertain other offers until final purchase and sales agreement is in place with end buyer.\n\n\n${sigBlock}\n\n\n${H('Acquisition Correspondent:')}\n${esc(acName)}\nContact:\n        Email:\n            ${esc(acE1)}\n            ${esc(acE2)}\n        Phone:\n            ${esc(acPh)}`;
 
   const cashToday = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
   const cashExpiry = fmtExpiry();

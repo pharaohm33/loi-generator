@@ -358,7 +358,7 @@ def build_loi_pdf(r, output_path):
         "The Acquisition Correspondent will bring the buyer to closing on the property. "
         "Upon signing, Seller agrees not to circumvent the Acquisition Correspondent. "
         "In the event of circumvention, Seller shall pay the Acquisition Correspondent "
-        "a penalty equal to 1% of the total purchase price.", body))
+        "a penalty equal to 3% of the total purchase price.", body))
     story.append(Spacer(1, 6))
 
     story.append(Paragraph(
